@@ -1,7 +1,9 @@
-"""Sistema de logging personalizado."""
+"""Sistema de logging modular seguindo melhores práticas."""
 
 import logging
 from logging.handlers import RotatingFileHandler
+from pathlib import Path
+from typing import Optional
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -10,96 +12,179 @@ from rich.theme import Theme
 from carteira_auto.config.settings import settings
 
 
-class CustomLogger:
-    """Logger personalizado com suporte a rich."""
+class ErrorFilter(logging.Filter):
+    """Filtro para logs de erro (ERROR e CRITICAL)."""
 
-    def __init__(self, name: str = "carteira_auto"):
-        self.name = name
-        self._logger = None
-        self._setup_logger()
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno >= logging.ERROR
 
-    def _setup_logger(self) -> None:
-        """Configura o logger."""
-        # Tema customizado para rich
-        custom_theme = Theme(
-            {
-                "info": "cyan",
-                "warning": "yellow",
-                "error": "red",
-                "critical": "bold red",
-                "success": "green",
-            }
+
+class InfoFilter(logging.Filter):
+    """Filtro para logs de informação (DEBUG, INFO, WARNING)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return record.levelno < logging.ERROR
+
+
+class ModuleFormatter(logging.Formatter):
+    """Formatter customizado que destaca o nome do módulo."""
+
+    def format(self, record):
+        # Adicionar o atributo module ANTES de chamar super()
+        if not hasattr(record, "module"):
+            module_name = record.name
+            if len(module_name) > 30:
+                parts = module_name.split(".")
+                if len(parts) > 3:
+                    module_name = f"{parts[0]}.{parts[1]}...{parts[-1]}"
+            record.module = module_name
+        return super().format(record)
+
+
+def setup_logging() -> None:
+    """Configura o sistema de logging globalmente.
+
+    Esta função deve ser chamada uma vez no início da aplicação.
+    """
+    # Remove handlers existentes do root logger
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+
+    # Configura o nível do root logger
+    root_logger.setLevel(logging.WARNING)
+
+    # Configura handlers baseados nas configurações
+    handlers = []
+
+    # Handler do console (Rich)
+    if settings.logging.LOG_CONSOLE_ENABLED:
+        console_handler = _create_console_handler()
+        handlers.append(console_handler)
+
+    # Handler de arquivo principal
+    if settings.logging.LOG_FILE_ENABLED and settings.logging.LOG_FILE:
+        file_handler = _create_file_handler(
+            settings.logging.LOG_FILE,
+            level=logging.DEBUG if settings.DEBUG else logging.INFO,
+            filter_class=InfoFilter if settings.logging.LOG_SEPARATE_ERRORS else None,
         )
+        handlers.append(file_handler)
 
-        # Console rich
-        console = Console(theme=custom_theme, stderr=True)
-
-        # Handler do rich
-        rich_handler = RichHandler(
-            console=console,
-            show_time=True,
-            show_level=True,
-            show_path=True,
-            markup=True,
-            rich_tracebacks=True,
-            tracebacks_show_locals=True,
+    # Handler de arquivo de erros (separado)
+    if (
+        settings.logging.LOG_FILE_ENABLED
+        and settings.logging.LOG_SEPARATE_ERRORS
+        and settings.logging.ERROR_LOG_FILE
+    ):
+        error_handler = _create_file_handler(
+            settings.logging.ERROR_LOG_FILE,
+            level=logging.ERROR,
+            filter_class=ErrorFilter,
         )
+        handlers.append(error_handler)
 
-        # Configuração do logger
-        self._logger = logging.getLogger(self.name)
-        self._logger.setLevel(getattr(logging, settings.logging.LOG_LEVEL))
-
-        # Remove handlers existentes
-        self._logger.handlers.clear()
-
-        # Adiciona handler do rich
-        self._logger.addHandler(rich_handler)
-
-        # Adiciona handler de arquivo se configurado
-        if settings.logging.LOG_FILE:
-            file_handler = RotatingFileHandler(
-                settings.logging.LOG_FILE,
-                maxBytes=settings.logging.LOG_MAX_SIZE,
-                backupCount=5,
-                encoding="utf-8",
-            )
-
-            file_formatter = logging.Formatter(
-                fmt=settings.logging.LOG_FORMAT,
-                datefmt=settings.logging.LOG_DATE_FORMAT,
-            )
-
-            file_handler.setFormatter(file_formatter)
-            self._logger.addHandler(file_handler)
-
-    def info(self, msg: str, *args, **kwargs) -> None:
-        """Log nível INFO."""
-        self._logger.info(msg, *args, **kwargs)
-
-    def warning(self, msg: str, *args, **kwargs) -> None:
-        """Log nível WARNING."""
-        self._logger.warning(msg, *args, **kwargs)
-
-    def error(self, msg: str, *args, exc_info: bool = True, **kwargs) -> None:
-        """Log nível ERROR."""
-        self._logger.error(msg, *args, exc_info=exc_info, **kwargs)
-
-    def critical(self, msg: str, *args, **kwargs) -> None:
-        """Log nível CRITICAL."""
-        self._logger.critical(msg, *args, **kwargs)
-
-    def debug(self, msg: str, *args, **kwargs) -> None:
-        """Log nível DEBUG."""
-        self._logger.debug(msg, *args, **kwargs)
-
-    def success(self, msg: str, *args, **kwargs) -> None:
-        """Log nível SUCCESS (custom)."""
-        self._logger.info(f"[success]✓ {msg}[/success]", *args, **kwargs)
-
-    def exception(self, msg: str, *args, **kwargs) -> None:
-        """Log exceção."""
-        self._logger.exception(msg, *args, **kwargs)
+    # Aplica handlers ao root logger
+    for handler in handlers:
+        root_logger.addHandler(handler)
 
 
-# Logger global
-logger = CustomLogger()
+def _create_console_handler() -> logging.Handler:
+    """Cria handler do console com Rich."""
+    # Tema customizado para rich
+    custom_theme = Theme(
+        {
+            "info": "cyan",
+            "warning": "yellow",
+            "error": "red",
+            "critical": "bold red",
+            "success": "green",
+            "debug": "dim blue",
+        }
+    )
+
+    console = Console(theme=custom_theme, stderr=True)
+
+    rich_handler = RichHandler(
+        console=console,
+        show_time=True,
+        show_level=True,
+        show_path=True,
+        markup=True,
+        rich_tracebacks=True,
+        tracebacks_show_locals=settings.DEBUG,
+        level=getattr(logging, settings.logging.LOG_LEVEL),
+    )
+
+    # Formatter customizado para console
+    formatter = ModuleFormatter(
+        fmt="%(module)s: %(message)s",
+        datefmt=settings.logging.LOG_DATE_FORMAT,
+    )
+    rich_handler.setFormatter(formatter)
+
+    return rich_handler
+
+
+def _create_file_handler(
+    log_file: Path, level: int = logging.INFO, filter_class: Optional[type] = None
+) -> logging.Handler:
+    """Cria handler de arquivo com rotação."""
+    file_handler = RotatingFileHandler(
+        log_file,
+        maxBytes=settings.logging.LOG_MAX_SIZE,
+        backupCount=5,
+        encoding="utf-8",
+    )
+
+    file_handler.setLevel(level)
+
+    # Aplica filtro se especificado
+    if filter_class:
+        file_handler.addFilter(filter_class())
+
+    # Formatter para arquivo
+    formatter = ModuleFormatter(
+        fmt=settings.logging.LOG_FORMAT,
+        datefmt=settings.logging.LOG_DATE_FORMAT,
+    )
+    file_handler.setFormatter(formatter)
+
+    return file_handler
+
+
+def get_logger(name: Optional[str] = None) -> logging.Logger:
+    """Factory function para obter logger configurado.
+
+    Args:
+        name: Nome do logger. Se None, retorna o root logger.
+              Recomenda-se usar __name__ em cada módulo.
+
+    Returns:
+        Logger configurado.
+
+    Exemplo de uso:
+        ```python
+        # Em cada módulo
+        from carteira_auto.utils.logger import get_logger
+
+        logger = get_logger(__name__)
+        logger.info("Mensagem informativa")
+        ```
+    """
+    logger_name = name or "carteira_auto"
+    logger = logging.getLogger(logger_name)
+
+    # Herda configuração do root logger
+    logger.propagate = True
+
+    # Define nível específico se for DEBUG
+    if settings.DEBUG:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(getattr(logging, settings.logging.LOG_LEVEL))
+
+    return logger
+
+
+# Configura logging global ao importar o módulo
+setup_logging()

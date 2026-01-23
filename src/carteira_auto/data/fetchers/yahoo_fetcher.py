@@ -5,8 +5,10 @@ from typing import Optional
 import pandas as pd
 import yfinance as yf
 
-from carteira_auto.config.settings import settings
-from carteira_auto.utils.logger import logger
+from carteira_auto.config import settings
+from carteira_auto.utils import get_logger
+
+logger = get_logger(__name__)
 
 
 class YahooFinanceFetcher:
