@@ -4,7 +4,7 @@ carteira_auto - Sistema de automação e análise de carteiras de investimentos
 
 # Submódulos disponíveis para importação
 from carteira_auto import analyzers, cli, config, core, data, utils
-from carteira_auto.config import settings
+from carteira_auto.config import constants, settings
 
 utils.logger.setup_logging()
 
