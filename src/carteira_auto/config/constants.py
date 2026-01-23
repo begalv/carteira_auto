@@ -1,8 +1,6 @@
 """Conteúdos e constantes estáticas da aplicação."""
-from dataclasses import dataclass
 
 
-@dataclass
 class Constants:
     # ============================================================================
     # CONFIGURAÇÕES DE MERCADO
