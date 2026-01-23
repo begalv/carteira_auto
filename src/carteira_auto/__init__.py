@@ -2,18 +2,32 @@
 carteira_auto - Sistema de automação e análise de carteiras de investimentos
 """
 
+# Submódulos disponíveis para importação
+from carteira_auto import analyzers, cli, config, core, data, utils
+from carteira_auto.config import settings
+
+utils.logger.setup_logging()
+
 __version__ = "0.1.0"
 __author__ = "Bernardo Galvão"
 __email__ = "bgalvaods@gmail.com"
 
-from carteira_auto.analyzers.metrics import PortfolioMetrics
-from carteira_auto.config.settings import settings
-from carteira_auto.core.portfolio import Portfolio
-from carteira_auto.data.fetchers.yahoo_fetcher import YahooFinanceFetcher
+# Importações principais
+# ...
+
+# Logger global para o pacote
+logger = utils.logger.get_logger(__name__)
+
 
 __all__ = [
-    "Portfolio",
-    "YahooFinanceFetcher",
-    "PortfolioMetrics",
-    "settings",
+    "analyzers",
+    "cli",
+    "config",
+    "core",
+    "data",
+    "utils",
 ]
+
+# Log de inicialização do pacote
+logger.debug(f"Pacote carteira_auto v{__version__} inicializado")
+logger.debug(f"Ambiente: {settings.ENVIRONMENT}, Debug: {settings.DEBUG}")

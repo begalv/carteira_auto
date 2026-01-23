@@ -26,15 +26,19 @@ class PathsConfig:
     OUTPUTS_DIR: Path = DATA_DIR / "outputs"
     TEMPLATES_DIR: Path = DATA_DIR / "templates"
 
+    LOGS_DIR = OUTPUTS_DIR / "logs"
+    PORTFOLIOS_DIR = OUTPUTS_DIR / "portfolios"
+    REPORTS_DIR = OUTPUTS_DIR / "reports"
+
     def ensure_directories(self) -> None:
         """Garante que todos os diretórios necessários existam."""
         directories = [
             self.RAW_DATA_DIR,
             self.PROCESSED_DATA_DIR,
             self.OUTPUTS_DIR,
-            self.OUTPUTS_DIR / "portfolios",
-            self.OUTPUTS_DIR / "reports",
-            self.OUTPUTS_DIR / "logs",
+            self.PORTFOLIOS_DIR,
+            self.REPORTS_DIR,
+            self.LOGS_DIR,
             self.TEMPLATES_DIR,
         ]
 
@@ -47,7 +51,7 @@ class PathsConfig:
 
     def get_log_path(self, log_name: str = "carteira_auto") -> Path:
         """Retorna caminho para arquivo de log."""
-        return self.OUTPUTS_DIR / "logs" / f"{log_name}.log"
+        return self.LOGS_DIR / f"{log_name}.log"
 
 
 @dataclass
@@ -108,16 +112,35 @@ class PortfolioConfig:
 class LoggingConfig:
     """Configurações de logging."""
 
+    # Nível de log
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO").upper()
+
+    # Formatação
     LOG_FORMAT: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     LOG_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
 
-    LOG_FILE: Optional[Path] = None
+    # Estratégia de logging
+    LOG_STRATEGY: str = os.getenv("LOG_STRATEGY", "single")
+    if LOG_STRATEGY not in ["single", "level"]:
+        LOG_STRATEGY = "single"  # Valor padrão
+
+    # Controle de handlers
+    LOG_CONSOLE_ENABLED: bool = (
+        os.getenv("LOG_CONSOLE_ENABLED", "True").lower() == "true"
+    )
+    LOG_FILE_ENABLED: bool = os.getenv("LOG_FILE_ENABLED", "True").lower() == "true"
+    LOG_SEPARATE_ERRORS: bool = (
+        os.getenv("LOG_SEPARATE_ERRORS", "True").lower() == "true"
+    )
 
     # Rotação de logs
     LOG_ROTATION: str = "1 day"
     LOG_RETENTION: str = "30 days"
-    LOG_MAX_SIZE: int = (10 * 1024 * 1024,)  # 10MB
+    LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
+
+    # Arquivos de log (serão configurados post-init)
+    LOG_FILE: Optional[Path] = None
+    ERROR_LOG_FILE: Optional[Path] = None
 
 
 @dataclass
@@ -144,11 +167,26 @@ class Settings:
 
     def __post_init__(self):
         """Inicialização pós-criação."""
-
         # Garante que os diretórios existam
         self.paths.ensure_directories()
-        # Configura o caminho do arquivo de log
-        self.logging.LOG_FILE = self.paths.get_log_file("carteira_auto")
+        # Configura os caminhos dos arquivos de log
+        self._configure_log_paths()
+
+    def _configure_log_paths(self) -> None:
+        """Configura os caminhos dos arquivos de log."""
+        if self.logging.LOG_FILE_ENABLED:
+            if self.logging.LOG_STRATEGY == "single":
+                self.logging.LOG_FILE = self.paths.get_log_path("carteira_auto")
+                if self.logging.LOG_SEPARATE_ERRORS:
+                    self.logging.ERROR_LOG_FILE = self.paths.get_log_path(
+                        "carteira_auto_errors"
+                    )
+
+            elif self.logging.LOG_STRATEGY == "level":
+                self.logging.LOG_FILE = self.paths.get_log_path("carteira_auto_info")
+                self.logging.ERROR_LOG_FILE = self.paths.get_log_path(
+                    "carteira_auto_errors"
+                )
 
     @property
     def is_production(self) -> bool:
