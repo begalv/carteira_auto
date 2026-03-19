@@ -81,10 +81,16 @@ class Constants:
     # ============================================================================
 
     VALID_TICKER_PATTERNS: dict[str, str] = {
-        "B3_STOCK": r"^[A-Z]{4}[0-9]{1,2}$",  # Ex: PETR4, VALE3
-        "B3_FII": r"^[A-Z]{4}11$",  # Ex: HGLG11, KNRI11
-        "ETF": r"^[A-Z]{4}[\d]{0,2}B$",  # Ex: BOVA11, IVVB11
-        "BDR": r"^[A-Z]{4}34$",  # Ex: AAPL34, TSLA34
+        # AÇÕES B3: 4 letras + unidade (3,4,5,6,7)
+        "B3_STOCK": r"^[A-Z]{4}[34567]$",
+        # FUNDOS IMOBILIÁRIOS: 4 letras + 11
+        "B3_FII": r"^[A-Z]{4}11$",
+        # ETFs: 4 letras + (11 ou 39)
+        "B3_ETF": r"^[A-Z]{4}(11|39)$",
+        # BDRs: 4 letras + 34
+        "B3_BDR": r"^[A-Z]{4}34$",
+        # ÍNDICES: ^ com 2 dígitos
+        "B3_INDEX": r"^\^[A-Z]{2}$",  # ^BVSP, ^IFIX
     }
 
 

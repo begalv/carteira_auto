@@ -26,21 +26,6 @@ class InfoFilter(logging.Filter):
         return record.levelno < logging.ERROR
 
 
-class ModuleFormatter(logging.Formatter):
-    """Formatter customizado que destaca o nome do módulo."""
-
-    def format(self, record):
-        # Adicionar o atributo module ANTES de chamar super()
-        if not hasattr(record, "module"):
-            module_name = record.name
-            if len(module_name) > 30:
-                parts = module_name.split(".")
-                if len(parts) > 3:
-                    module_name = f"{parts[0]}.{parts[1]}...{parts[-1]}"
-            record.module = module_name
-        return super().format(record)
-
-
 def setup_logging() -> None:
     """Configura o sistema de logging globalmente.
 
@@ -116,8 +101,8 @@ def _create_console_handler() -> logging.Handler:
     )
 
     # Formatter customizado para console
-    formatter = ModuleFormatter(
-        fmt="%(module)s: %(message)s",
+    formatter = logging.Formatter(
+        fmt="%(name)s: %(message)s",
         datefmt=settings.logging.LOG_DATE_FORMAT,
     )
     rich_handler.setFormatter(formatter)
@@ -143,7 +128,7 @@ def _create_file_handler(
         file_handler.addFilter(filter_class())
 
     # Formatter para arquivo
-    formatter = ModuleFormatter(
+    formatter = logging.Formatter(
         fmt=settings.logging.LOG_FORMAT,
         datefmt=settings.logging.LOG_DATE_FORMAT,
     )
@@ -186,5 +171,14 @@ def get_logger(name: Optional[str] = None) -> logging.Logger:
     return logger
 
 
-# Configura logging global ao importar o módulo
-setup_logging()
+def initialize_logging(force: bool = False) -> None:
+    """Inicializa o sistema de logging.
+
+    Args:
+        force: Se True, reconfigura mesmo se já inicializado
+    """
+    root_logger = logging.getLogger()
+    if not force and root_logger.handlers:
+        return  # Já inicializado
+
+    setup_logging()
