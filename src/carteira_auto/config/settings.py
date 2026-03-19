@@ -62,9 +62,8 @@ class FetcherConfig:
     YAHOO_TIMEOUT: int = 30
     YAHOO_RETRIES: int = 3
 
-    # Rate limiting
-    RATE_LIMIT_REQUESTS: int = 100
-    RATE_LIMIT_PERIOD: int = 3600  # 1 hora
+    # Rate limiting por minuto
+    RATE_LIMIT_REQUESTS: int = 30
 
     @property
     def requests_headers(self) -> dict[str, str]:
@@ -133,9 +132,6 @@ class LoggingConfig:
         os.getenv("LOG_SEPARATE_ERRORS", "True").lower() == "true"
     )
 
-    # Rotação de logs
-    LOG_ROTATION: str = "1 day"
-    LOG_RETENTION: str = "30 days"
     LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # Arquivos de log (serão configurados post-init)

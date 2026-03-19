@@ -1,4 +1,8 @@
-from carteira_auto import constants, logger, settings
+from carteira_auto import constants, settings
+from carteira_auto.utils import get_logger
+
+logger = get_logger(__name__)
+
 
 if __name__ == "__main__":
     logger.info("Executando carteira_auto como script principal.")
