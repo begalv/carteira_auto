@@ -5,6 +5,10 @@ from typing import Union
 
 from carteira_auto.config import constants
 
+# ============================================================================
+# PARSING E FORMATAÇÃO
+# ============================================================================
+
 
 def parse_brl_currency(value: str) -> Decimal:
     """Converte string de moeda BR para Decimal."""
@@ -35,26 +39,29 @@ def format_percentage(value: float, decimals: int = 2) -> str:
     return f"{sign}{formatted}%"
 
 
+# ============================================================================
+# VALIDAÇÃO & SEGURANÇA
+# ============================================================================
+
+
 def validate_ticker(ticker: str) -> tuple[bool, str]:
     """Valida ticker e retorna tipo."""
-    patterns = {
-        "B3_STOCK": r"^[A-Z]{4}[0-9]{1,2}$",  # PETR4, VALE3
-        "B3_FII": r"^[A-Z]{4}11$",  # HGLG11, KNRI11
-        "ETF": r"^[A-Z]{4}[\d]{0,2}B$",  # BOVA11, IVVB11
-        "BDR": r"^[A-Z]{4}34$",  # AAPL34, TSLA34
-        "CRYPTO": r"^[A-Z]+-?[A-Z]*$",  # BTC-USD, ETH
-    }
 
-    for tipo, pattern in patterns.items():
+    for tipo, pattern in constants.VALID_TICKER_PATTERNS.items():
         if re.match(pattern, ticker.upper()):
             return True, tipo
     return False, "INVALID"
 
 
+# ============================================================================
+# DATA E HORA
+# ============================================================================
+
+
 def is_market_open() -> bool:
     """Verifica se o mercado B3 está aberto."""
-    now = datetime.now()
 
+    now = datetime.now()
     # Verifica se é dia útil (segunda a sexta)
     if now.weekday() >= 5:  # 5 = sábado, 6 = domingo
         return False

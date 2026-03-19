@@ -6,7 +6,7 @@ carteira_auto - Sistema de automação e análise de carteiras de investimentos
 from carteira_auto import analyzers, cli, config, core, data, utils
 from carteira_auto.config import constants, settings
 
-utils.logger.setup_logging()
+utils.initialize_logging()
 
 __version__ = "0.1.0"
 __author__ = "Bernardo Galvão"
@@ -16,7 +16,7 @@ __email__ = "bgalvaods@gmail.com"
 # ...
 
 # Logger global para o pacote
-logger = utils.logger.get_logger(__name__)
+logger = utils.get_logger(__name__)
 
 
 __all__ = [

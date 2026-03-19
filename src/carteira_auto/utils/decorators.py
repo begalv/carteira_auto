@@ -1,6 +1,7 @@
 import functools
 import time
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import Callable, Union
 
 # ============================================================================
@@ -42,6 +43,59 @@ def retry(max_attempts: int = 3, delay: float = 1.0):
                     if attempt < max_attempts - 1:
                         time.sleep(delay * (2**attempt))  # Exponential backoff
             raise last_exception
+
+        return wrapper
+
+    return decorator
+
+
+def rate_limit(calls_per_minute: int = 60):
+    """Limita taxa de requisições (evita ban de API)."""
+    import threading
+
+    def decorator(func: Callable) -> Callable:
+        last_called = [0.0]
+        lock = threading.Lock()
+        min_interval = 60.0 / calls_per_minute
+
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            with lock:
+                elapsed = time.time() - last_called[0]
+                if elapsed < min_interval:
+                    time.sleep(min_interval - elapsed)
+                last_called[0] = time.time()
+            return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def timeout(seconds: int = 30):
+    """Timeout para operações de rede."""
+
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            import signal  # funciona só em posix (unix, linux e mac)
+
+            def handler(signum, frame):
+                raise TimeoutError(
+                    f"Função {func.__name__} excedeu timeout de {seconds}s"
+                )
+
+            signal.signal(signal.SIGALRM, handler)
+            signal.alarm(seconds)
+
+            try:
+                result = func(*args, **kwargs)
+                signal.alarm(0)  # Cancela alarme
+                return result
+            except TimeoutError:
+                raise
+            finally:
+                signal.alarm(0)
 
         return wrapper
 
@@ -98,27 +152,39 @@ def validate_tickers(func: Callable) -> Callable:
     return wrapper
 
 
-def rate_limit(calls_per_minute: int = 60):
-    """Limita taxa de requisições (evita ban de API)."""
-    import threading
+def validate_positive_value(func: Callable) -> Callable:
+    """Valida que valores financeiros são positivos."""
 
-    def decorator(func: Callable) -> Callable:
-        last_called = [0.0]
-        lock = threading.Lock()
-        min_interval = 60.0 / calls_per_minute
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        # Verifica args
+        for arg in args:
+            if isinstance(arg, (int, float, Decimal)) and arg < 0:
+                raise ValueError(f"Valor negativo não permitido: {arg}")
 
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            with lock:
-                elapsed = time.time() - last_called[0]
-                if elapsed < min_interval:
-                    time.sleep(min_interval - elapsed)
-                last_called[0] = time.time()
-            return func(*args, **kwargs)
+        # Verifica kwargs
+        for key, value in kwargs.items():
+            if isinstance(value, (int, float, Decimal)) and value < 0:
+                raise ValueError(f"Valor negativo não permitido para {key}: {value}")
 
-        return wrapper
+        return func(*args, **kwargs)
 
-    return decorator
+    return wrapper
+
+
+def validate_allocation_sum(func: Callable) -> Callable:
+    """Valida que soma das alocações é 100%."""
+
+    @functools.wraps(func)
+    def wrapper(allocation_dict: dict, *args, **kwargs):
+        total = sum(allocation_dict.values())
+
+        if not 0.99 <= total <= 1.01:  # Tolerância de 1%
+            raise ValueError(f"Soma das alocações deve ser 100%. Atual: {total:.2%}")
+
+        return func(allocation_dict, *args, **kwargs)
+
+    return wrapper
 
 
 # ============================================================================
@@ -155,9 +221,9 @@ def log_execution(func: Callable) -> Callable:
 def cache_result(ttl_seconds: int = 300, max_size: int = 1000):
     def decorator(func):
         cache = {}
-        cache_order = []  # Para LRU
+        cache_order = []  # Para LRU (Least Recently Used)
 
-        def cleanup():
+        def _cleanup():
             """Remove entradas expiradas e mantém tamanho máximo."""
             now = datetime.now()
             expired_keys = []
@@ -186,7 +252,7 @@ def cache_result(ttl_seconds: int = 300, max_size: int = 1000):
 
             # Limpa periodicamente (a cada 10 chamadas)
             if len(cache) % 10 == 0:
-                cleanup()
+                _cleanup()
 
             if cache_key in cache:
                 cached_time, result = cache[cache_key]
@@ -200,6 +266,62 @@ def cache_result(ttl_seconds: int = 300, max_size: int = 1000):
             result = func(*args, **kwargs)
             cache[cache_key] = (datetime.now(), result)
             cache_order.append(cache_key)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
+def cache_by_ticker(ttl_seconds: int = 300, max_size: int = 1000):
+    """Cache específico para tickers com LRU e limpeza."""
+
+    def decorator(func: Callable) -> Callable:
+        cache = {}  # {ticker: (timestamp, result)}
+        cache_order = []  # Para LRU (Least Recently Used)
+
+        def _cleanup():
+            """Remove entradas expiradas e mantém tamanho máximo."""
+            now = datetime.now()
+            expired_tickers = []
+
+            # Remove expirados
+            for ticker, (cached_time, _) in cache.items():
+                if now - cached_time > timedelta(seconds=ttl_seconds):
+                    expired_tickers.append(ticker)
+
+            for ticker in expired_tickers:
+                cache.pop(ticker, None)
+                if ticker in cache_order:
+                    cache_order.remove(ticker)
+
+            # Remove os mais antigos se exceder tamanho (LRU)
+            while len(cache) > max_size and cache_order:
+                oldest_ticker = cache_order.pop(0)
+                cache.pop(oldest_ticker, None)
+
+        @functools.wraps(func)
+        def wrapper(ticker: str, *args, **kwargs):
+            # Limpa periodicamente (a cada 10 chamadas)
+            if len(cache) % 10 == 0:
+                _cleanup()
+
+            # Verifica cache
+            if ticker in cache:
+                cached_time, result = cache[ticker]
+                if datetime.now() - cached_time < timedelta(seconds=ttl_seconds):
+                    # Atualiza LRU (move para o final)
+                    cache_order.remove(ticker)
+                    cache_order.append(ticker)
+                    return result
+
+            # Executa função
+            result = func(ticker, *args, **kwargs)
+
+            # Armazena no cache
+            cache[ticker] = (datetime.now(), result)
+            cache_order.append(ticker)
 
             return result
 
