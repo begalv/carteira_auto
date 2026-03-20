@@ -133,6 +133,33 @@ class Constants:
     # Tickers que não têm dados no Yahoo Finance (Tesouro Direto, etc.)
     NON_YAHOO_TICKERS: set[str] = {"LFT", "NTNB", "NTNF", "LTN"}
 
+    # ============================================================================
+    # BCB — SÉRIES DO SGS (Sistema Gerenciador de Séries Temporais)
+    # ============================================================================
+
+    BCB_SERIES_CODES: dict[str, int] = {
+        "selic": 432,  # Taxa Selic (meta) — % a.a.
+        "cdi": 12,  # Taxa CDI — % a.d.
+        "ipca": 433,  # IPCA — variação mensal %
+        "ptax_compra": 10813,  # PTAX USD compra — R$
+        "ptax_venda": 1,  # PTAX USD venda — R$
+        "igpm": 189,  # IGP-M — variação mensal %
+        "tr": 226,  # Taxa Referencial — % a.m.
+        "inpc": 188,  # INPC — variação mensal %
+        "poupanca": 25,  # Rendimento poupança — % a.m.
+    }
+
+    # ============================================================================
+    # IBGE — TABELAS DO SIDRA
+    # ============================================================================
+
+    IBGE_TABLE_IDS: dict[str, int] = {
+        "ipca": 1737,  # IPCA — variação mensal
+        "ipca_grupos": 7060,  # IPCA por grupos
+        "pib_trimestral": 1621,  # PIB trimestral — variação %
+        "pnad_desocupacao": 6381,  # PNAD — taxa de desocupação
+    }
+
     REPORT_SECTIONS: list[str] = [
         "resumo_executivo",
         "alocacao_por_categoria",
