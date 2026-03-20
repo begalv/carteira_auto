@@ -119,9 +119,8 @@ class PortfolioPriceExporter(ExcelExporter):
         output = exporter.export_prices(portfolio)
     """
 
-    # Índice da coluna "Preço Atual" na aba Carteira (1-based)
-    _PRECO_ATUAL_COL = constants.CARTEIRA_COLUMNS.index("Preço Atual") + 1
-    _TICKER_COL = constants.CARTEIRA_COLUMNS.index("Ticker") + 1
+    _PRECO_ATUAL_COL = constants.CARTEIRA_PRECO_ATUAL_COL
+    _TICKER_COL = constants.CARTEIRA_TICKER_COL
 
     def __init__(
         self,

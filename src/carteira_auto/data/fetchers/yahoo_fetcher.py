@@ -64,50 +64,6 @@ class YahooFinanceFetcher:
     # ============================================================================
 
     @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
-    @log_execution
-    @validate_tickers
-    @cache_result(ttl_seconds=300)  # 5min
-    def get_current_price_data(
-        self, symbols: Union[str, list[str]], **kwargs
-    ) -> pd.DataFrame:
-        """Obtém os dados de preço de um ou mais ativos na data mais recente disponível."""
-
-        if settings.DEBUG:
-            progress = True
-        else:
-            progress = False
-
-        # Buscar dados de apenas 1 dia é mais rápido e eficiente para atualizar preços atuais
-        try:
-            data = download(
-                tickers=symbols,
-                period="1d",
-                interval="1d",
-                repair=True,
-                threads=True,
-                progress=progress,
-                group_by="ticker",
-                **kwargs,
-            )
-
-            if data.empty:
-                logger.warning(f"Nenhum dado histórico encontrado para {symbols}")
-                return pd.DataFrame()
-
-            logger.info(
-                f"Dados históricos obtidos para {symbols}: {len(data)} registros"
-            )
-            return data
-
-        except Exception as e:
-            logger.error(
-                f"Erro ao obter dados de preço para {symbols}: {e}", exc_info=True
-            )
-            return pd.DataFrame()
-
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
     @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS * 2)
     @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
     @validate_tickers
@@ -122,13 +78,10 @@ class YahooFinanceFetcher:
         end: Optional[str] = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Obtém dados históricos de preço de um ou mais ativos."""
+        """Obtém dados históricos de preço de um ou mais ativos.
 
-        if settings.DEBUG:
-            progress = True
-        else:
-            progress = False
-
+        Para preços atuais, use period="1d".
+        """
         try:
             data = download(
                 tickers=symbols,
@@ -138,7 +91,7 @@ class YahooFinanceFetcher:
                 end=end,
                 repair=True,
                 threads=True,
-                progress=progress,
+                progress=settings.DEBUG,
                 group_by="ticker",
                 **kwargs,
             )
@@ -468,14 +421,33 @@ class YahooFinanceFetcher:
     @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
     @log_execution
     def get_multiple_prices(self, symbols: list[str]) -> dict[str, Optional[float]]:
-        """Obtém preços atuais de múltiplos ativos via yf.download."""
+        """Obtém preços atuais de múltiplos ativos via yf.download.
+
+        Aceita tickers originais (ex: PETR4) — a normalização para o
+        formato Yahoo (ex: PETR4.SA) e a filtragem de tickers incompatíveis
+        (ex: Tesouro Direto) são feitas internamente.
+        Os resultados são retornados com as chaves originais.
+        """
         if not symbols:
             return {}
+
+        # Filtra tickers que o Yahoo não resolve (Tesouro Direto etc.)
+        eligible = [s for s in symbols if s not in constants.NON_YAHOO_TICKERS]
+        skipped = {s: None for s in symbols if s in constants.NON_YAHOO_TICKERS}
+
+        if not eligible:
+            logger.warning("Nenhum ticker elegível para o Yahoo Finance")
+            return skipped
+
+        # Normaliza tickers e mantém mapeamento reverso
+        original_to_yahoo = {s: self.normalize_br_ticker(s) for s in eligible}
+        yahoo_to_original = {v: k for k, v in original_to_yahoo.items()}
+        yahoo_symbols = list(original_to_yahoo.values())
 
         results: dict[str, Optional[float]] = {}
         try:
             data = download(
-                tickers=symbols,
+                tickers=yahoo_symbols,
                 period="5d",
                 interval="1d",
                 threads=True,
@@ -486,7 +458,7 @@ class YahooFinanceFetcher:
                 logger.warning(f"Nenhum dado retornado para {symbols}")
                 return {s: None for s in symbols}
 
-            if len(symbols) == 1:
+            if len(yahoo_symbols) == 1:
                 # yf.download retorna colunas simples para ticker único
                 if "Close" in data.columns:
                     last_close = data["Close"].dropna().iloc[-1]
@@ -494,24 +466,27 @@ class YahooFinanceFetcher:
                 else:
                     results[symbols[0]] = None
             else:
-                for symbol in symbols:
+                for yahoo_sym in yahoo_symbols:
+                    original = yahoo_to_original[yahoo_sym]
                     try:
-                        close = data["Close"][symbol].dropna()
-                        if not close.empty:
-                            results[symbol] = float(close.iloc[-1])
-                        else:
-                            results[symbol] = None
+                        close = data["Close"][yahoo_sym].dropna()
+                        results[original] = (
+                            float(close.iloc[-1]) if not close.empty else None
+                        )
                     except (KeyError, IndexError):
-                        results[symbol] = None
+                        results[original] = None
 
         except Exception as e:
             logger.error(f"Erro ao obter preços múltiplos: {e}")
             return {s: None for s in symbols}
 
         # Preenche tickers faltantes
-        for s in symbols:
+        for s in eligible:
             if s not in results:
                 results[s] = None
+
+        # Inclui tickers que foram ignorados
+        results.update(skipped)
 
         logger.info(
             f"Preços obtidos: {sum(1 for v in results.values() if v is not None)}"
@@ -555,47 +530,43 @@ class YahooFinanceFetcher:
             logger.warning("Lista de símbolos vazia")
             return {}
 
-        # Agrupa por tipo de operação para otimizar
-        results = {}
+        results = {s: {} for s in symbols}
 
-        # Para preços, usa Tickers (mais eficiente)
+        # Para preços, usa download em lote (mais eficiente)
         if "price" in data_types:
             prices = self.get_multiple_prices(symbols)
             for symbol in symbols:
-                if symbol not in results:
-                    results[symbol] = {}
                 results[symbol]["price"] = prices.get(symbol)
 
-        # Para outros tipos, usa threading
+        # Para outros tipos, usa threading com paralelismo real
         other_types = [dt for dt in data_types if dt != "price"]
         if other_types:
+            fetcher_map = {
+                "info": self.get_ticker_info,
+                "dividend_yield": self.get_dividend_yield,
+                "historical": lambda s: self.get_historical_data(s, period="1mo"),
+            }
+
             with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                # Para cada símbolo
+                # Submete todas as tarefas de uma vez
+                futures = {}
                 for symbol in symbols:
-                    if symbol not in results:
-                        results[symbol] = {}
-
-                    # Para cada tipo de dado restante
                     for data_type in other_types:
-                        if data_type == "info":
-                            future = executor.submit(self.get_ticker_info, symbol)
-                        elif data_type == "dividend_yield":
-                            future = executor.submit(self.get_dividend_yield, symbol)
-                        elif data_type == "historical":
-                            future = executor.submit(
-                                self.get_historical_data, symbol, period="1mo"
-                            )
-                        else:
-                            continue
+                        fetcher_fn = fetcher_map.get(data_type)
+                        if fetcher_fn:
+                            future = executor.submit(fetcher_fn, symbol)
+                            futures[future] = (symbol, data_type)
 
-                        try:
-                            result = future.result(timeout=self.timeout)
-                            results[symbol][data_type] = result
-                        except Exception as e:
-                            logger.error(
-                                f"Erro ao obter {data_type} para {symbol}: {e}"
-                            )
-                            results[symbol][data_type] = None
+                # Coleta resultados conforme ficam prontos
+                from concurrent.futures import as_completed
+
+                for future in as_completed(futures, timeout=self.timeout):
+                    symbol, data_type = futures[future]
+                    try:
+                        results[symbol][data_type] = future.result()
+                    except Exception as e:
+                        logger.error(f"Erro ao obter {data_type} para {symbol}: {e}")
+                        results[symbol][data_type] = None
 
         logger.info(f"Batch data concluído para {len(symbols)} símbolos")
         return results
