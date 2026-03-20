@@ -64,6 +64,10 @@ class Constants:
         "Função Dialética e Materialista",
     ]
 
+    # Índices de coluna (1-based, para uso com openpyxl)
+    CARTEIRA_TICKER_COL: int = CARTEIRA_COLUMNS.index("Ticker") + 1
+    CARTEIRA_PRECO_ATUAL_COL: int = CARTEIRA_COLUMNS.index("Preço Atual") + 1
+
     CARTEIRA_FIELD_MAP: dict[str, str] = {
         "Fator": "fator",
         "Ticker": "ticker",
