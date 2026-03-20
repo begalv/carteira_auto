@@ -32,7 +32,7 @@ class Constants:
     # COLUNAS DA PLANILHA REAL
     # ============================================================================
 
-    SHEET_NAMES: dict[str, str] = {
+    CARTEIRA_SHEET_NAMES: dict[str, str] = {
         "carteira": "Carteira",
         "resumo": "Resumo",
         "vendas": "Vendas",
