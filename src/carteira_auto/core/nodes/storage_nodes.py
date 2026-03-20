@@ -20,7 +20,7 @@ class SaveSnapshotNode(Node):
     """
 
     name = "save_snapshot"
-    dependencies = ["analyze_portfolio"]
+    dependencies: list[str] = []
 
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.data.storage import SnapshotStore

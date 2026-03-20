@@ -95,12 +95,12 @@ class DAGEngine:
     """Engine que registra nodes e resolve dependências via topological sort.
 
     Usage:
-        engine = DAGEngine()
-        engine.register(LoadPortfolioNode())
-        engine.register(FetchPricesNode())
-        engine.register(ExportPortfolioPricesNode())
+        dag_engine = DAGEngine()
+        dag_engine.register(LoadPortfolioNode())
+        dag_engine.register(FetchPortfolioPricesNode())
+        dag_engine.register(ExportPortfolioPricesNode())
 
-        ctx = engine.run("export_portfolio_prices")
+        ctx = dag_engine.run("export_portfolio_prices")
     """
 
     def __init__(self) -> None:
