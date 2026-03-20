@@ -1,11 +1,10 @@
 """Loader para importação da planilha de carteira."""
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
-from carteira_auto.config import constants, settings
+from carteira_auto.config import constants
 from carteira_auto.core.models import Asset, PortfolioSnapshot, SoldAsset
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import log_execution, timer
@@ -16,10 +15,8 @@ logger = get_logger(__name__)
 class ExcelLoader:
     """Importa a planilha de carteira e retorna um PortfolioSnapshot."""
 
-    def __init__(self, file_path: Optional[Path] = None):
-        self.file_path = file_path or (
-            settings.paths.RAW_DATA_DIR / "Carteira 2026.xlsx"
-        )
+    def __init__(self, file_path: Path):
+        self.file_path = file_path
 
     @log_execution
     @timer
