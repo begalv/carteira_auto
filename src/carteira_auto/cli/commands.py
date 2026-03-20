@@ -37,10 +37,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
                 print(f"  {i}. {name}")
             return
 
-        ctx = dag_engine.run(terminal)
-
-        # Output específico por pipeline
-        _print_results(ctx)
+        dag_engine.run(terminal)
 
     except KeyError as e:
         logger.error(str(e))
