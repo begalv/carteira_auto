@@ -10,6 +10,7 @@ from carteira_auto.core.nodes.portfolio_nodes import (
     FetchPricesNode,
     LoadPortfolioNode,
 )
+from carteira_auto.core.nodes.storage_nodes import SaveSnapshotNode
 from carteira_auto.utils import get_logger
 
 logger = get_logger(__name__)
@@ -85,6 +86,9 @@ def create_engine(
             EconomicSectorAnalyzer(),
         ]
     )
+
+    # Storage
+    engine.register(SaveSnapshotNode())
 
     return engine
 
