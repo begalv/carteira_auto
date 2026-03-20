@@ -57,6 +57,9 @@ docs = [
     "mkdocs-material>=9.4.0",
 ]
 
+[project.scripts]
+carteira = "carteira_auto.cli.commands:main"
+
 [project.urls]
 Homepage = "https://github.com/bgalvao/carteira_auto"
 Repository = "https://github.com/bgalvao/carteira_auto.git"
