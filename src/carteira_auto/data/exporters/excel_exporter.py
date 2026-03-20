@@ -1,13 +1,11 @@
-"""Exportador de preços atuais para a planilha da carteira."""
+"""Exportador de preços atuais para planilhas da carteira."""
 
 import shutil
-from datetime import date
 from pathlib import Path
-from typing import Optional
 
 from openpyxl import load_workbook
 
-from carteira_auto.config import constants, settings
+from carteira_auto.config import constants
 from carteira_auto.core.models import PortfolioSnapshot
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import log_execution, timer
@@ -21,17 +19,9 @@ PRECO_ATUAL_COL = constants.CARTEIRA_COLUMNS.index("Preço Atual") + 1
 class ExcelExporter:
     """Exporta preços atuais para a planilha, preservando formatação original."""
 
-    def __init__(
-        self,
-        source_path: Optional[Path] = None,
-        output_path: Optional[Path] = None,
-    ):
-        self.source_path = source_path or (
-            settings.paths.RAW_DATA_DIR / "Carteira 2026.xlsx"
-        )
-        self.output_path = output_path or (
-            settings.paths.PORTFOLIOS_DIR / f"Carteira_{date.today().isoformat()}.xlsx"
-        )
+    def __init__(self, source_path: Path, output_path: Path):
+        self.source_path = source_path
+        self.output_path = output_path
 
     @log_execution
     @timer
