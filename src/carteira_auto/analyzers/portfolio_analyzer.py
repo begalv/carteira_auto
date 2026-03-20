@@ -1,6 +1,6 @@
 """Analyzer de portfolio — métricas consolidadas da carteira.
 
-Node DAG: name="analyze_portfolio", deps=["fetch_prices"]
+Node DAG: name="analyze_portfolio", deps=["fetch_portfolio_prices"]
 Produz: ctx["portfolio_metrics"] -> PortfolioMetrics
 """
 
@@ -24,7 +24,7 @@ class PortfolioAnalyzer(Node):
     """
 
     name = "analyze_portfolio"
-    dependencies = ["fetch_prices"]
+    dependencies = ["fetch_portfolio_prices"]
 
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
