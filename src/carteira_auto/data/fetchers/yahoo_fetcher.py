@@ -30,9 +30,9 @@ class YahooFinanceFetcher:
 
     def __init__(self, max_workers: Optional[int] = None):
         self.max_workers = max_workers or min(32, os.cpu_count() + 4)
-        self.timeout = settings.fetcher.YAHOO_TIMEOUT
-        self.retries = settings.fetcher.YAHOO_RETRIES
-        self.rate_limit_calls = settings.fetcher.RATE_LIMIT_REQUESTS
+        self.timeout = settings.yahoo.TIMEOUT
+        self.retries = settings.yahoo.RETRIES
+        self.rate_limit_calls = settings.yahoo.RATE_LIMIT
 
         self._configure_yfinance()
 
@@ -77,9 +77,9 @@ class YahooFinanceFetcher:
     # DADOS HISTÓRICOS (batch via yf.download)
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS * 2)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT * 2)
+    @timeout(seconds=settings.yahoo.TIMEOUT * 2)
     @validate_tickers
     @log_execution
     @cache_result(ttl_seconds=86400)  # 24h
@@ -127,9 +127,9 @@ class YahooFinanceFetcher:
     # INFORMAÇÕES DO TICKER (funções específicas e leves)
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -141,9 +141,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter info de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT * 2)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -168,9 +168,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter financials de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -193,9 +193,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter dividendos de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -218,9 +218,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter earnings de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -245,9 +245,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter holders de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -275,9 +275,9 @@ class YahooFinanceFetcher:
     # DIVIDENDOS E YIELD
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
@@ -321,9 +321,9 @@ class YahooFinanceFetcher:
     # PREÇO INDIVIDUAL E MÚLTIPLO
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_by_ticker(ttl_seconds=300)  # 5min
     def get_current_price(self, symbol: str) -> Optional[float]:
@@ -346,9 +346,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter preço de {symbol}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT * 2)
     @log_execution
     def get_multiple_prices(self, symbols: list[str]) -> dict[str, Optional[float]]:
         """Obtém preços atuais de múltiplos ativos via yf.download.
@@ -421,8 +421,8 @@ class YahooFinanceFetcher:
     # BATCH — busca múltiplos dados de múltiplos tickers em paralelo
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 3)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @timeout(seconds=settings.yahoo.TIMEOUT * 3)
     @log_execution
     def get_batch_info(
         self,
@@ -517,9 +517,9 @@ class YahooFinanceFetcher:
     # MERCADO, PESQUISA E CALENDÁRIO
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=300)  # 5min
     def get_market_summary(self, market: str = "us") -> Optional[dict[str, Any]]:
@@ -535,9 +535,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro ao obter resumo do mercado {market}: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=3600)  # 1h
     def search_tickers(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -552,9 +552,9 @@ class YahooFinanceFetcher:
             logger.error(f"Erro na busca por '{query}': {e}")
             return []
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=3600)  # 1h
     def get_market_calendar(self, days: int = 30) -> Optional[pd.DataFrame]:
@@ -574,9 +574,9 @@ class YahooFinanceFetcher:
     # SETORES E INDÚSTRIAS
     # ========================================================================
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=3600)  # 1h
     def get_sector_performance(
@@ -598,9 +598,9 @@ class YahooFinanceFetcher:
             logger.debug(f"Setor {sector} não disponível: {e}")
             return None
 
-    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
-    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
-    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @retry(max_attempts=settings.yahoo.RETRIES)
+    @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
+    @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=3600)  # 1h
     def get_industry_performance(

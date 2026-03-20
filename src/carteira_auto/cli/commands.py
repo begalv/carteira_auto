@@ -28,16 +28,19 @@ def run_pipeline(args: argparse.Namespace) -> None:
 
     try:
         terminal = get_terminal_node(args.pipeline)
-        engine = create_engine(source_path=source, output_path=output)
+        dag_engine = create_engine(source_path=source, output_path=output)
 
         if args.dry_run:
-            plan = engine.dry_run(terminal)
+            plan = dag_engine.dry_run(terminal)
             print("Plano de execução:")
             for i, name in enumerate(plan, 1):
                 print(f"  {i}. {name}")
             return
 
-        engine.run(terminal)
+        ctx = dag_engine.run(terminal)
+
+        # Output específico por pipeline
+        _print_results(ctx)
 
     except KeyError as e:
         logger.error(str(e))

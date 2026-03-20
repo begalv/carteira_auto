@@ -66,15 +66,20 @@ class PathsConfig:
 
 
 @dataclass
-class FetcherConfig:
-    """Configurações dos fetchers."""
+class BaseFetcherConfig:
+    """Configurações base compartilhadas por todos os fetchers."""
 
-    # Yahoo Finance
-    YAHOO_TIMEOUT: int = 30
-    YAHOO_RETRIES: int = 3
+    TIMEOUT: int = 30
+    RETRIES: int = 3
+    RATE_LIMIT: int = 30  # requests por minuto
+    CACHE_TTL: int = 3600  # 1 hora (default)
 
-    # Rate limiting por minuto
-    RATE_LIMIT_REQUESTS: int = 30
+
+@dataclass
+class YahooFetcherConfig(BaseFetcherConfig):
+    """Configurações do Yahoo Finance fetcher."""
+
+    CACHE_TTL: int = 300  # 5 minutos (preços mudam rápido)
 
     @property
     def requests_headers(self) -> dict[str, str]:
@@ -87,34 +92,26 @@ class FetcherConfig:
 
 
 @dataclass
-class BCBConfig:
+class BCBConfig(BaseFetcherConfig):
     """Configurações do fetcher BCB (SGS API)."""
 
     BASE_URL: str = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados"
-    TIMEOUT: int = 30
-    RETRIES: int = 3
-    RATE_LIMIT: int = 30  # requests por minuto
     CACHE_TTL: int = 3600  # 1 hora
 
 
 @dataclass
-class IBGEConfig:
+class IBGEConfig(BaseFetcherConfig):
     """Configurações do fetcher IBGE (SIDRA API)."""
 
     BASE_URL: str = "https://apisidra.ibge.gov.br/values"
-    TIMEOUT: int = 30
-    RETRIES: int = 3
-    RATE_LIMIT: int = 30
     CACHE_TTL: int = 7200  # 2 horas (dados mudam pouco)
 
 
 @dataclass
-class DDMConfig:
+class DDMConfig(BaseFetcherConfig):
     """Configurações do fetcher Dados de Mercado."""
 
     BASE_URL: str = "https://api.dadosdemercado.com.br/v1"
-    TIMEOUT: int = 30
-    RETRIES: int = 3
     RATE_LIMIT: int = 60
     CACHE_TTL: int = 1800  # 30 minutos
 
@@ -189,7 +186,7 @@ class Settings:
 
     # Configurações
     paths: PathsConfig = field(default_factory=PathsConfig)
-    fetcher: FetcherConfig = field(default_factory=FetcherConfig)
+    yahoo: YahooFetcherConfig = field(default_factory=YahooFetcherConfig)
     bcb: BCBConfig = field(default_factory=BCBConfig)
     ibge: IBGEConfig = field(default_factory=IBGEConfig)
     ddm: DDMConfig = field(default_factory=DDMConfig)
