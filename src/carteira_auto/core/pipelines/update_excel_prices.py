@@ -14,16 +14,16 @@ from carteira_auto.utils.decorators import log_execution, timer
 logger = get_logger(__name__)
 
 
-class UpdatePricesPipeline:
+class UpdateExcelPricesPipeline:
     """Pipeline: carrega carteira -> busca preços -> exporta planilha atualizada.
 
     Usage:
         # Com paths padrão de settings:
-        pipeline = UpdatePricesPipeline()
+        pipeline = UpdateExcelPricesPipeline()
         output = pipeline.run()
 
         # Com paths customizados:
-        pipeline = UpdatePricesPipeline(
+        pipeline = UpdateExcelPricesPipeline(
             source_path=Path("minha/planilha.xlsx"),
             output_path=Path("saida/atualizada.xlsx"),
         )
