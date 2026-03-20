@@ -37,6 +37,40 @@ class LoadPortfolioNode(Node):
 
 
 class FetchPricesNode(Node):
+    """Busca preços para uma lista arbitrária de tickers.
+
+    Lê do contexto (se tickers não fornecidos no construtor):
+        - "tickers": list[str]
+
+    Produz no contexto:
+        - "prices": dict[str, float | None]
+    """
+
+    name = "fetch_prices"
+    dependencies: list[str] = []
+
+    def __init__(self, tickers: list[str] | None = None):
+        self._tickers = tickers or []
+
+    def run(self, ctx: PipelineContext) -> PipelineContext:
+        from carteira_auto.data.fetchers import YahooFinanceFetcher
+
+        tickers = self._tickers or ctx.get("tickers", [])
+        if not tickers:
+            logger.warning("FetchPricesNode: nenhum ticker fornecido")
+            ctx["prices"] = {}
+            return ctx
+
+        fetcher = YahooFinanceFetcher()
+        prices = fetcher.get_multiple_prices(tickers)
+        ctx["prices"] = prices
+
+        fetched = sum(1 for v in prices.values() if v is not None)
+        logger.info(f"Preços buscados: {fetched}/{len(tickers)} tickers")
+        return ctx
+
+
+class FetchPortfolioPricesNode(Node):
     """Busca preços atuais via Yahoo Finance e atualiza o portfolio.
 
     Lê do contexto:
@@ -47,7 +81,7 @@ class FetchPricesNode(Node):
         - "prices": dict[str, float | None]
     """
 
-    name = "fetch_prices"
+    name = "fetch_portfolio_prices"
     dependencies = ["load_portfolio"]
 
     def run(self, ctx: PipelineContext) -> PipelineContext:
@@ -86,7 +120,7 @@ class ExportPortfolioPricesNode(Node):
     """
 
     name = "export_portfolio_prices"
-    dependencies = ["fetch_prices"]
+    dependencies = ["fetch_portfolio_prices"]
 
     def __init__(self, output_path: Optional[Path] = None):
         self._output_path = output_path or settings.paths.get_portfolio_output_path()

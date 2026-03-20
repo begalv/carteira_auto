@@ -1,6 +1,6 @@
 """Analyzer de risco — volatilidade, VaR, Sharpe, drawdown, beta.
 
-Node DAG: name="analyze_risk", deps=["fetch_prices", "analyze_portfolio"]
+Node DAG: name="analyze_risk", deps=["fetch_portfolio_prices", "analyze_portfolio"]
 Produz: ctx["risk_metrics"] -> RiskMetrics
 """
 
@@ -25,7 +25,7 @@ class RiskAnalyzer(Node):
     """
 
     name = "analyze_risk"
-    dependencies = ["fetch_prices", "analyze_portfolio"]
+    dependencies = ["fetch_portfolio_prices", "analyze_portfolio"]
 
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:

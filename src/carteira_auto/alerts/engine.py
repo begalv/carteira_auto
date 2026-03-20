@@ -32,15 +32,15 @@ class AlertEngine:
     """Engine que avalia regras e gera alertas.
 
     Usage:
-        engine = AlertEngine()
-        engine.register_rule(AlertRule(
+        alert_engine = AlertEngine()
+        alert_engine.register_rule(AlertRule(
             name="rebalance",
             condition="deviation_above",
             threshold=0.05,
             severity="warning",
             message_template="Classe {classe} com desvio de {deviation:.1%}"
         ))
-        alerts = engine.evaluate(ctx)
+        alerts = alert_engine.evaluate(ctx)
     """
 
     def __init__(self):
