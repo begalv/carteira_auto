@@ -1,5 +1,5 @@
 """Módulo de exportadores de dados."""
 
-from .excel_exporter import ExcelExporter
+from .excel_exporter import ExcelExporter, PortfolioPriceExporter
 
-__all__ = ["ExcelExporter"]
+__all__ = ["ExcelExporter", "PortfolioPriceExporter"]

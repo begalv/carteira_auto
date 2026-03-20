@@ -71,7 +71,7 @@ class SoldAsset(BaseModel):
     mes: Optional[str] = None
 
 
-class PortfolioSnapshot(BaseModel):
+class Portfolio(BaseModel):
     """Estado completo da carteira num ponto no tempo."""
 
     assets: list[Asset]
