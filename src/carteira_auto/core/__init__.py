@@ -1,10 +1,9 @@
 """Módulo core com modelos de dados e lógica da carteira."""
 
-from .models import Asset, AssetCategory, Portfolio, SoldAsset
+from .models import Asset, Portfolio, SoldAsset
 
 __all__ = [
     "Asset",
-    "AssetCategory",
     "Portfolio",
     "SoldAsset",
 ]

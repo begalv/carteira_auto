@@ -81,7 +81,7 @@ class PortfolioPriceExporter(ExcelExporter):
             Path do arquivo exportado.
         """
         wb = self._copy_and_open()
-        ws = self._get_sheet(wb, constants.SHEET_NAMES["carteira"])
+        ws = self._get_sheet(wb, constants.CARTEIRA_SHEET_NAMES["carteira"])
 
         price_map = {
             asset.ticker: asset.preco_atual

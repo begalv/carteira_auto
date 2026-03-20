@@ -1,26 +1,8 @@
 """Modelos de dados da carteira de investimentos."""
 
-from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel
-
-
-class AssetCategory(str, Enum):
-    """Categorias de ativos conforme a planilha (coluna Fator)."""
-
-    CAIXA = "CAIXA (CRÉDITO PÚBLICO)"
-    FI_INFRA = "FI-INFRA (CRÉDITO PRIVADO ISENTO)"
-    FII = "FII (RENDA URBANA)"
-    FIAGRO = "FIAGRO (RENDA TERRA)"
-    ACOES_VALOR = "AÇÕES - VALOR"
-    ACOES_QUALIDADE = "AÇÕES - QUALIDADE"
-    ACOES_COMMODITY = "AÇÕES - COMMODITY"
-    ACOES_UTILIDADE = "AÇÕES - UTILIDADE"
-    ACOES_SMALL_CAP = "AÇÕES - SMALL CAP"
-    INTERNACIONAL = "INTERNACIONAL"
-    CRIPTOMOEDAS = "CRIPTOMOEDAS"
-    COMMODITIES = "COMMODITIES"
 
 
 class Asset(BaseModel):

@@ -107,12 +107,12 @@ class PortfolioLoader(ExcelLoader):
         """Lê a aba 'Carteira' e converte para lista de Asset."""
         df = self._read_sheet(
             xl,
-            sheet_name=constants.SHEET_NAMES["carteira"],
+            sheet_name=constants.CARTEIRA_SHEET_NAMES["carteira"],
             columns=constants.CARTEIRA_COLUMNS,
             field_map=constants.CARTEIRA_FIELD_MAP,
         )
 
-        str_fields = {"preco_medio", "n_cotas_atual", "funcao_dialetica"}
+        str_fields = {"funcao_dialetica"}
         text_fields = {
             "fator",
             "ticker",
@@ -143,7 +143,7 @@ class PortfolioLoader(ExcelLoader):
         """Lê a aba 'Vendas' e converte para lista de SoldAsset."""
         df = self._read_sheet_optional(
             xl,
-            sheet_name=constants.SHEET_NAMES["vendas"],
+            sheet_name=constants.CARTEIRA_SHEET_NAMES["vendas"],
             columns=constants.VENDAS_COLUMNS,
             field_map=constants.VENDAS_FIELD_MAP,
         )
