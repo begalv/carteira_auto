@@ -66,12 +66,24 @@ class ExcelLoader:
         sheet_name: str,
         columns: list[str],
         field_map: dict[str, str],
-    ) -> pd.DataFrame:
-        """Lê uma aba, filtra colunas conhecidas, renomeia e limpa."""
+        required: bool = True,
+    ) -> Optional[pd.DataFrame]:
+        """Lê uma aba, filtra colunas conhecidas, renomeia e limpa.
+
+        Args:
+            sheet_name: Nome da aba na planilha.
+            columns: Colunas esperadas (nomes originais do Excel).
+            field_map: Mapeamento de nomes originais → nomes dos campos do modelo.
+            required: Se True, levanta erro quando a aba não existe.
+                      Se False, retorna None.
+        """
         self._ensure_open()
 
         if sheet_name not in self._xl.sheet_names:
-            raise ValueError(f"Aba '{sheet_name}' não encontrada na planilha")
+            if required:
+                raise ValueError(f"Aba '{sheet_name}' não encontrada na planilha")
+            logger.warning(f"Aba '{sheet_name}' não encontrada, ignorando")
+            return None
 
         df = pd.read_excel(self._xl, sheet_name=sheet_name)
         df = self._clean_dataframe(df)
@@ -80,23 +92,7 @@ class ExcelLoader:
         df = df[known_cols]
 
         rename_map = {col: field_map[col] for col in known_cols if col in field_map}
-        df = df.rename(columns=rename_map)
-
-        return df
-
-    def read_sheet_optional(
-        self,
-        sheet_name: str,
-        columns: list[str],
-        field_map: dict[str, str],
-    ) -> Optional[pd.DataFrame]:
-        """Lê uma aba opcional — retorna None se não existir."""
-        self._ensure_open()
-
-        if sheet_name not in self._xl.sheet_names:
-            logger.warning(f"Aba '{sheet_name}' não encontrada, ignorando")
-            return None
-        return self.read_sheet(sheet_name, columns, field_map)
+        return df.rename(columns=rename_map)
 
     def _ensure_open(self) -> None:
         """Garante que o arquivo Excel está aberto."""
@@ -147,6 +143,17 @@ class PortfolioLoader(ExcelLoader):
         )
         return portfolio
 
+    @staticmethod
+    def _rows_to_models(df: pd.DataFrame, model_class: type) -> list:
+        """Converte linhas do DataFrame em instâncias do modelo, ignorando linhas sem ticker."""
+        items = []
+        for _, row in df.iterrows():
+            if pd.isna(row.get("ticker")) or row.get("ticker") == "-":
+                continue
+            row_dict = {k: (None if pd.isna(v) else v) for k, v in row.items()}
+            items.append(model_class(**row_dict))
+        return items
+
     def _load_assets(self) -> list[Asset]:
         """Lê a aba 'Carteira' e converte para lista de Asset."""
         df = self.read_sheet(
@@ -172,31 +179,17 @@ class PortfolioLoader(ExcelLoader):
             elif col not in text_fields:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
-        assets = []
-        for _, row in df.iterrows():
-            ticker = row.get("ticker")
-            if pd.isna(ticker) or ticker == "-":
-                continue
-            row_dict = {k: (None if pd.isna(v) else v) for k, v in row.items()}
-            assets.append(Asset(**row_dict))
-
-        return assets
+        return self._rows_to_models(df, Asset)
 
     def _load_sold_assets(self) -> list[SoldAsset]:
         """Lê a aba 'Vendas' e converte para lista de SoldAsset."""
-        df = self.read_sheet_optional(
+        df = self.read_sheet(
             sheet_name=constants.CARTEIRA_SHEET_NAMES["vendas"],
             columns=constants.VENDAS_COLUMNS,
             field_map=constants.VENDAS_FIELD_MAP,
+            required=False,
         )
         if df is None:
             return []
 
-        sold_assets = []
-        for _, row in df.iterrows():
-            if pd.isna(row.get("ticker")) or row.get("ticker") == "-":
-                continue
-            row_dict = {k: (None if pd.isna(v) else v) for k, v in row.items()}
-            sold_assets.append(SoldAsset(**row_dict))
-
-        return sold_assets
+        return self._rows_to_models(df, SoldAsset)
