@@ -78,11 +78,20 @@ class ExcelExporter:
         self._ensure_open()
         return self._wb.sheetnames
 
-    def get_sheet(self, sheet_name: str):
-        """Obtém uma aba do workbook, lançando erro se não existir."""
+    def get_sheet(self, sheet_name: str, required: bool = True):
+        """Obtém uma aba do workbook.
+
+        Args:
+            sheet_name: Nome da aba.
+            required: Se True, levanta erro quando não existe.
+                      Se False, retorna None.
+        """
         self._ensure_open()
         if sheet_name not in self._wb.sheetnames:
-            raise ValueError(f"Aba '{sheet_name}' não encontrada")
+            if required:
+                raise ValueError(f"Aba '{sheet_name}' não encontrada")
+            logger.warning(f"Aba '{sheet_name}' não encontrada, ignorando")
+            return None
         return self._wb[sheet_name]
 
     def _ensure_open(self) -> None:
@@ -91,13 +100,6 @@ class ExcelExporter:
             raise RuntimeError(
                 "Planilha não aberta. Use open() ou o context manager 'with'."
             )
-
-    def _clean_dataframe(self, df) -> None:
-        """Remove colunas sem nome e linhas totalmente vazias."""
-        df = df.loc[:, df.columns.notna()]
-        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
-        df = df.dropna(how="all")
-        return df
 
 
 class PortfolioPriceExporter(ExcelExporter):
@@ -138,25 +140,27 @@ class PortfolioPriceExporter(ExcelExporter):
         Returns:
             Path do arquivo exportado.
         """
+        price_map = {
+            a.ticker: a.preco_atual
+            for a in portfolio.assets
+            if a.preco_atual is not None
+        }
+
+        if not price_map:
+            logger.warning("Nenhum preço atualizado no portfolio")
+            return self.output_path
+
         with self:
             ws = self.get_sheet(constants.CARTEIRA_SHEET_NAMES["carteira"])
-
-            price_map = {
-                asset.ticker: asset.preco_atual
-                for asset in portfolio.assets
-                if asset.preco_atual is not None
-            }
-
-            if not price_map:
-                logger.warning("Nenhum preço atualizado no portfolio")
-                return self.output_path
-
             updated = 0
             for row in range(2, ws.max_row + 1):
-                ticker_cell = ws.cell(row=row, column=self._TICKER_COL).value
-                if ticker_cell and ticker_cell in price_map:
-                    price = round(price_map[ticker_cell], 2)
-                    ws.cell(row=row, column=self._PRECO_ATUAL_COL, value=price)
+                ticker = ws.cell(row=row, column=self._TICKER_COL).value
+                if ticker in price_map:
+                    ws.cell(
+                        row=row,
+                        column=self._PRECO_ATUAL_COL,
+                        value=round(price_map[ticker], 2),
+                    )
                     updated += 1
 
         logger.info(
