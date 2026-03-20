@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from openpyxl import load_workbook
+from openpyxl.workbook import Workbook
 
 from carteira_auto.config import constants, settings
 from carteira_auto.core.models import Portfolio
@@ -19,13 +20,27 @@ class ExcelExporter:
 
     Preserva formatação e fórmulas da planilha original.
     Subclasses implementam a lógica de atualização específica.
+
+    Usage:
+        exporter = ExcelExporter(source, output)
+        with exporter:
+            ws = exporter.get_sheet("Aba1")
+            ws.cell(row=2, column=1, value="dado")
+        # Salva automaticamente ao sair do context manager
+
+        # Ou manualmente:
+        exporter.open()
+        ws = exporter.get_sheet("Aba1")
+        exporter.save()
+        exporter.close()
     """
 
     def __init__(self, source_path: Path, output_path: Path):
         self.source_path = source_path
         self.output_path = output_path
+        self._wb: Optional[Workbook] = None
 
-    def _copy_and_open(self):
+    def open(self) -> "ExcelExporter":
         """Copia a planilha original e abre a cópia para edição."""
         if not self.source_path.exists():
             raise FileNotFoundError(
@@ -33,13 +48,56 @@ class ExcelExporter:
             )
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(self.source_path, self.output_path)
-        return load_workbook(self.output_path)
+        self._wb = load_workbook(self.output_path)
+        logger.debug(f"Planilha aberta para exportação: {self.output_path}")
+        return self
 
-    def _get_sheet(self, wb, sheet_name: str):
+    def save(self) -> None:
+        """Salva as modificações no arquivo de saída."""
+        self._ensure_open()
+        self._wb.save(self.output_path)
+        logger.debug(f"Planilha salva: {self.output_path}")
+
+    def close(self) -> None:
+        """Fecha o workbook."""
+        if self._wb is not None:
+            self._wb.close()
+            self._wb = None
+
+    def __enter__(self) -> "ExcelExporter":
+        return self.open()
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        if exc_type is None:
+            self.save()
+        self.close()
+
+    @property
+    def sheet_names(self) -> list[str]:
+        """Retorna os nomes das abas disponíveis."""
+        self._ensure_open()
+        return self._wb.sheetnames
+
+    def get_sheet(self, sheet_name: str):
         """Obtém uma aba do workbook, lançando erro se não existir."""
-        if sheet_name not in wb.sheetnames:
+        self._ensure_open()
+        if sheet_name not in self._wb.sheetnames:
             raise ValueError(f"Aba '{sheet_name}' não encontrada")
-        return wb[sheet_name]
+        return self._wb[sheet_name]
+
+    def _ensure_open(self) -> None:
+        """Garante que o workbook está aberto."""
+        if self._wb is None:
+            raise RuntimeError(
+                "Planilha não aberta. Use open() ou o context manager 'with'."
+            )
+
+    def _clean_dataframe(self, df) -> None:
+        """Remove colunas sem nome e linhas totalmente vazias."""
+        df = df.loc[:, df.columns.notna()]
+        df = df.loc[:, ~df.columns.str.startswith("Unnamed")]
+        df = df.dropna(how="all")
+        return df
 
 
 class PortfolioPriceExporter(ExcelExporter):
@@ -80,30 +138,26 @@ class PortfolioPriceExporter(ExcelExporter):
         Returns:
             Path do arquivo exportado.
         """
-        wb = self._copy_and_open()
-        ws = self._get_sheet(wb, constants.CARTEIRA_SHEET_NAMES["carteira"])
+        with self:
+            ws = self.get_sheet(constants.CARTEIRA_SHEET_NAMES["carteira"])
 
-        price_map = {
-            asset.ticker: asset.preco_atual
-            for asset in portfolio.assets
-            if asset.preco_atual is not None
-        }
+            price_map = {
+                asset.ticker: asset.preco_atual
+                for asset in portfolio.assets
+                if asset.preco_atual is not None
+            }
 
-        if not price_map:
-            logger.warning("Nenhum preço atualizado no portfolio")
-            wb.close()
-            return self.output_path
+            if not price_map:
+                logger.warning("Nenhum preço atualizado no portfolio")
+                return self.output_path
 
-        updated = 0
-        for row in range(2, ws.max_row + 1):
-            ticker_cell = ws.cell(row=row, column=self._TICKER_COL).value
-            if ticker_cell and ticker_cell in price_map:
-                price = round(price_map[ticker_cell], 2)
-                ws.cell(row=row, column=self._PRECO_ATUAL_COL, value=price)
-                updated += 1
-
-        wb.save(self.output_path)
-        wb.close()
+            updated = 0
+            for row in range(2, ws.max_row + 1):
+                ticker_cell = ws.cell(row=row, column=self._TICKER_COL).value
+                if ticker_cell and ticker_cell in price_map:
+                    price = round(price_map[ticker_cell], 2)
+                    ws.cell(row=row, column=self._PRECO_ATUAL_COL, value=price)
+                    updated += 1
 
         logger.info(
             f"Preços exportados: {updated}/{len(price_map)} ativos "
