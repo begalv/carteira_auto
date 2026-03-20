@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +31,9 @@ class PathsConfig:
     PORTFOLIOS_DIR = OUTPUTS_DIR / "portfolios"
     REPORTS_DIR = OUTPUTS_DIR / "reports"
 
+    # Planilha principal da carteira
+    PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira 2026.xlsx"
+
     def ensure_directories(self) -> None:
         """Garante que todos os diretórios necessários existam."""
         directories = [
@@ -44,6 +48,11 @@ class PathsConfig:
 
         for directory in directories:
             directory.mkdir(parents=True, exist_ok=True)
+
+    def get_portfolio_output_path(self, suffix: str = "") -> Path:
+        """Retorna caminho de saída para a planilha atualizada."""
+        name = f"Carteira_{date.today().isoformat()}{suffix}.xlsx"
+        return self.PORTFOLIOS_DIR / name
 
     def get_excel_template_path(self, template_name: str) -> Path:
         """Retorna caminho para arquivo de template."""
