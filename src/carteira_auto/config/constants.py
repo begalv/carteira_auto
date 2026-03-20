@@ -29,25 +29,105 @@ class Constants:
     ]
 
     # ============================================================================
-    # COLUNAS E TEMPLATES
+    # COLUNAS DA PLANILHA REAL
     # ============================================================================
 
-    EXCEL_TEMPLATE_COLUMNS: list[str] = [
+    SHEET_NAMES: dict[str, str] = {
+        "carteira": "Carteira",
+        "resumo": "Resumo",
+        "vendas": "Vendas",
+    }
+
+    CARTEIRA_COLUMNS: list[str] = [
+        "Fator",
         "Ticker",
-        "Nome",
-        "Tipo",
-        "Categoria",
-        "Quantidade",
-        "Preço Médio",
-        "Preço Atual",
-        "Valor Investido",
-        "Valor Atual",
+        "Nome do Ativo / Gestora",
+        "Classe",
+        "Setor",
+        "Subsetor",
+        "Segmento",
+        "% Meta",
+        "Valor Meta (R$)",
+        "% Atual",
+        "% Inicial",
+        "Posição Atual",
+        "Preço Posição",
+        "Valorização",
+        "Valorização (%)",
+        "Proventos Recebidos",
+        "Diferença",
         "Rentabilidade",
-        "Percentual Carteira",
-        "Meta Alocação",
-        "Desvio",
-        "Ação",
+        "Rentabilidade Proporcional a Carteira",
+        "Preço Atual",
+        "Preço Médio",
+        "N Cotas Atual",
+        "Função Dialética e Materialista",
     ]
+
+    CARTEIRA_FIELD_MAP: dict[str, str] = {
+        "Fator": "fator",
+        "Ticker": "ticker",
+        "Nome do Ativo / Gestora": "nome",
+        "Classe": "classe",
+        "Setor": "setor",
+        "Subsetor": "subsetor",
+        "Segmento": "segmento",
+        "% Meta": "pct_meta",
+        "Valor Meta (R$)": "valor_meta",
+        "% Atual": "pct_atual",
+        "% Inicial": "pct_inicial",
+        "Posição Atual": "posicao_atual",
+        "Preço Posição": "preco_posicao",
+        "Valorização": "valorizacao",
+        "Valorização (%)": "valorizacao_pct",
+        "Proventos Recebidos": "proventos_recebidos",
+        "Diferença": "diferenca",
+        "Rentabilidade": "rentabilidade",
+        "Rentabilidade Proporcional a Carteira": "rentabilidade_proporcional",
+        "Preço Atual": "preco_atual",
+        "Preço Médio": "preco_medio",
+        "N Cotas Atual": "n_cotas_atual",
+        "Função Dialética e Materialista": "funcao_dialetica",
+    }
+
+    VENDAS_COLUMNS: list[str] = [
+        "Categoria",
+        "Ticker",
+        "Nome do Ativo / Gestora",
+        "Classe",
+        "Setor",
+        "Valor da Venda",
+        "Preço Posição",
+        "Valorização",
+        "Proventos Recebidos",
+        "Diferença",
+        "Rentabilidade individual",
+        "Preço na Venda",
+        "Preço Médio de Compra",
+        "N Cotas Vendidas",
+        "Mês",
+    ]
+
+    VENDAS_FIELD_MAP: dict[str, str] = {
+        "Categoria": "categoria",
+        "Ticker": "ticker",
+        "Nome do Ativo / Gestora": "nome",
+        "Classe": "classe",
+        "Setor": "setor",
+        "Valor da Venda": "valor_venda",
+        "Preço Posição": "preco_posicao",
+        "Valorização": "valorizacao",
+        "Proventos Recebidos": "proventos_recebidos",
+        "Diferença": "diferenca",
+        "Rentabilidade individual": "rentabilidade_individual",
+        "Preço na Venda": "preco_na_venda",
+        "Preço Médio de Compra": "preco_medio_compra",
+        "N Cotas Vendidas": "n_cotas_vendidas",
+        "Mês": "mes",
+    }
+
+    # Tickers que não têm dados no Yahoo Finance (Tesouro Direto, etc.)
+    NON_YAHOO_TICKERS: set[str] = {"LFT", "NTNB", "NTNF", "LTN"}
 
     REPORT_SECTIONS: list[str] = [
         "resumo_executivo",

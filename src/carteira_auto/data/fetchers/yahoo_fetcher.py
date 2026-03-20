@@ -1,6 +1,7 @@
 """Fetcher otimizado para dados do Yahoo Finance com suporte completo à API."""
 
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Optional, Union
 
@@ -8,7 +9,7 @@ import pandas as pd
 import yfinance as yf
 from yfinance import Calendars, Market, Search, Ticker, download
 
-from carteira_auto.config import settings
+from carteira_auto.config import constants, settings
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import (
     cache_by_ticker,
@@ -109,7 +110,7 @@ class YahooFinanceFetcher:
     @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
     @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS * 2)
     @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
-    @validate_tickers()
+    @validate_tickers
     @log_execution
     @cache_result(ttl_seconds=86400)  # 24h
     def get_historical_price_data(
@@ -408,6 +409,132 @@ class YahooFinanceFetcher:
         except Exception as e:
             logger.error(f"Erro ao obter opções para {symbol}: {e}")
             return None
+
+    # ============================================================================
+    # PREÇO INDIVIDUAL E MÚLTIPLO
+    # ============================================================================
+
+    @staticmethod
+    def normalize_br_ticker(ticker: str) -> str:
+        """Adiciona sufixo .SA para tickers B3 se necessário.
+
+        Ignora tickers que já possuem sufixo, tickers de Tesouro Direto
+        e tickers que não seguem padrões B3.
+        """
+        if ticker in constants.NON_YAHOO_TICKERS:
+            return ticker
+        if "." in ticker or "-" in ticker:
+            return ticker
+        # Padrões B3 definidos em constants
+        for pattern in constants.VALID_TICKER_PATTERNS.values():
+            if re.match(pattern, ticker):
+                return f"{ticker}.SA"
+        # Padrão genérico B3: letras/dígitos terminando em 2 dígitos
+        # Cobre ETFs como B5P211, BOVA11, HASH11, Units como SAPR11
+        if re.match(r"^[A-Z0-9]{4,6}\d{2}$", ticker):
+            return f"{ticker}.SA"
+        # BDRs com sufixo 34/39 e nomes maiores (ex: BSLV39, M1TA34)
+        if re.match(r"^[A-Z0-9]{4,6}(34|39)$", ticker):
+            return f"{ticker}.SA"
+        return ticker
+
+    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
+    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
+    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT)
+    @log_execution
+    @cache_by_ticker(ttl_seconds=300)  # 5min
+    def get_current_price(self, symbol: str) -> Optional[float]:
+        """Obtém o preço mais recente de um ativo."""
+        try:
+            ticker = Ticker(symbol)
+            info = ticker.info
+            price = info.get("currentPrice") or info.get("regularMarketPrice")
+            if price is not None:
+                return float(price)
+
+            hist = ticker.history(period="5d")
+            if not hist.empty:
+                return float(hist["Close"].iloc[-1])
+
+            logger.warning(f"Nenhum preço encontrado para {symbol}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Erro ao obter preço de {symbol}: {e}")
+            return None
+
+    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
+    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
+    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
+    @log_execution
+    def get_multiple_prices(self, symbols: list[str]) -> dict[str, Optional[float]]:
+        """Obtém preços atuais de múltiplos ativos via yf.download."""
+        if not symbols:
+            return {}
+
+        results: dict[str, Optional[float]] = {}
+        try:
+            data = download(
+                tickers=symbols,
+                period="5d",
+                interval="1d",
+                threads=True,
+                progress=False,
+            )
+
+            if data.empty:
+                logger.warning(f"Nenhum dado retornado para {symbols}")
+                return {s: None for s in symbols}
+
+            if len(symbols) == 1:
+                # yf.download retorna colunas simples para ticker único
+                if "Close" in data.columns:
+                    last_close = data["Close"].dropna().iloc[-1]
+                    results[symbols[0]] = float(last_close)
+                else:
+                    results[symbols[0]] = None
+            else:
+                for symbol in symbols:
+                    try:
+                        close = data["Close"][symbol].dropna()
+                        if not close.empty:
+                            results[symbol] = float(close.iloc[-1])
+                        else:
+                            results[symbol] = None
+                    except (KeyError, IndexError):
+                        results[symbol] = None
+
+        except Exception as e:
+            logger.error(f"Erro ao obter preços múltiplos: {e}")
+            return {s: None for s in symbols}
+
+        # Preenche tickers faltantes
+        for s in symbols:
+            if s not in results:
+                results[s] = None
+
+        logger.info(
+            f"Preços obtidos: {sum(1 for v in results.values() if v is not None)}"
+            f"/{len(symbols)} tickers"
+        )
+        return results
+
+    @retry(max_attempts=settings.fetcher.YAHOO_RETRIES)
+    @rate_limit(calls_per_minute=settings.fetcher.RATE_LIMIT_REQUESTS)
+    @timeout(seconds=settings.fetcher.YAHOO_TIMEOUT * 2)
+    @log_execution
+    @cache_result(ttl_seconds=86400)  # 24h
+    def get_historical_data(self, symbol: str, period: str = "1mo") -> pd.DataFrame:
+        """Obtém dados históricos de um ativo (wrapper simplificado)."""
+        try:
+            ticker = Ticker(symbol)
+            data = ticker.history(period=period)
+            if data.empty:
+                logger.warning(f"Nenhum dado histórico para {symbol}")
+            return data
+        except Exception as e:
+            logger.error(f"Erro ao obter histórico de {symbol}: {e}")
+            return pd.DataFrame()
 
     # ============================================================================
     # BATCH OPERATIONS OTIMIZADAS
