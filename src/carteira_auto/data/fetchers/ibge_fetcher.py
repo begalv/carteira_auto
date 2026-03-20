@@ -3,7 +3,7 @@
 Tabelas utilizadas:
     - 1737: IPCA — variação mensal (%)
     - 7060: IPCA por grupos de produtos
-    - 1621: PIB trimestral — variação (%)
+    - 5932: PIB trimestral — taxa de variação (%)
     - 6381: PNAD — taxa de desocupação (%)
 
 API: https://apisidra.ibge.gov.br/values/t/{tabela}/...
@@ -96,9 +96,9 @@ class IBGEFetcher:
     @log_execution
     @cache_result(ttl_seconds=7200)
     def get_pib(self, quarters: int = 8) -> pd.DataFrame:
-        """PIB trimestral — variação (%).
+        """PIB trimestral — taxa de variação (%).
 
-        Tabela 1621, variável 584 (variação % contra trimestre anterior).
+        Tabela 5932, variável 6561 (taxa de variação % contra trimestre anterior).
         Nível Brasil (n1/1).
 
         Args:
@@ -110,7 +110,7 @@ class IBGEFetcher:
         path = (
             f"/t/{self._tables['pib_trimestral']}"
             f"/p/last {quarters}"
-            "/v/584"  # Variação % contra trimestre anterior
+            "/v/6561"  # Taxa de variação % contra trimestre anterior
             "/n1/1"  # Brasil
             "/f/c"
         )
