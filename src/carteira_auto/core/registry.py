@@ -8,6 +8,7 @@ from carteira_auto.core.engine import DAGEngine
 from carteira_auto.core.nodes.alert_nodes import EvaluateAlertsNode
 from carteira_auto.core.nodes.portfolio_nodes import (
     ExportPortfolioPricesNode,
+    FetchPortfolioPricesNode,
     FetchPricesNode,
     LoadPortfolioNode,
 )
@@ -64,19 +65,20 @@ def create_engine(
         RiskAnalyzer,
     )
 
-    engine = DAGEngine()
+    dag_engine = DAGEngine()
 
     # Nodes de portfolio (core)
-    engine.register_many(
+    dag_engine.register_many(
         [
             LoadPortfolioNode(source_path=source_path),
             FetchPricesNode(),
+            FetchPortfolioPricesNode(),
             ExportPortfolioPricesNode(output_path=output_path),
         ]
     )
 
     # Analyzers
-    engine.register_many(
+    dag_engine.register_many(
         [
             PortfolioAnalyzer(),
             MarketAnalyzer(),
@@ -89,12 +91,12 @@ def create_engine(
     )
 
     # Storage
-    engine.register(SaveSnapshotNode())
+    dag_engine.register(SaveSnapshotNode())
 
     # Alertas
-    engine.register(EvaluateAlertsNode())
+    dag_engine.register(EvaluateAlertsNode())
 
-    return engine
+    return dag_engine
 
 
 def get_terminal_node(pipeline_name: str) -> str:

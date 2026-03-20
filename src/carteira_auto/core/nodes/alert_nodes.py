@@ -19,16 +19,16 @@ class EvaluateAlertsNode(Node):
     """
 
     name = "evaluate_alerts"
-    dependencies = ["analyze_portfolio"]
+    dependencies: list[str] = []
 
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.alerts import AlertEngine
         from carteira_auto.alerts.channels import ConsoleChannel, LogChannel
         from carteira_auto.alerts.rules import price_drop_alert, rebalance_alert
 
-        # Cria engine com regras padrão
-        engine = AlertEngine()
-        engine.register_many(
+        # Cria alert engine com regras padrão
+        alert_engine = AlertEngine()
+        alert_engine.register_many(
             [
                 rebalance_alert(threshold=0.05),
                 price_drop_alert(threshold=0.10),
@@ -36,7 +36,7 @@ class EvaluateAlertsNode(Node):
         )
 
         # Avalia
-        alerts = engine.evaluate(ctx)
+        alerts = alert_engine.evaluate(ctx)
         ctx["alerts"] = alerts
 
         # Emite via canais
