@@ -30,6 +30,7 @@ class PathsConfig:
     LOGS_DIR = OUTPUTS_DIR / "logs"
     PORTFOLIOS_DIR = OUTPUTS_DIR / "portfolios"
     REPORTS_DIR = OUTPUTS_DIR / "reports"
+    SNAPSHOTS_DIR = OUTPUTS_DIR / "snapshots"
 
     # Planilha principal da carteira
     PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira 2026.xlsx"
@@ -42,6 +43,7 @@ class PathsConfig:
             self.OUTPUTS_DIR,
             self.PORTFOLIOS_DIR,
             self.REPORTS_DIR,
+            self.SNAPSHOTS_DIR,
             self.LOGS_DIR,
             self.TEMPLATES_DIR,
         ]
@@ -82,6 +84,39 @@ class FetcherConfig:
             "Accept": "application/json",
             "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         }
+
+
+@dataclass
+class BCBConfig:
+    """Configurações do fetcher BCB (SGS API)."""
+
+    BASE_URL: str = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados"
+    TIMEOUT: int = 30
+    RETRIES: int = 3
+    RATE_LIMIT: int = 30  # requests por minuto
+    CACHE_TTL: int = 3600  # 1 hora
+
+
+@dataclass
+class IBGEConfig:
+    """Configurações do fetcher IBGE (SIDRA API)."""
+
+    BASE_URL: str = "https://apisidra.ibge.gov.br/values"
+    TIMEOUT: int = 30
+    RETRIES: int = 3
+    RATE_LIMIT: int = 30
+    CACHE_TTL: int = 7200  # 2 horas (dados mudam pouco)
+
+
+@dataclass
+class DDMConfig:
+    """Configurações do fetcher Dados de Mercado."""
+
+    BASE_URL: str = "https://api.dadosdemercado.com.br/v1"
+    TIMEOUT: int = 30
+    RETRIES: int = 3
+    RATE_LIMIT: int = 60
+    CACHE_TTL: int = 1800  # 30 minutos
 
 
 @dataclass
@@ -155,6 +190,9 @@ class Settings:
     # Configurações
     paths: PathsConfig = field(default_factory=PathsConfig)
     fetcher: FetcherConfig = field(default_factory=FetcherConfig)
+    bcb: BCBConfig = field(default_factory=BCBConfig)
+    ibge: IBGEConfig = field(default_factory=IBGEConfig)
+    ddm: DDMConfig = field(default_factory=DDMConfig)
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
