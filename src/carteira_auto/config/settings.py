@@ -104,14 +104,10 @@ class PortfolioConfig:
     # Metas
     TARGET_ALLOCATIONS: dict[str, float] = field(
         default_factory=lambda: {
-            "Caixa": 0.25,
-            "FI-Infra": 0.05,
-            "Ações": 0.30,
-            "FIIs": 0.15,
-            "Fiagros": 0.05,
-            "Internacional": 0.10,
-            "Cripto": 0.05,
-            "Commodities": 0.05,
+            "Renda Fixa": 0.24,
+            "Fundos de Investimentos": 0.27,
+            "Ações": 0.31,
+            "Internacional": 0.18,
         }
     )
 
