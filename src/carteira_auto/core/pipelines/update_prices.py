@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Optional
 
-from carteira_auto.config import constants, settings
+from carteira_auto.config import settings
 from carteira_auto.core.models import Portfolio
 from carteira_auto.data.exporters import PortfolioPriceExporter
 from carteira_auto.data.fetchers import YahooFinanceFetcher
@@ -53,42 +53,25 @@ class UpdatePricesPipeline:
     def _load(self) -> Portfolio:
         """Carrega a carteira da planilha."""
         loader = PortfolioLoader(self.source_path)
-        portfolio = loader.load_portfolio()
-        logger.info(f"Carteira carregada: {len(portfolio.assets)} ativos")
-        return portfolio
+        return loader.load_portfolio()
 
     def _fetch_prices(self, portfolio: Portfolio) -> Portfolio:
         """Busca preços atuais no Yahoo Finance e atualiza o portfolio."""
         fetcher = YahooFinanceFetcher()
+        tickers = [a.ticker for a in portfolio.assets]
 
-        # Separa tickers que o Yahoo consegue resolver
-        yahoo_tickers = {}
-        for asset in portfolio.assets:
-            if asset.ticker in constants.NON_YAHOO_TICKERS:
-                continue
-            normalized = fetcher.normalize_br_ticker(asset.ticker)
-            yahoo_tickers[asset.ticker] = normalized
-
-        if not yahoo_tickers:
-            logger.warning("Nenhum ticker elegível para busca no Yahoo")
-            return portfolio
-
-        # Busca em lote
-        prices = fetcher.get_multiple_prices(list(yahoo_tickers.values()))
+        # Busca em lote — filtragem e normalização são internas ao fetcher
+        prices = fetcher.get_multiple_prices(tickers)
 
         # Atualiza preços no portfolio
         updated = 0
         for asset in portfolio.assets:
-            normalized = yahoo_tickers.get(asset.ticker)
-            if normalized and prices.get(normalized) is not None:
-                asset.preco_atual = prices[normalized]
+            price = prices.get(asset.ticker)
+            if price is not None:
+                asset.preco_atual = price
                 updated += 1
 
-        total = len(yahoo_tickers)
-        logger.info(
-            constants.SUCCESS_MESSAGES["DATA_FETCH_SUCCESS"].format(count=updated)
-            + f" (de {total} elegíveis)"
-        )
+        logger.info(f"Preços atualizados: {updated}/{len(tickers)} ativos")
         return portfolio
 
     def _export(self, portfolio: Portfolio) -> Path:

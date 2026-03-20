@@ -2,7 +2,7 @@ import functools
 import time
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Callable, Union
+from typing import Callable
 
 # ============================================================================
 # PERFORMANCE
@@ -14,10 +14,13 @@ def timer(func: Callable) -> Callable:
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
+        from carteira_auto.utils.logger import get_logger
+
+        _logger = get_logger(func.__module__)
         start = time.perf_counter()
         result = func(*args, **kwargs)
-        end = time.perf_counter()
-        print(f"{func.__name__} executou em {end - start:.4f}s")
+        elapsed = time.perf_counter() - start
+        _logger.info(f"{func.__name__} executou em {elapsed:.4f}s")
         return result
 
     return wrapper
@@ -124,30 +127,43 @@ def fallback(fallback_func: Callable):
 
 
 def validate_tickers(func: Callable) -> Callable:
-    """
-    Decorator simples que valida se o primeiro argumento é
-    um ticker válido ou lista de tickers válidos.
+    """Valida se o argumento de ticker é válido.
+
+    Funciona tanto em funções livres quanto em métodos de instância —
+    detecta e pula o argumento `self` automaticamente.
     """
 
     @functools.wraps(func)
-    def wrapper(ticker_input: Union[str, list[str]], *args, **kwargs):
+    def wrapper(*args, **kwargs):
         from carteira_auto.utils.helpers import validate_ticker
 
+        # Detecta se é método de instância (primeiro arg não é str/list)
+        if args and not isinstance(args[0], (str, list)):
+            ticker_input = (
+                args[1]
+                if len(args) > 1
+                else kwargs.get("symbol") or kwargs.get("symbols")
+            )
+        else:
+            ticker_input = (
+                args[0] if args else kwargs.get("symbol") or kwargs.get("symbols")
+            )
+
+        if ticker_input is None:
+            return func(*args, **kwargs)
+
         # Normaliza entrada para lista
-        is_single = isinstance(ticker_input, str)
-        tickers = [ticker_input] if is_single else ticker_input
+        tickers = [ticker_input] if isinstance(ticker_input, str) else ticker_input
 
         # Valida cada ticker
         for ticker in tickers:
             if not isinstance(ticker, str):
                 raise TypeError(f"Ticker deve ser string, recebido {type(ticker)}")
-
-            is_valid, ticker_type = validate_ticker(ticker)
+            is_valid, _ = validate_ticker(ticker)
             if not is_valid:
                 raise ValueError(f"Ticker inválido: {ticker}")
 
-        # Chama função com input original
-        return func(ticker_input, *args, **kwargs)
+        return func(*args, **kwargs)
 
     return wrapper
 
