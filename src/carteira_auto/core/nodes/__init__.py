@@ -5,9 +5,11 @@ from .portfolio_nodes import (
     FetchPricesNode,
     LoadPortfolioNode,
 )
+from .storage_nodes import SaveSnapshotNode
 
 __all__ = [
     "LoadPortfolioNode",
     "FetchPricesNode",
     "ExportPortfolioPricesNode",
+    "SaveSnapshotNode",
 ]
