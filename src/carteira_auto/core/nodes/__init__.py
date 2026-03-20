@@ -1,5 +1,6 @@
 """Nodes do DAG — blocos de execução dos pipelines."""
 
+from .alert_nodes import EvaluateAlertsNode
 from .portfolio_nodes import (
     ExportPortfolioPricesNode,
     FetchPricesNode,
@@ -12,4 +13,5 @@ __all__ = [
     "FetchPricesNode",
     "ExportPortfolioPricesNode",
     "SaveSnapshotNode",
+    "EvaluateAlertsNode",
 ]

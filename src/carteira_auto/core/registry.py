@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from carteira_auto.core.engine import DAGEngine
+from carteira_auto.core.nodes.alert_nodes import EvaluateAlertsNode
 from carteira_auto.core.nodes.portfolio_nodes import (
     ExportPortfolioPricesNode,
     FetchPricesNode,
@@ -89,6 +90,9 @@ def create_engine(
 
     # Storage
     engine.register(SaveSnapshotNode())
+
+    # Alertas
+    engine.register(EvaluateAlertsNode())
 
     return engine
 
