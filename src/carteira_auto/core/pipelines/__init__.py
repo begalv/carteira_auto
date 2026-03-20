@@ -1,5 +1,5 @@
 """Pipelines de orquestração."""
 
-from .update_prices import UpdatePricesPipeline
+from .update_excel_prices import UpdateExcelPricesPipeline
 
-__all__ = ["UpdatePricesPipeline"]
+__all__ = ["UpdateExcelPricesPipeline"]

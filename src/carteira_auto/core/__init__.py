@@ -2,7 +2,7 @@
 
 from .engine import DAGEngine, Node, PipelineContext
 from .models import Asset, Portfolio, SoldAsset
-from .pipelines import UpdatePricesPipeline
+from .pipelines import UpdateExcelPricesPipeline
 
 __all__ = [
     # Models
@@ -14,5 +14,5 @@ __all__ = [
     "Node",
     "PipelineContext",
     # Pipelines (backward compat)
-    "UpdatePricesPipeline",
+    "UpdateExcelPricesPipeline",
 ]

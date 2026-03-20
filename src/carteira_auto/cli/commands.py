@@ -37,10 +37,7 @@ def run_pipeline(args: argparse.Namespace) -> None:
                 print(f"  {i}. {name}")
             return
 
-        ctx = engine.run(terminal)
-
-        # Output específico por pipeline
-        _print_results(ctx)
+        engine.run(terminal)
 
     except KeyError as e:
         logger.error(str(e))
@@ -62,72 +59,6 @@ def list_pipelines_cmd(args: argparse.Namespace) -> None:
     max_name = max(len(name) for name in pipelines)
     for name, desc in sorted(pipelines.items()):
         print(f"  {name:<{max_name}}  {desc}")
-
-
-def _print_results(ctx: dict) -> None:
-    """Imprime resultados do pipeline no console."""
-    if "output_path" in ctx:
-        print(f"Planilha atualizada: {ctx['output_path']}")
-
-    if "portfolio_metrics" in ctx:
-        m = ctx["portfolio_metrics"]
-        print("\n📊 Métricas da carteira:")
-        print(f"  Valor total:  R$ {m.total_value:,.2f}")
-        print(f"  Custo total:  R$ {m.total_cost:,.2f}")
-        print(f"  Retorno:      {m.total_return_pct:.2%}")
-        if m.dividend_yield:
-            print(f"  Dividend Yield: {m.dividend_yield:.2%}")
-        if m.allocations:
-            print("\n  Alocação:")
-            for a in m.allocations:
-                print(
-                    f"    {a.asset_class:<25} "
-                    f"atual={a.current_pct:.1%}  "
-                    f"meta={a.target_pct:.1%}  "
-                    f"desvio={a.deviation:+.1%}  "
-                    f"[{a.action}]"
-                )
-
-    if "macro_context" in ctx:
-        mc = ctx["macro_context"]
-        print(f"\n🏦 Macro: {mc.summary}")
-
-    if "market_metrics" in ctx:
-        mm = ctx["market_metrics"]
-        parts = []
-        if mm.ibov_return is not None:
-            parts.append(f"IBOV {mm.ibov_return:.2%}")
-        if mm.ifix_return is not None:
-            parts.append(f"IFIX {mm.ifix_return:.2%}")
-        if mm.cdi_return is not None:
-            parts.append(f"CDI {mm.cdi_return:.2%}")
-        if parts:
-            print(f"\n📈 Mercado: {', '.join(parts)}")
-
-    if "risk_metrics" in ctx:
-        r = ctx["risk_metrics"]
-        parts = []
-        if r.volatility is not None:
-            parts.append(f"Vol={r.volatility:.2%}")
-        if r.sharpe_ratio is not None:
-            parts.append(f"Sharpe={r.sharpe_ratio:.2f}")
-        if r.max_drawdown is not None:
-            parts.append(f"MaxDD={r.max_drawdown:.2%}")
-        if r.beta is not None:
-            parts.append(f"Beta={r.beta:.2f}")
-        if parts:
-            print(f"\n⚠️  Risco: {', '.join(parts)}")
-
-    if "rebalance_recommendations" in ctx:
-        recs = ctx["rebalance_recommendations"]
-        if recs:
-            print(f"\n🔄 Rebalanceamento ({len(recs)} recomendações):")
-            for rec in recs:
-                qty = f" ({rec.quantity:.1f} cotas)" if rec.quantity else ""
-                print(
-                    f"  {rec.action.upper():<8} {rec.ticker:<10} "
-                    f"R$ {rec.value:,.2f}{qty}"
-                )
 
 
 def dashboard_cmd(args: argparse.Namespace) -> None:
