@@ -30,6 +30,7 @@ class PathsConfig:
     LOGS_DIR = OUTPUTS_DIR / "logs"
     PORTFOLIOS_DIR = OUTPUTS_DIR / "portfolios"
     REPORTS_DIR = OUTPUTS_DIR / "reports"
+    SNAPSHOTS_DIR = OUTPUTS_DIR / "snapshots"
 
     # Planilha principal da carteira
     PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira 2026.xlsx"
@@ -42,6 +43,7 @@ class PathsConfig:
             self.OUTPUTS_DIR,
             self.PORTFOLIOS_DIR,
             self.REPORTS_DIR,
+            self.SNAPSHOTS_DIR,
             self.LOGS_DIR,
             self.TEMPLATES_DIR,
         ]
