@@ -28,8 +28,8 @@ class Asset(BaseModel):
     rentabilidade: Optional[float] = None
     rentabilidade_proporcional: Optional[float] = None
     preco_atual: Optional[float] = None
-    preco_medio: Optional[str] = None
-    n_cotas_atual: Optional[str] = None
+    preco_medio: Optional[float] = None
+    n_cotas_atual: Optional[float] = None
     funcao_dialetica: Optional[str] = None
 
 
