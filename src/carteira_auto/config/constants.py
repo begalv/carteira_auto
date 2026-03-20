@@ -156,7 +156,7 @@ class Constants:
     IBGE_TABLE_IDS: dict[str, int] = {
         "ipca": 1737,  # IPCA — variação mensal
         "ipca_grupos": 7060,  # IPCA por grupos
-        "pib_trimestral": 1621,  # PIB trimestral — variação %
+        "pib_trimestral": 5932,  # PIB trimestral — taxa de variação (%)
         "pnad_desocupacao": 6381,  # PNAD — taxa de desocupação
     }
 
