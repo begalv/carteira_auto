@@ -16,25 +16,64 @@ logger = get_logger(__name__)
 class ExcelLoader:
     """Loader genérico para leitura de planilhas Excel.
 
-    Fornece utilitários comuns de limpeza e leitura de abas.
-    Subclasses implementam a lógica específica de cada tipo de planilha.
+    Abre o arquivo Excel e fornece utilitários comuns de limpeza
+    e leitura de abas. Subclasses implementam a lógica específica
+    de cada tipo de planilha.
+
+    Usage:
+        loader = ExcelLoader(Path("planilha.xlsx"))
+        loader.open()
+        df = loader.read_sheet("Aba1", columns=[...], field_map={...})
+        loader.close()
+
+        # Ou como context manager:
+        with ExcelLoader(Path("planilha.xlsx")) as loader:
+            df = loader.read_sheet("Aba1", columns=[...], field_map={...})
     """
 
     def __init__(self, file_path: Path):
         self.file_path = file_path
+        self._xl: Optional[pd.ExcelFile] = None
 
-    def _read_sheet(
+    def open(self) -> "ExcelLoader":
+        """Abre o arquivo Excel para leitura."""
+        if not self.file_path.exists():
+            raise FileNotFoundError(f"Planilha não encontrada: {self.file_path}")
+        self._xl = pd.ExcelFile(self.file_path)
+        logger.debug(f"Planilha aberta: {self.file_path}")
+        return self
+
+    def close(self) -> None:
+        """Fecha o arquivo Excel."""
+        if self._xl is not None:
+            self._xl.close()
+            self._xl = None
+
+    def __enter__(self) -> "ExcelLoader":
+        return self.open()
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    @property
+    def sheet_names(self) -> list[str]:
+        """Retorna os nomes das abas disponíveis."""
+        self._ensure_open()
+        return self._xl.sheet_names
+
+    def read_sheet(
         self,
-        xl: pd.ExcelFile,
         sheet_name: str,
         columns: list[str],
         field_map: dict[str, str],
     ) -> pd.DataFrame:
         """Lê uma aba, filtra colunas conhecidas, renomeia e limpa."""
-        if sheet_name not in xl.sheet_names:
+        self._ensure_open()
+
+        if sheet_name not in self._xl.sheet_names:
             raise ValueError(f"Aba '{sheet_name}' não encontrada na planilha")
 
-        df = pd.read_excel(xl, sheet_name=sheet_name)
+        df = pd.read_excel(self._xl, sheet_name=sheet_name)
         df = self._clean_dataframe(df)
 
         known_cols = [c for c in columns if c in df.columns]
@@ -45,18 +84,26 @@ class ExcelLoader:
 
         return df
 
-    def _read_sheet_optional(
+    def read_sheet_optional(
         self,
-        xl: pd.ExcelFile,
         sheet_name: str,
         columns: list[str],
         field_map: dict[str, str],
     ) -> Optional[pd.DataFrame]:
         """Lê uma aba opcional — retorna None se não existir."""
-        if sheet_name not in xl.sheet_names:
+        self._ensure_open()
+
+        if sheet_name not in self._xl.sheet_names:
             logger.warning(f"Aba '{sheet_name}' não encontrada, ignorando")
             return None
-        return self._read_sheet(xl, sheet_name, columns, field_map)
+        return self.read_sheet(sheet_name, columns, field_map)
+
+    def _ensure_open(self) -> None:
+        """Garante que o arquivo Excel está aberto."""
+        if self._xl is None:
+            raise RuntimeError(
+                "Planilha não aberta. Use open() ou o context manager 'with'."
+            )
 
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """Remove colunas sem nome e linhas totalmente vazias."""
@@ -87,14 +134,11 @@ class PortfolioLoader(ExcelLoader):
     @timer
     def load_portfolio(self) -> Portfolio:
         """Lê as abas Carteira e Vendas e retorna Portfolio."""
-        if not self.file_path.exists():
-            raise FileNotFoundError(f"Planilha não encontrada: {self.file_path}")
-
         logger.info(f"Carregando portfolio: {self.file_path}")
 
-        xl = pd.ExcelFile(self.file_path)
-        assets = self._load_assets(xl)
-        sold_assets = self._load_sold_assets(xl)
+        with self:
+            assets = self._load_assets()
+            sold_assets = self._load_sold_assets()
 
         portfolio = Portfolio(assets=assets, sold_assets=sold_assets)
 
@@ -103,10 +147,9 @@ class PortfolioLoader(ExcelLoader):
         )
         return portfolio
 
-    def _load_assets(self, xl: pd.ExcelFile) -> list[Asset]:
+    def _load_assets(self) -> list[Asset]:
         """Lê a aba 'Carteira' e converte para lista de Asset."""
-        df = self._read_sheet(
-            xl,
+        df = self.read_sheet(
             sheet_name=constants.CARTEIRA_SHEET_NAMES["carteira"],
             columns=constants.CARTEIRA_COLUMNS,
             field_map=constants.CARTEIRA_FIELD_MAP,
@@ -139,10 +182,9 @@ class PortfolioLoader(ExcelLoader):
 
         return assets
 
-    def _load_sold_assets(self, xl: pd.ExcelFile) -> list[SoldAsset]:
+    def _load_sold_assets(self) -> list[SoldAsset]:
         """Lê a aba 'Vendas' e converte para lista de SoldAsset."""
-        df = self._read_sheet_optional(
-            xl,
+        df = self.read_sheet_optional(
             sheet_name=constants.CARTEIRA_SHEET_NAMES["vendas"],
             columns=constants.VENDAS_COLUMNS,
             field_map=constants.VENDAS_FIELD_MAP,
