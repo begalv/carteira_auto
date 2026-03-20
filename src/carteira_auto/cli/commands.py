@@ -130,6 +130,21 @@ def _print_results(ctx: dict) -> None:
                 )
 
 
+def dashboard_cmd(args: argparse.Namespace) -> None:
+    """Comando: abre o dashboard Streamlit."""
+    import subprocess
+
+    from carteira_auto.config import settings
+
+    app_path = settings.paths.ROOT_DIR / "dashboards" / "app.py"
+    if not app_path.exists():
+        logger.error(f"Dashboard não encontrado: {app_path}")
+        sys.exit(1)
+
+    print(f"Abrindo dashboard: {app_path}")
+    subprocess.run(["streamlit", "run", str(app_path)], check=True)
+
+
 def update_prices(args: argparse.Namespace) -> None:
     """Comando backward-compatible: carteira update-prices."""
     args.pipeline = "update-excel-portfolio-prices"
@@ -189,6 +204,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Lista pipelines disponíveis.",
     )
     list_parser.set_defaults(func=list_pipelines_cmd)
+
+    # --- dashboard ---
+    dash_parser = subparsers.add_parser(
+        "dashboard",
+        help="Abre o dashboard Streamlit.",
+    )
+    dash_parser.set_defaults(func=dashboard_cmd)
 
     # --- update-prices (backward-compatible alias) ---
     sp = subparsers.add_parser(
