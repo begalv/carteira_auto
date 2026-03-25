@@ -118,8 +118,8 @@ class CVMFetcher:
         col_map = {
             "cnpj_cia": "cnpj",
             "denom_social": "razao_social",
-            "denom_pregao": "nome_pregao",  # nome abreviado de pregão (B3)
-            "cod_cvm": "cod_cvm",
+            "denom_comerc": "nome_pregao",  # nome comercial/abreviado (campo denom_comerc no CSV)
+            "cd_cvm": "cod_cvm",
             "setor_ativ": "setor",
             "sit": "situacao",
         }
@@ -238,14 +238,16 @@ class CVMFetcher:
                 return cnpj
 
         # 3. Heurística prefixo contra nomes de pregão CVM (fallback offline)
-        # Tenta match pelo prefixo de 4 letras do ticker contra início do nome pregão
-        prefix = base[:4] if len(base) >= 4 else base
-        for pregao_name, cnpj in mapping.items():
-            if pregao_name.startswith(prefix):
-                logger.debug(
-                    f"CVM: ticker '{clean}' mapeado via pregão '{pregao_name}' (heurística)"
-                )
-                return cnpj
+        # Tenta 4 chars, depois 3 — ex: WEGE3 → "WEGE" falha mas "WEG" bate "WEG SA"
+        for prefix_len in (4, 3):
+            prefix = base[:prefix_len] if len(base) >= prefix_len else base
+            for pregao_name, cnpj in mapping.items():
+                if pregao_name.startswith(prefix):
+                    logger.debug(
+                        f"CVM: ticker '{clean}' mapeado via pregão '{pregao_name}' "
+                        f"(heurística {prefix_len}-char)"
+                    )
+                    return cnpj
 
         logger.debug(f"CVM: CNPJ não encontrado para ticker '{ticker}'")
         return None
