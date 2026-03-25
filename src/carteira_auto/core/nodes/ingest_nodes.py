@@ -5,12 +5,16 @@ macro, fundamentos e notícias. Separação clara: fetchers buscam,
 IngestNodes orquestram a persistência.
 """
 
+from __future__ import annotations
+
 from datetime import date
-from typing import Optional
+
+import pandas as pd
 
 from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.utils import get_logger
+from carteira_auto.utils.decorators import log_execution
 
 logger = get_logger(__name__)
 
@@ -61,10 +65,11 @@ class IngestPricesNode(Node):
         "DX-Y.NYB",  # DXY
     ]
 
-    def __init__(self, mode: str = "daily", lookback_years: Optional[int] = None):
+    def __init__(self, mode: str = "daily", lookback_years: int | None = None):
         self._mode = mode
         self._lookback_years = lookback_years or settings.lake.DEFAULT_LOOKBACK_YEARS
 
+    @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.data.fetchers import YahooFinanceFetcher
         from carteira_auto.data.lake import DataLake
@@ -137,6 +142,7 @@ class IngestMacroNode(Node):
     name = "ingest_macro"
     dependencies: list[str] = []
 
+    @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.data.lake import DataLake
 
@@ -163,22 +169,22 @@ class IngestMacroNode(Node):
         count = 0
 
         # Indicadores BCB disponíveis no fetcher
+        # BCBFetcher retorna DataFrames com colunas 'data' e 'valor'
         bcb_indicators = {
             "selic": ("get_selic", "%", "daily"),
             "cdi": ("get_cdi", "%", "daily"),
             "ipca": ("get_ipca", "%", "monthly"),
-            "ptax": ("get_indicator", "R$/USD", "daily"),
+            "ptax": ("get_ptax", "R$/USD", "daily"),
         }
 
         for name, (method_name, unit, frequency) in bcb_indicators.items():
             try:
-                if method_name == "get_indicator":
-                    df = fetcher.get_indicator(name)
-                else:
-                    method = getattr(fetcher, method_name)
-                    df = method()
+                method = getattr(fetcher, method_name)
+                df = method()
 
                 if df is not None and not df.empty:
+                    # BCBFetcher retorna colunas 'data'/'valor' — normaliza para 'date'/'value'
+                    df = self._normalize_bcb_df(df)
                     stored = lake.store_macro(
                         name, df, source="bcb", unit=unit, frequency=frequency
                     )
@@ -188,6 +194,21 @@ class IngestMacroNode(Node):
                 logger.warning(f"Erro ao buscar BCB/{name}: {e}")
 
         return count
+
+    @staticmethod
+    def _normalize_bcb_df(df) -> pd.DataFrame:
+        """Normaliza DataFrame do BCBFetcher (colunas 'data'/'valor') para formato do MacroLake."""
+        result = pd.DataFrame()
+        if "data" in df.columns and "valor" in df.columns:
+            result["date"] = pd.to_datetime(df["data"])
+            result["value"] = pd.to_numeric(df["valor"], errors="coerce")
+        elif "valor" in df.columns:
+            # Caso tenha DatetimeIndex
+            result["date"] = df.index
+            result["value"] = df["valor"].values
+        else:
+            return df
+        return result.dropna(subset=["value"])
 
     def _ingest_ibge(self, lake) -> int:
         """Ingere indicadores do IBGE."""
@@ -206,6 +227,8 @@ class IngestMacroNode(Node):
                 method = getattr(fetcher, method_name)
                 df = method()
                 if df is not None and not df.empty:
+                    # IBGEFetcher retorna colunas 'periodo'/'valor' — normaliza
+                    df = self._normalize_ibge_df(df)
                     stored = lake.store_macro(
                         name, df, source="ibge", unit=unit, frequency=frequency
                     )
@@ -215,6 +238,34 @@ class IngestMacroNode(Node):
                 logger.warning(f"Erro ao buscar IBGE/{name}: {e}")
 
         return count
+
+    @staticmethod
+    def _normalize_ibge_df(df) -> pd.DataFrame:
+        """Normaliza DataFrame do IBGEFetcher (colunas 'periodo'/'valor') para formato do MacroLake."""
+        result = pd.DataFrame()
+        if "valor" in df.columns:
+            result["value"] = pd.to_numeric(df["valor"], errors="coerce")
+
+            # Determina coluna de data: prefere periodo_codigo (YYYYMM) sobre periodo (nome)
+            if "periodo_codigo" in df.columns:
+                result["date"] = pd.to_datetime(
+                    df["periodo_codigo"].astype(str), format="%Y%m", errors="coerce"
+                )
+            elif "periodo" in df.columns:
+                # Tenta interpretar formato numérico (YYYYMM) ou textual
+                periodo = df["periodo"].astype(str)
+                result["date"] = pd.to_datetime(periodo, format="%Y%m", errors="coerce")
+                # Fallback: formato misto
+                mask = result["date"].isna()
+                if mask.any():
+                    result.loc[mask, "date"] = pd.to_datetime(
+                        periodo[mask], format="mixed", dayfirst=True, errors="coerce"
+                    )
+            else:
+                result["date"] = df.index
+        else:
+            return df
+        return result.dropna(subset=["value", "date"])
 
 
 class IngestFundamentalsNode(Node):
@@ -262,9 +313,10 @@ class IngestFundamentalsNode(Node):
         "totalDebt",
     ]
 
-    def __init__(self, tickers: Optional[list[str]] = None):
+    def __init__(self, tickers: list[str] | None = None):
         self._tickers = tickers
 
+    @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.data.fetchers import YahooFinanceFetcher
         from carteira_auto.data.lake import DataLake
@@ -361,9 +413,10 @@ class IngestNewsNode(Node):
     name = "ingest_news"
     dependencies: list[str] = []
 
-    def __init__(self, sources: Optional[list[str]] = None):
+    def __init__(self, sources: list[str] | None = None):
         self._sources = sources or ["newsapi"]
 
+    @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         from carteira_auto.data.lake import DataLake
 
