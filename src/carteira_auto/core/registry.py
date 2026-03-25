@@ -6,6 +6,12 @@ from pathlib import Path
 
 from carteira_auto.core.engine import DAGEngine
 from carteira_auto.core.nodes.alert_nodes import EvaluateAlertsNode
+from carteira_auto.core.nodes.ingest_nodes import (
+    IngestFundamentalsNode,
+    IngestMacroNode,
+    IngestNewsNode,
+    IngestPricesNode,
+)
 from carteira_auto.core.nodes.portfolio_nodes import (
     ExportPortfolioPricesNode,
     FetchPortfolioPricesNode,
@@ -27,6 +33,10 @@ PIPELINE_PRESETS: dict[str, str] = {
     "market": "analyze_market",
     "market-sectors": "analyze_market_sectors",
     "economic-sectors": "analyze_economic_sectors",
+    "ingest-prices": "ingest_prices",
+    "ingest-macro": "ingest_macro",
+    "ingest-fundamentals": "ingest_fundamentals",
+    "ingest-news": "ingest_news",
 }
 
 # Descrições para o CLI
@@ -39,6 +49,10 @@ PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "market": "Analisa benchmarks de mercado (IBOV, IFIX, CDI)",
     "market-sectors": "Analisa performance por setor de mercado",
     "economic-sectors": "Analisa setores da economia real (IBGE)",
+    "ingest-prices": "Ingere preços históricos no DataLake (Yahoo Finance)",
+    "ingest-macro": "Ingere indicadores macro no DataLake (BCB, IBGE)",
+    "ingest-fundamentals": "Ingere dados fundamentalistas no DataLake (Yahoo Finance)",
+    "ingest-news": "Ingere notícias financeiras no DataLake (NewsAPI, RSS)",
 }
 
 
@@ -95,6 +109,16 @@ def create_engine(
 
     # Alertas
     dag_engine.register(EvaluateAlertsNode())
+
+    # Ingestão (DataLake)
+    dag_engine.register_many(
+        [
+            IngestPricesNode(),
+            IngestMacroNode(),
+            IngestFundamentalsNode(),
+            IngestNewsNode(),
+        ]
+    )
 
     return dag_engine
 
