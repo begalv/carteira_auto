@@ -31,6 +31,7 @@ class PathsConfig:
     PORTFOLIOS_DIR = OUTPUTS_DIR / "portfolios"
     REPORTS_DIR = OUTPUTS_DIR / "reports"
     SNAPSHOTS_DIR = OUTPUTS_DIR / "snapshots"
+    LAKE_DIR = DATA_DIR / "lake"
 
     # Planilha principal da carteira
     PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira 2026.xlsx"
@@ -46,6 +47,7 @@ class PathsConfig:
             self.SNAPSHOTS_DIR,
             self.LOGS_DIR,
             self.TEMPLATES_DIR,
+            self.LAKE_DIR,
         ]
 
         for directory in directories:
@@ -114,6 +116,71 @@ class DDMConfig(BaseFetcherConfig):
     BASE_URL: str = "https://api.dadosdemercado.com.br/v1"
     RATE_LIMIT: int = 60
     CACHE_TTL: int = 1800  # 30 minutos
+
+
+@dataclass
+class DataLakeConfig:
+    """Configurações do Data Lake."""
+
+    # Diretório base do lake (relativo a DATA_DIR)
+    LAKE_SUBDIR: str = "lake"
+
+    # TTLs de atualização (segundos) — quanto tempo antes de considerar dados stale
+    PRICES_TTL: int = 86400  # 24h (preços diários)
+    MACRO_TTL: int = 86400  # 24h
+    FUNDAMENTALS_TTL: int = 604800  # 7 dias (dados trimestrais)
+    NEWS_TTL: int = 3600  # 1h
+
+    # Parquet
+    PARQUET_SUBDIR: str = "parquet"
+
+    # Backfill
+    DEFAULT_LOOKBACK_YEARS: int = 10  # Anos de histórico padrão para backfill
+
+
+@dataclass
+class FREDConfig(BaseFetcherConfig):
+    """Configurações do FRED (Federal Reserve Economic Data)."""
+
+    BASE_URL: str = "https://api.stlouisfed.org/fred/series/observations"
+    RATE_LIMIT: int = 120  # req/min (generoso)
+    CACHE_TTL: int = 3600  # 1h
+
+
+@dataclass
+class CVMConfig(BaseFetcherConfig):
+    """Configurações do fetcher CVM (dados abertos)."""
+
+    BASE_URL: str = "https://dados.cvm.gov.br/dados"
+    RATE_LIMIT: int = 30
+    CACHE_TTL: int = 86400  # 24h (dados trimestrais)
+
+
+@dataclass
+class TesouroConfig(BaseFetcherConfig):
+    """Configurações do fetcher Tesouro Direto."""
+
+    BASE_URL: str = "https://www.tesourotransparente.gov.br/ckan/dataset"
+    RATE_LIMIT: int = 30
+    CACHE_TTL: int = 3600  # 1h
+
+
+@dataclass
+class NewsAPIConfig(BaseFetcherConfig):
+    """Configurações do NewsAPI."""
+
+    BASE_URL: str = "https://newsapi.org/v2"
+    RATE_LIMIT: int = 100  # req/dia (free tier)
+    CACHE_TTL: int = 1800  # 30min
+
+
+@dataclass
+class CoinGeckoConfig(BaseFetcherConfig):
+    """Configurações do CoinGecko."""
+
+    BASE_URL: str = "https://api.coingecko.com/api/v3"
+    RATE_LIMIT: int = 10  # req/min (free tier)
+    CACHE_TTL: int = 300  # 5min
 
 
 @dataclass
@@ -190,6 +257,12 @@ class Settings:
     bcb: BCBConfig = field(default_factory=BCBConfig)
     ibge: IBGEConfig = field(default_factory=IBGEConfig)
     ddm: DDMConfig = field(default_factory=DDMConfig)
+    fred: FREDConfig = field(default_factory=FREDConfig)
+    cvm: CVMConfig = field(default_factory=CVMConfig)
+    tesouro: TesouroConfig = field(default_factory=TesouroConfig)
+    newsapi: NewsAPIConfig = field(default_factory=NewsAPIConfig)
+    coingecko: CoinGeckoConfig = field(default_factory=CoinGeckoConfig)
+    lake: DataLakeConfig = field(default_factory=DataLakeConfig)
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
@@ -198,6 +271,10 @@ class Settings:
         default_factory=lambda: {
             "ddm": os.getenv("DADOS_MERCADO_API_KEY"),
             "deepseek": os.getenv("DEEPSEEK_API_KEY"),
+            "fred": os.getenv("FRED_API_KEY"),
+            "newsapi": os.getenv("NEWSAPI_KEY"),
+            "coingecko": os.getenv("COINGECKO_API_KEY"),
+            "anthropic": os.getenv("ANTHROPIC_API_KEY"),
         }
     )
 

@@ -76,6 +76,56 @@ def dashboard_cmd(args: argparse.Namespace) -> None:
     subprocess.run(["streamlit", "run", str(app_path)], check=True)
 
 
+def ingest_cmd(args: argparse.Namespace) -> None:
+    """Comando: ingere dados no DataLake."""
+    from carteira_auto.core.engine import PipelineContext
+    from carteira_auto.core.nodes.ingest_nodes import (
+        IngestFundamentalsNode,
+        IngestMacroNode,
+        IngestNewsNode,
+        IngestPricesNode,
+    )
+    from carteira_auto.data.lake import DataLake
+
+    mode = args.mode if hasattr(args, "mode") else "daily"
+    lake = DataLake(settings.paths.LAKE_DIR)
+    ctx = PipelineContext()
+    ctx["data_lake"] = lake
+
+    try:
+        # Ingestão de preços
+        prices_node = IngestPricesNode(mode=mode)
+        ctx = prices_node.run(ctx)
+
+        # Ingestão macro
+        macro_node = IngestMacroNode()
+        ctx = macro_node.run(ctx)
+
+        # Ingestão de fundamentos
+        fundamentals_node = IngestFundamentalsNode()
+        ctx = fundamentals_node.run(ctx)
+
+        # Ingestão de notícias
+        news_node = IngestNewsNode()
+        ctx = news_node.run(ctx)
+
+        # Resumo
+        summary = lake.summary()
+        print("\nDataLake atualizado:")
+        print(
+            f"  Preços: {summary['prices']['records']} registros, {summary['prices']['tickers']} tickers"
+        )
+        print(
+            f"  Macro: {summary['macro']['records']} registros, {summary['macro']['indicators']} indicadores"
+        )
+        print(f"  Fundamentos: {summary['fundamentals']['records']} registros")
+        print(f"  Notícias: {summary['news']['records']} artigos")
+
+    except Exception as e:
+        logger.error(f"Erro na ingestão: {e}", exc_info=True)
+        sys.exit(1)
+
+
 def update_prices(args: argparse.Namespace) -> None:
     """Comando backward-compatible: carteira update-prices."""
     args.pipeline = "update-excel-portfolio-prices"
@@ -142,6 +192,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Abre o dashboard Streamlit.",
     )
     dash_parser.set_defaults(func=dashboard_cmd)
+
+    # --- ingest ---
+    ingest_parser = subparsers.add_parser(
+        "ingest",
+        help="Ingere dados no DataLake (preços + macro + fundamentos + notícias).",
+    )
+    ingest_parser.add_argument(
+        "--mode",
+        choices=["daily", "full"],
+        default="daily",
+        help="Modo de ingestão: daily (últimos dias) ou full (backfill histórico).",
+    )
+    ingest_parser.set_defaults(func=ingest_cmd)
 
     # --- update-prices (backward-compatible alias) ---
     sp = subparsers.add_parser(
