@@ -34,12 +34,11 @@ class Constants:
 
     CARTEIRA_SHEET_NAMES: dict[str, str] = {
         "carteira": "Carteira",
-        "resumo": "Resumo",
+        "resumo": "Rentabilidade Carteira",
         "vendas": "Vendas",
     }
 
     CARTEIRA_COLUMNS: list[str] = [
-        "Fator",
         "Ticker",
         "Nome do Ativo / Gestora",
         "Classe",
@@ -47,7 +46,7 @@ class Constants:
         "Subsetor",
         "Segmento",
         "% Meta",
-        "Valor Meta (R$)",
+        "Valor Meta",
         "% Atual",
         "% Inicial",
         "Posição Atual",
@@ -61,7 +60,6 @@ class Constants:
         "Preço Atual",
         "Preço Médio",
         "N Cotas Atual",
-        "Função Dialética e Materialista",
     ]
 
     # Índices de coluna (1-based, para uso com openpyxl)
@@ -69,7 +67,6 @@ class Constants:
     CARTEIRA_PRECO_ATUAL_COL: int = CARTEIRA_COLUMNS.index("Preço Atual") + 1
 
     CARTEIRA_FIELD_MAP: dict[str, str] = {
-        "Fator": "fator",
         "Ticker": "ticker",
         "Nome do Ativo / Gestora": "nome",
         "Classe": "classe",
@@ -77,7 +74,7 @@ class Constants:
         "Subsetor": "subsetor",
         "Segmento": "segmento",
         "% Meta": "pct_meta",
-        "Valor Meta (R$)": "valor_meta",
+        "Valor Meta": "valor_meta",
         "% Atual": "pct_atual",
         "% Inicial": "pct_inicial",
         "Posição Atual": "posicao_atual",
@@ -91,7 +88,6 @@ class Constants:
         "Preço Atual": "preco_atual",
         "Preço Médio": "preco_medio",
         "N Cotas Atual": "n_cotas_atual",
-        "Função Dialética e Materialista": "funcao_dialetica",
     }
 
     VENDAS_COLUMNS: list[str] = [

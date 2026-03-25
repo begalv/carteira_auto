@@ -162,9 +162,7 @@ class PortfolioLoader(ExcelLoader):
             field_map=constants.CARTEIRA_FIELD_MAP,
         )
 
-        str_fields = {"funcao_dialetica"}
         text_fields = {
-            "fator",
             "ticker",
             "nome",
             "classe",
@@ -174,9 +172,7 @@ class PortfolioLoader(ExcelLoader):
         }
 
         for col in df.columns:
-            if col in str_fields:
-                df[col] = df[col].apply(lambda x: str(x) if pd.notna(x) else None)
-            elif col not in text_fields:
+            if col not in text_fields:
                 df[col] = pd.to_numeric(df[col], errors="coerce")
 
         return self._rows_to_models(df, Asset)
