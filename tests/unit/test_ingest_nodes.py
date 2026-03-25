@@ -345,9 +345,13 @@ class TestIngestNewsNode:
         assert node._sources == ["rss", "newsapi"]
 
     def test_run_sem_api_key(self, ctx_with_lake):
-        """Retorna 0 quando API key não está configurada."""
+        """Retorna 0 quando nenhuma fonte retorna artigos."""
+        from unittest.mock import patch
+
         node = IngestNewsNode()
-        ctx = node.run(ctx_with_lake)
+        with patch("carteira_auto.data.fetchers.DDMFetcher") as MockDDM:
+            MockDDM.return_value.get_news.return_value = []
+            ctx = node.run(ctx_with_lake)
 
         assert ctx["ingest_news_count"] == 0
 
