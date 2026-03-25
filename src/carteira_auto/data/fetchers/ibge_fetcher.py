@@ -110,9 +110,9 @@ class IBGEFetcher:
         path = (
             f"/t/{self._tables['pib_trimestral']}"
             f"/p/last {quarters}"
-            "/v/6561"  # Taxa de variação % contra trimestre anterior
+            "/v/6561"  # Taxa de variação % em relação ao mesmo período do ano anterior
             "/n1/1"  # Brasil
-            "/f/c"
+            "/c11255/90707"  # Setor = PIB total (evita dados ".." da classificação setorial)
         )
         return self._fetch(path)
 
@@ -180,21 +180,22 @@ class IBGEFetcher:
         # Mapeia colunas conhecidas
         result = pd.DataFrame()
 
-        # V = valor, D2C/D2N = período, D1C/D1N = variável
+        # Estrutura SIDRA: D1=período (mês/trimestre), D2=variável, D3+=localidade/classificações
+        # Exemplo IPCA: D1C="202512" (mês), D1N="dezembro 2025", D2C="63", D2N="IPCA - Var. mensal"
         if "V" in df.columns:
             result["valor"] = pd.to_numeric(df["V"], errors="coerce")
 
-        # Período — pode ser D2C (código) ou D2N (nome)
-        if "D2C" in df.columns:
-            result["periodo_codigo"] = df["D2C"]
-        if "D2N" in df.columns:
-            result["periodo"] = df["D2N"]
-        elif "D2C" in df.columns:
-            result["periodo"] = df["D2C"]
-
-        # Variável
+        # Período — D1C (código) e D1N (nome legível)
+        if "D1C" in df.columns:
+            result["periodo_codigo"] = df["D1C"]
         if "D1N" in df.columns:
-            result["variavel"] = df["D1N"]
+            result["periodo"] = df["D1N"]
+        elif "D1C" in df.columns:
+            result["periodo"] = df["D1C"]
+
+        # Variável — D2N (nome descritivo)
+        if "D2N" in df.columns:
+            result["variavel"] = df["D2N"]
 
         # Classificações adicionais (grupos IPCA, etc.)
         for col in df.columns:
