@@ -157,6 +157,12 @@ class IngestMacroNode(Node):
         # --- IBGE ---
         total_count += self._ingest_ibge(lake)
 
+        # --- DDM ---
+        total_count += self._ingest_ddm_macro(lake)
+
+        # --- FRED ---
+        total_count += self._ingest_fred(lake)
+
         ctx["ingest_macro_count"] = total_count
         logger.info(f"IngestMacro: {total_count} registros persistidos no lake")
         return ctx
@@ -266,6 +272,124 @@ class IngestMacroNode(Node):
         else:
             return df
         return result.dropna(subset=["value", "date"])
+
+    def _ingest_ddm_macro(self, lake) -> int:
+        """Ingere indicadores macro do DDM (expectativas, índices econômicos)."""
+        from carteira_auto.data.fetchers import DDMFetcher
+
+        fetcher = DDMFetcher()
+        count = 0
+
+        # Índices econômicos (SELIC, CDI, IPCA, IGPM do DDM)
+        try:
+            indices = fetcher.get_economic_indices()
+            if indices:
+                df = self._normalize_ddm_list(
+                    indices, date_field="data", value_field="valor"
+                )
+                if df is not None and not df.empty:
+                    stored = lake.store_macro(
+                        "ddm_economic_indices",
+                        df,
+                        source="ddm",
+                        unit="mixed",
+                        frequency="daily",
+                    )
+                    count += stored
+                    logger.debug(f"  DDM/economic_indices: {stored} registros")
+        except Exception as e:
+            logger.warning(f"Erro ao buscar DDM/economic_indices: {e}")
+
+        # Expectativas Focus (boletim)
+        try:
+            expectations = fetcher.get_market_expectations()
+            if expectations:
+                df = self._normalize_ddm_list(
+                    expectations, date_field="data", value_field="mediana"
+                )
+                if df is not None and not df.empty:
+                    stored = lake.store_macro(
+                        "ddm_market_expectations",
+                        df,
+                        source="ddm",
+                        unit="%",
+                        frequency="weekly",
+                    )
+                    count += stored
+                    logger.debug(f"  DDM/market_expectations: {stored} registros")
+        except Exception as e:
+            logger.warning(f"Erro ao buscar DDM/market_expectations: {e}")
+
+        return count
+
+    @staticmethod
+    def _normalize_ddm_list(
+        records: list[dict],
+        date_field: str = "data",
+        value_field: str = "valor",
+    ) -> pd.DataFrame | None:
+        """Normaliza lista de dicts DDM para DataFrame com date/value."""
+        if not records:
+            return None
+
+        df = pd.DataFrame(records)
+
+        if date_field not in df.columns or value_field not in df.columns:
+            # Tenta campos alternativos comuns na API DDM
+            alt_date = next(
+                (c for c in df.columns if "data" in c.lower() or "date" in c.lower()),
+                None,
+            )
+            alt_val = next(
+                (
+                    c
+                    for c in df.columns
+                    if "valor" in c.lower()
+                    or "value" in c.lower()
+                    or "mediana" in c.lower()
+                ),
+                None,
+            )
+            if not alt_date or not alt_val:
+                return None
+            date_field, value_field = alt_date, alt_val
+
+        result = pd.DataFrame()
+        result["date"] = pd.to_datetime(df[date_field], errors="coerce")
+        result["value"] = pd.to_numeric(df[value_field], errors="coerce")
+        return result.dropna(subset=["date", "value"]).reset_index(drop=True)
+
+    def _ingest_fred(self, lake) -> int:
+        """Ingere bundle macro do FRED (Fed Funds, Treasury 10Y, VIX, etc.)."""
+        from carteira_auto.data.fetchers import FREDFetcher
+
+        fetcher = FREDFetcher()
+        if not fetcher._api_key:
+            logger.debug("FRED API key não configurada, pulando ingestão FRED")
+            return 0
+
+        count = 0
+        try:
+            bundle = fetcher.get_macro_bundle()
+            for series_id, df in bundle.items():
+                if df is None or df.empty:
+                    continue
+                # FRED DataFrame já tem date/value — apenas remove series_id
+                df_clean = df[["date", "value"]].copy()
+                meta = fetcher.list_series().get(series_id, {})
+                stored = lake.store_macro(
+                    f"fred_{series_id.lower()}",
+                    df_clean,
+                    source="fred",
+                    unit=meta.get("unidade", ""),
+                    frequency=meta.get("frequencia", "daily"),
+                )
+                count += stored
+                logger.debug(f"  FRED/{series_id}: {stored} registros")
+        except Exception as e:
+            logger.warning(f"Erro ao buscar bundle FRED: {e}")
+
+        return count
 
 
 class IngestFundamentalsNode(Node):
@@ -377,6 +501,9 @@ class IngestFundamentalsNode(Node):
             except Exception as e:
                 logger.warning(f"Erro ao processar fundamentos de {ticker}: {e}")
 
+        # DDM como fonte complementar (série histórica de DRE, balanço, DFC)
+        total_count += self._ingest_ddm_fundamentals(lake, tickers, period)
+
         ctx["ingest_fundamentals_count"] = total_count
         logger.info(f"IngestFundamentals: {total_count} registros persistidos no lake")
         return ctx
@@ -393,6 +520,48 @@ class IngestFundamentalsNode(Node):
         # Filtra apenas ações e FIIs (fundamentals não fazem sentido para RF/ETFs internacionais)
         equity_classes = {"Ações", "Fundos de Investimentos"}
         return [a.ticker for a in portfolio.assets if a.classe in equity_classes]
+
+    def _ingest_ddm_fundamentals(self, lake, tickers: list[str], period: str) -> int:
+        """Ingere série histórica de fundamentos via DDM (DRE, balanço, DFC, ações).
+
+        DDM retorna dados históricos por período, complementando o snapshot do Yahoo.
+        Armazena como statements no FundamentalsLake.
+        """
+        from carteira_auto.data.fetchers import DDMFetcher
+
+        fetcher = DDMFetcher()
+        if not fetcher._api_key:
+            logger.debug(
+                "DDM API key não configurada, pulando ingestão DDM fundamentals"
+            )
+            return 0
+
+        count = 0
+
+        # Mapeamento: nome do statement → método DDM
+        ddm_statements = {
+            "income_statement_ddm": "get_income_statement",
+            "cash_flow_ddm": "get_cash_flow",
+            "balance_sheet_ddm": "get_balance_sheet",
+        }
+
+        for ticker in tickers:
+            # Remove sufixo .SA se presente (DDM usa ticker sem sufixo)
+            clean_ticker = ticker.replace(".SA", "").upper()
+            for stmt_name, method_name in ddm_statements.items():
+                try:
+                    method = getattr(fetcher, method_name)
+                    data = method(clean_ticker)
+                    if data:
+                        lake.store_statement(ticker, period, stmt_name, data, "ddm")
+                        count += len(data) if isinstance(data, list) else 1
+                        logger.debug(
+                            f"  DDM/{ticker}/{stmt_name}: {len(data) if isinstance(data, list) else 1} itens"
+                        )
+                except Exception as e:
+                    logger.debug(f"DDM fundamentos {ticker}/{stmt_name}: {e}")
+
+        return count
 
 
 class IngestNewsNode(Node):
@@ -413,8 +582,11 @@ class IngestNewsNode(Node):
     name = "ingest_news"
     dependencies: list[str] = []
 
-    def __init__(self, sources: list[str] | None = None):
-        self._sources = sources or ["newsapi"]
+    def __init__(
+        self, sources: list[str] | None = None, tickers: list[str] | None = None
+    ):
+        self._sources = sources or ["ddm", "newsapi"]
+        self._tickers = tickers  # Tickers opcionais para filtrar notícias
 
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
@@ -443,15 +615,53 @@ class IngestNewsNode(Node):
         """Busca artigos de uma fonte específica.
 
         Retorna lista de dicts com campos compatíveis com NewsLake.store().
-        Fetchers específicos serão implementados na Fase 5.
         """
-        if source == "newsapi":
+        if source == "ddm":
+            return self._fetch_ddm()
+        elif source == "newsapi":
             return self._fetch_newsapi()
         elif source == "rss":
             return self._fetch_rss()
         else:
             logger.warning(f"Fonte de notícias '{source}' não implementada")
             return []
+
+    def _fetch_ddm(self) -> list[dict]:
+        """Busca notícias via DDM (Dados de Mercado)."""
+        from carteira_auto.data.fetchers import DDMFetcher
+
+        fetcher = DDMFetcher()
+        if not fetcher._api_key:
+            logger.debug("DDM API key não configurada, pulando ingestão DDM news")
+            return []
+
+        articles = []
+        tickers_to_fetch = self._tickers or [None]  # None = notícias gerais
+
+        for ticker in tickers_to_fetch:
+            try:
+                raw = fetcher.get_news(ticker=ticker)
+                if raw:
+                    normalized = [self._normalize_ddm_article(a, ticker) for a in raw]
+                    articles.extend(normalized)
+            except Exception as e:
+                logger.debug(f"DDM news {ticker}: {e}")
+
+        return articles
+
+    @staticmethod
+    def _normalize_ddm_article(article: dict, ticker: str | None) -> dict:
+        """Normaliza artigo DDM para o formato do NewsLake."""
+        return {
+            "title": article.get("titulo") or article.get("title", ""),
+            "summary": article.get("resumo") or article.get("summary", ""),
+            "url": article.get("url", ""),
+            "published_at": article.get("data_publicacao")
+            or article.get("published_at", ""),
+            "source": article.get("fonte") or article.get("source", "ddm"),
+            "category": "mercado",
+            "tickers": [ticker] if ticker else [],
+        }
 
     def _fetch_newsapi(self) -> list[dict]:
         """Busca notícias via NewsAPI (quando disponível)."""
@@ -469,3 +679,171 @@ class IngestNewsNode(Node):
         # RSSFetcher será implementado na Fase 5
         logger.debug("RSSFetcher ainda não implementado (Fase 5)")
         return []
+
+
+class IngestCVMNode(Node):
+    """Busca demonstrações financeiras da CVM e persiste no DataLake.
+
+    Busca DFP (anual) e ITR (trimestral) da CVM para as empresas
+    da carteira e persiste como statements no FundamentalsLake.
+
+    Lê do contexto (opcional):
+        - "portfolio": Portfolio (usa tickers de ações)
+
+    Produz no contexto:
+        - "ingest_cvm_count": int (registros persistidos)
+        - "data_lake": DataLake
+    """
+
+    name = "ingest_cvm"
+    dependencies: list[str] = []
+
+    def __init__(
+        self,
+        tickers: list[str] | None = None,
+        year: int | None = None,
+        statements: list[str] | None = None,
+    ):
+        self._tickers = tickers
+        self._year = year or date.today().year - 1  # Ano anterior (DFP já disponível)
+        self._statements = statements or ["DRE", "BPA", "BPP", "DFC_MD"]
+
+    @log_execution
+    def run(self, ctx: PipelineContext) -> PipelineContext:
+        from carteira_auto.data.fetchers import CVMFetcher
+        from carteira_auto.data.lake import DataLake
+
+        lake = ctx.get("data_lake") or DataLake(settings.paths.LAKE_DIR)
+        ctx["data_lake"] = lake
+
+        tickers = self._collect_tickers(ctx)
+        if not tickers:
+            logger.warning("IngestCVM: nenhum ticker de ações para processar")
+            ctx["ingest_cvm_count"] = 0
+            return ctx
+
+        logger.info(f"IngestCVM: {len(tickers)} tickers, ano {self._year}")
+
+        fetcher = CVMFetcher()
+        total_count = 0
+        period = str(self._year)
+
+        for ticker in tickers:
+            cnpj = fetcher.get_cnpj_by_ticker(ticker)
+            if not cnpj:
+                logger.debug(f"IngestCVM: CNPJ não encontrado para {ticker}")
+                continue
+
+            for stmt in self._statements:
+                try:
+                    df = fetcher.get_dfp(cnpj, self._year, stmt)
+                    if df is not None and not df.empty:
+                        lake.store_statement(
+                            ticker,
+                            period,
+                            f"cvm_{stmt.lower()}",
+                            df.to_dict("records"),
+                            "cvm",
+                        )
+                        total_count += len(df)
+                        logger.debug(f"  CVM/{ticker}/{stmt}: {len(df)} linhas")
+                except Exception as e:
+                    logger.debug(f"CVM {ticker}/{stmt}: {e}")
+
+        ctx["ingest_cvm_count"] = total_count
+        logger.info(f"IngestCVM: {total_count} registros persistidos no lake")
+        return ctx
+
+    def _collect_tickers(self, ctx: PipelineContext) -> list[str]:
+        """Coleta tickers de ações (apenas empresas listadas têm dados na CVM)."""
+        if self._tickers:
+            return self._tickers
+
+        portfolio = ctx.get("portfolio")
+        if not portfolio:
+            return []
+
+        return [a.ticker for a in portfolio.assets if a.classe == "Ações"]
+
+
+class IngestTesouroDiretoNode(Node):
+    """Busca dados históricos do Tesouro Direto e persiste no DataLake.
+
+    Busca preços e taxas históricos de LFT, NTN-B, LTN e NTN-F
+    e persiste no MacroLake para análise de renda fixa.
+
+    Produz no contexto:
+        - "ingest_tesouro_count": int (registros persistidos)
+        - "data_lake": DataLake
+    """
+
+    name = "ingest_tesouro"
+    dependencies: list[str] = []
+
+    # Tipos de título a ingerir por default
+    DEFAULT_TIPOS = ["LFT", "NTN-B", "LTN", "NTN-F"]
+
+    def __init__(self, tipos: list[str] | None = None):
+        self._tipos = tipos or self.DEFAULT_TIPOS
+
+    @log_execution
+    def run(self, ctx: PipelineContext) -> PipelineContext:
+        from carteira_auto.data.fetchers import TesouroDiretoFetcher
+        from carteira_auto.data.lake import DataLake
+
+        lake = ctx.get("data_lake") or DataLake(settings.paths.LAKE_DIR)
+        ctx["data_lake"] = lake
+
+        fetcher = TesouroDiretoFetcher()
+        total_count = 0
+
+        for tipo in self._tipos:
+            try:
+                df = fetcher.get_price_history_by_type(tipo)
+                if df is None or df.empty:
+                    continue
+
+                # Converte cada vencimento como série macro independente
+                if (
+                    "vencimento" in df.columns
+                    and "data" in df.columns
+                    and "taxa_compra" in df.columns
+                ):
+                    for vencimento in df["vencimento"].dropna().unique():
+                        df_venc = df[df["vencimento"] == vencimento][
+                            ["data", "taxa_compra"]
+                        ].copy()
+                        df_venc = df_venc.rename(
+                            columns={"data": "date", "taxa_compra": "value"}
+                        )
+                        df_venc = df_venc.dropna(subset=["value"])
+
+                        if df_venc.empty:
+                            continue
+
+                        venc_str = (
+                            pd.Timestamp(vencimento).strftime("%Y-%m")
+                            if pd.notna(vencimento)
+                            else "unknown"
+                        )
+                        indicator_name = (
+                            f"tesouro_{tipo.lower().replace('-', '_')}_{venc_str}"
+                        )
+
+                        stored = lake.store_macro(
+                            indicator_name,
+                            df_venc,
+                            source="tesouro_direto",
+                            unit="% a.a.",
+                            frequency="daily",
+                        )
+                        total_count += stored
+
+                logger.debug(f"  Tesouro/{tipo}: processado")
+
+            except Exception as e:
+                logger.warning(f"Erro ao ingerir Tesouro/{tipo}: {e}")
+
+        ctx["ingest_tesouro_count"] = total_count
+        logger.info(f"IngestTesouroDireto: {total_count} registros persistidos no lake")
+        return ctx

@@ -2,10 +2,12 @@
 
 from .alert_nodes import EvaluateAlertsNode
 from .ingest_nodes import (
+    IngestCVMNode,
     IngestFundamentalsNode,
     IngestMacroNode,
     IngestNewsNode,
     IngestPricesNode,
+    IngestTesouroDiretoNode,
 )
 from .portfolio_nodes import (
     ExportPortfolioPricesNode,
@@ -24,4 +26,6 @@ __all__ = [
     "IngestMacroNode",
     "IngestFundamentalsNode",
     "IngestNewsNode",
+    "IngestCVMNode",
+    "IngestTesouroDiretoNode",
 ]

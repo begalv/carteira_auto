@@ -322,9 +322,10 @@ class TestIngestNewsNode:
         assert node.dependencies == []
 
     def test_default_sources(self):
-        """Source default é newsapi."""
+        """Sources default incluem ddm e newsapi."""
         node = IngestNewsNode()
-        assert node._sources == ["newsapi"]
+        assert "ddm" in node._sources
+        assert "newsapi" in node._sources
 
     def test_custom_sources(self):
         """Aceita fontes customizadas."""
