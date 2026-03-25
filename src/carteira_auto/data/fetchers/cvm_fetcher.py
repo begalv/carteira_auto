@@ -118,6 +118,7 @@ class CVMFetcher:
         col_map = {
             "cnpj_cia": "cnpj",
             "denom_social": "razao_social",
+            "denom_pregao": "nome_pregao",  # nome abreviado de pregão (B3)
             "cod_cvm": "cod_cvm",
             "setor_ativ": "setor",
             "sit": "situacao",
@@ -135,14 +136,17 @@ class CVMFetcher:
 
         Estratégia:
             1. DDM /bolsa/lista-de-ativos (mais completo, retorna CNPJ diretamente)
-            2. CVM cadastro como fallback para tickers não encontrados no DDM
+            2. CVM cadastro via nome_pregao como fallback (quando DDM indisponível)
 
         Returns:
-            Dict {ticker: cnpj} — ex: {"PETR4": "33.000.167/0001-01"}
+            Dict {ticker: cnpj} — ex: {"PETR4": "33.000.167/0001-01"}.
+            Quando DDM está offline, as chaves são nomes de pregão normalizados
+            (ex: {"PETROBRAS": "33.000.167/0001-01"}) — use get_cnpj_by_ticker()
+            para lookup com heurística de prefixo.
         """
         ticker_cnpj: dict[str, str] = {}
 
-        # Fonte primária: DDM asset list
+        # Fonte primária: DDM asset list (retorna CNPJ por ticker diretamente)
         try:
             from carteira_auto.data.fetchers.ddm_fetcher import DDMFetcher
 
@@ -157,25 +161,62 @@ class CVMFetcher:
         except Exception as e:
             logger.warning(f"CVM: DDM indisponível para mapeamento — {e}")
 
-        # Fallback: CVM cadastro (tickers não mapeados pelo DDM)
+        # Fallback: CVM cadastro via nome_pregao (ex: "PETROBRAS" → CNPJ)
+        # Não há mapeamento direto ticker↔pregão, mas get_cnpj_by_ticker usa
+        # heurística de prefixo para correspondência parcial.
         if len(ticker_cnpj) < 10:
             try:
-                registry = self.get_company_registry()
-                # CVM não tem ticker diretamente, mas o cod_cvm pode cruzar
-                for _, row in registry.iterrows():
-                    # Tenta derivar ticker do cod_cvm (heurística limitada)
-                    cod = str(row.get("cod_cvm", "")).strip()
-                    cnpj = str(row.get("cnpj", "")).strip()
-                    if cod and cnpj:
-                        ticker_cnpj[f"COD{cod}"] = cnpj
-                logger.info(f"CVM: {len(ticker_cnpj)} entradas após fallback CVM")
+                pregao_map = self._build_pregao_cnpj_map()
+                ticker_cnpj.update(pregao_map)
+                logger.info(
+                    f"CVM: {len(ticker_cnpj)} entradas após fallback pregão CVM"
+                )
             except Exception as e:
                 logger.warning(f"CVM: falha no cadastro CVM — {e}")
 
         return ticker_cnpj
 
+    def _build_pregao_cnpj_map(self) -> dict[str, str]:
+        """Constrói mapeamento {nome_pregao_upper: cnpj} a partir do cadastro CVM.
+
+        Usado como fallback quando DDM está indisponível. As chaves são nomes de
+        pregão normalizados (ex: "PETROBRAS", "VALE", "BRADESCO"), não tickers B3.
+        A correspondência com tickers é feita via heurística de prefixo em
+        get_cnpj_by_ticker().
+
+        Returns:
+            Dict {nome_pregao_upper: cnpj} filtrado para companhias Ativas.
+        """
+        registry = self.get_company_registry()
+        result: dict[str, str] = {}
+
+        nome_col = "nome_pregao" if "nome_pregao" in registry.columns else None
+        if nome_col is None:
+            logger.warning("CVM: coluna denom_pregao ausente no cadastro")
+            return result
+
+        # Filtra apenas companhias ativas para reduzir ruído
+        ativas = registry
+        if "situacao" in registry.columns:
+            ativas = registry[registry["situacao"].str.upper().str.startswith("A")]
+
+        for _, row in ativas.iterrows():
+            nome = str(row.get(nome_col, "")).strip().upper()
+            cnpj = str(row.get("cnpj", "")).strip()
+            if nome and cnpj and nome != "NAN":
+                result[nome] = cnpj
+
+        logger.debug(f"CVM: {len(result)} entradas no mapa pregão→CNPJ")
+        return result
+
     def get_cnpj_by_ticker(self, ticker: str) -> str | None:
         """Retorna o CNPJ de uma empresa dado seu ticker B3.
+
+        Estratégia de lookup:
+            1. Ticker exato no mapa DDM (ex: "PETR4" → CNPJ)
+            2. Base do ticker sem sufixo numérico (ex: "PETR" → busca por prefixo)
+            3. Prefixo 4-char do ticker contra nomes de pregão CVM
+               (ex: "PETR" é prefixo de "PETROBRAS")
 
         Args:
             ticker: Código do ativo na B3 (ex: "PETR4", "VALE3", "HGLG11").
@@ -183,18 +224,27 @@ class CVMFetcher:
         Returns:
             CNPJ formatado (ex: "33.000.167/0001-01") ou None se não encontrado.
         """
-        # Normaliza: remove sufixo .SA se presente
         clean = ticker.upper().replace(".SA", "").strip()
         mapping = self.build_ticker_cnpj_map()
 
-        # Tenta ticker exato
+        # 1. Ticker exato (caso DDM disponível)
         if clean in mapping:
             return mapping[clean]
 
-        # Tenta base do ticker (sem dígito final: PETR4 → PETR)
+        # 2. Base do ticker sem dígito final: PETR4 → PETR
         base = clean.rstrip("0123456789F")
-        for mapped_ticker, cnpj in mapping.items():
-            if mapped_ticker.startswith(base) and len(mapped_ticker) <= len(clean) + 2:
+        for key, cnpj in mapping.items():
+            if key.startswith(base) and len(key) <= len(clean) + 2:
+                return cnpj
+
+        # 3. Heurística prefixo contra nomes de pregão CVM (fallback offline)
+        # Tenta match pelo prefixo de 4 letras do ticker contra início do nome pregão
+        prefix = base[:4] if len(base) >= 4 else base
+        for pregao_name, cnpj in mapping.items():
+            if pregao_name.startswith(prefix):
+                logger.debug(
+                    f"CVM: ticker '{clean}' mapeado via pregão '{pregao_name}' (heurística)"
+                )
                 return cnpj
 
         logger.debug(f"CVM: CNPJ não encontrado para ticker '{ticker}'")
