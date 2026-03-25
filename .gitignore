@@ -182,9 +182,9 @@ cython_debug/
 .abstra/
 
 # Visual Studio Code
-#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore 
+#  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore
-#  and can be added to the global gitignore or merged into this file. However, if you prefer, 
+#  and can be added to the global gitignore or merged into this file. However, if you prefer,
 #  you could uncomment the following to ignore the entire vscode folder
 # .vscode/
 
@@ -206,3 +206,46 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 .aider*
+
+# ============================================================================
+# carteira_auto — Regras específicas do projeto
+# ============================================================================
+
+# DataLake: bancos SQLite gerados localmente
+data/lake/*.db
+data/lake/*.sqlite
+data/lake/*.sqlite3
+
+# Parquet exports (dados reconstruíveis via fetchers)
+data/lake/*.parquet
+data/exports/
+data/outputs/reports/*.parquet
+*.parquet
+
+# Dados brutos baixados (reconstruíveis)
+data/raw/
+
+# Snapshots de portfolio (dados sensíveis do usuário)
+data/outputs/snapshots/*.json
+
+# Logs do sistema (gerados em runtime)
+data/outputs/logs/
+logs/
+*.log
+
+# Credenciais e segredos
+*.pem
+*.key
+*.p12
+*.pfx
+credentials.json
+service_account.json
+.secrets/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code worktrees (copias temporárias)
+.claude/worktrees/
