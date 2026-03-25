@@ -198,6 +198,18 @@ class Constants:
         "B3_BDR": r"^[A-Z]{4}34$",
         # ÍNDICES: ^ com 2 dígitos
         "B3_INDEX": r"^\^[A-Z]{2}$",  # ^BVSP, ^IFIX
+        # ── Formatos Yahoo Finance ──────────────────────────────────────────
+        # Ações B3 com sufixo .SA: PETR4.SA, VALE3.SA, HGLG11.SA
+        "YAHOO_BR": r"^[A-Z]{4}[34567]\.SA$",
+        "YAHOO_BR_FII": r"^[A-Z]{4}11\.SA$",
+        "YAHOO_BR_ETF": r"^[A-Z]{4}(11|39)\.SA$",
+        "YAHOO_BR_BDR": r"^[A-Z]{4}34\.SA$",
+        # Índices globais: ^GSPC, ^BVSP, ^FTSE, ^DJI, ^IXIC
+        "YAHOO_INDEX": r"^\^[A-Z]{2,6}$",
+        # Crypto: BTC-USD, ETH-USD, SOL-USD
+        "YAHOO_CRYPTO": r"^[A-Z]{2,5}-[A-Z]{2,4}$",
+        # Futuros: CL=F (petróleo), GC=F (ouro), ES=F (S&P)
+        "YAHOO_FUTURES": r"^[A-Z]{1,3}=F$",
     }
 
 
