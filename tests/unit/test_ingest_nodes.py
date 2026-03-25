@@ -203,9 +203,13 @@ class TestIngestMacroNode:
         # Deve inserir registros reais (2 indicadores × 2 datas = 4)
         assert count > 0
 
+    @patch("carteira_auto.data.fetchers.FREDFetcher")
+    @patch("carteira_auto.data.fetchers.DDMFetcher")
     @patch("carteira_auto.data.fetchers.IBGEFetcher", autospec=True)
     @patch("carteira_auto.data.fetchers.BCBFetcher", autospec=True)
-    def test_run_produz_contexto(self, MockBCB, MockIBGE, ctx_with_lake):
+    def test_run_produz_contexto(
+        self, MockBCB, MockIBGE, MockDDM, MockFRED, ctx_with_lake
+    ):
         """Run popula ingest_macro_count no contexto."""
         # Mock BCB
         mock_bcb = MockBCB.return_value
@@ -217,6 +221,14 @@ class TestIngestMacroNode:
         mock_ibge = MockIBGE.return_value
         mock_ibge.get_ipca.return_value = None
         mock_ibge.get_pib.return_value = None
+        # Mock DDM — sem dados
+        mock_ddm = MockDDM.return_value
+        mock_ddm.get_economic_indices.return_value = {}
+        mock_ddm.get_market_expectations.return_value = {}
+        # Mock FRED — sem API key configurada
+        mock_fred = MockFRED.return_value
+        mock_fred._api_key = None
+        mock_fred.get_macro_bundle.return_value = {}
 
         node = IngestMacroNode()
         ctx = node.run(ctx_with_lake)
