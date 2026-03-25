@@ -59,9 +59,9 @@ class TestGetCompanyRegistry:
     def test_retorna_dataframe(self, fetcher):
         """Retorna DataFrame com colunas normalizadas."""
         csv_content = (
-            "CNPJ_CIA;DENOM_SOCIAL;COD_CVM;SETOR_ATIV;SIT\n"
-            "33.000.167/0001-01;PETROLEO BRASILEIRO SA;9512;Petróleo;A\n"
-            "60.746.948/0001-12;ITAU UNIBANCO;14469;Financeiro;A\n"
+            "CNPJ_CIA;DENOM_SOCIAL;DENOM_COMERC;CD_CVM;SETOR_ATIV;SIT\n"
+            "33.000.167/0001-01;PETROLEO BRASILEIRO SA;PETROBRAS;9512;Petróleo;ATIVO\n"
+            "60.746.948/0001-12;BANCO BRADESCO SA;BRADESCO;906;Financeiro;ATIVO\n"
         )
         resp = _make_response(text=csv_content)
 
@@ -74,10 +74,10 @@ class TestGetCompanyRegistry:
         assert len(df) == 2
 
     def test_colunas_renomeadas(self, fetcher):
-        """Colunas CVM são renomeadas corretamente."""
+        """Colunas CVM são renomeadas corretamente (nomes reais do CSV: CD_CVM, DENOM_COMERC)."""
         csv_content = (
-            "CNPJ_CIA;DENOM_SOCIAL;COD_CVM;SETOR_ATIV;SIT\n"
-            "33.000.167/0001-01;PETROBRAS;9512;Petróleo;A\n"
+            "CNPJ_CIA;DENOM_SOCIAL;DENOM_COMERC;CD_CVM;SETOR_ATIV;SIT\n"
+            "33.000.167/0001-01;PETROLEO BRASILEIRO SA;PETROBRAS;9512;Petróleo;ATIVO\n"
         )
         resp = _make_response(text=csv_content)
 
@@ -87,6 +87,7 @@ class TestGetCompanyRegistry:
         assert set(df.columns) >= {
             "cnpj",
             "razao_social",
+            "nome_pregao",
             "cod_cvm",
             "setor",
             "situacao",
@@ -94,7 +95,7 @@ class TestGetCompanyRegistry:
 
     def test_url_correta(self, fetcher):
         """Faz request para a URL do cadastro CVM."""
-        csv_content = "CNPJ_CIA;DENOM_SOCIAL;COD_CVM;SETOR_ATIV;SIT\n"
+        csv_content = "CNPJ_CIA;DENOM_SOCIAL;DENOM_COMERC;CD_CVM;SETOR_ATIV;SIT\n"
         resp = _make_response(text=csv_content)
 
         with patch.object(fetcher, "_fetch_raw", return_value=resp) as mock_fetch:
@@ -134,8 +135,8 @@ class TestBuildTickerCnpjMap:
     def test_fallback_cvm_quando_ddm_falha(self, fetcher):
         """Usa CVM como fallback quando DDM lança exceção."""
         csv_content = (
-            "CNPJ_CIA;DENOM_SOCIAL;COD_CVM;SETOR_ATIV;SIT\n"
-            "33.000.167/0001-01;PETROBRAS;9512;Petróleo;A\n"
+            "CNPJ_CIA;DENOM_SOCIAL;DENOM_COMERC;CD_CVM;SETOR_ATIV;SIT\n"
+            "33.000.167/0001-01;PETROLEO BRASILEIRO SA;PETROBRAS;9512;Petróleo;ATIVO\n"
         )
         resp = _make_response(text=csv_content)
 
@@ -148,7 +149,7 @@ class TestBuildTickerCnpjMap:
         ):
             mapping = fetcher.build_ticker_cnpj_map()
 
-        # Fallback usa cod_cvm como chave (heurística)
+        # Fallback usa nome_pregao (denom_comerc) como chave (heurística)
         assert isinstance(mapping, dict)
 
     def test_tickers_normalizados_maiusculos(self, fetcher):
