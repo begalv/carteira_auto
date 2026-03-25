@@ -51,27 +51,37 @@ logger = get_logger(__name__)
 # URLs dos datasets no Tesouro Transparente (CKAN)
 _BASE_URL = "https://www.tesourotransparente.gov.br/ckan/dataset"
 
-# Taxas ofertadas no dia (preços de compra/venda atuais)
+# Taxas e histórico completo (mesmo arquivo, desde 2002 até hoje)
+# Dataset: taxas-dos-titulos-ofertados-pelo-tesouro-direto (CKAN)
+# Atualizado conforme package_show em 2026-03-25 — UUIDs mudaram na migração da plataforma
 _URL_TAXAS_HOJE = (
     "https://www.tesourotransparente.gov.br/ckan/dataset/"
-    "df56aa42-484a-4a53-8184-7ebd8700c6f4/resource/"
-    "796d2059-14e9-44e3-80c9-ca2e93d4d793/download/PrecoTaxaTesouroDireto.csv"
+    "df56aa42-484a-4a59-8184-7676580c81e3/resource/"
+    "796d2059-14e9-44e3-80c9-2d9e30b405c1/download/precotaxatesourodireto.csv"
 )
 
-# Histórico completo de preços e taxas (desde 2002)
-_URL_HISTORICO = (
-    "https://www.tesourotransparente.gov.br/ckan/dataset/"
-    "df56aa42-484a-4a53-8184-7ebd8700c6f4/resource/"
-    "796d2059-14e9-44e3-80c9-ca2e93d4d793/download/PrecoTaxaTesouroDireto.csv"
-)
+# Histórico completo de preços e taxas (desde 2002) — mesmo arquivo
+_URL_HISTORICO = _URL_TAXAS_HOJE
 
 # Mapeamento: tipo normalizado → substring no campo "Tipo Titulo"
+# Mapeamento: tipo normalizado → substring no campo "Tipo Titulo" do CSV
+# Nomes migrados para o padrão "Tesouro X" em 2025 (plataforma CKAN atualizada).
+# Também suporta nomes antigos (LFT, NTN-B, etc.) via _TIPO_MAP_LEGADO.
 _TIPO_MAP = {
-    "LFT": "LFT",  # Tesouro Selic
-    "NTN-B": "NTN-B Principal",  # Tesouro IPCA+ sem cupom
-    "NTN-B CUPOM": "NTN-B",  # Tesouro IPCA+ com cupom
-    "LTN": "LTN",  # Tesouro Prefixado sem cupom
-    "NTN-F": "NTN-F",  # Tesouro Prefixado com cupom
+    "LFT": "Tesouro Selic",
+    "NTN-B": "Tesouro IPCA+",  # sem cupom — nome exato, distingue de "com Juros"
+    "NTN-B CUPOM": "Tesouro IPCA+ com Juros Semestrais",
+    "LTN": "Tesouro Prefixado",  # sem cupom — nome exato
+    "NTN-F": "Tesouro Prefixado com Juros Semestrais",
+}
+
+# Nomes legados (CSV antigo, pré-2025) — para retrocompatibilidade com testes e dados locais
+_TIPO_MAP_LEGADO = {
+    "LFT": "LFT",
+    "NTN-B": "NTN-B Principal",
+    "NTN-B CUPOM": "NTN-B",
+    "LTN": "LTN",
+    "NTN-F": "NTN-F",
 }
 
 # Colunas do CSV do Tesouro (em português, com separador ";")
@@ -204,16 +214,27 @@ class TesouroDiretoFetcher:
         if df.empty or "tipo" not in df.columns:
             return df
 
-        subtipo = _TIPO_MAP[tipo_upper]
+        # Detecta se o CSV usa nomenclatura nova ("Tesouro Selic") ou legada ("LFT")
+        sample_tipos = set(df["tipo"].dropna().unique())
+        usa_nomenclatura_nova = any("Tesouro" in t for t in sample_tipos)
+        mapa = _TIPO_MAP if usa_nomenclatura_nova else _TIPO_MAP_LEGADO
+        subtipo = mapa[tipo_upper]
 
         if tipo_upper in ("NTN-B", "NTN-B CUPOM"):
-            # Distingue NTN-B com e sem cupom
-            if tipo_upper == "NTN-B":
-                mask = df["tipo"].str.contains("NTN-B Principal", na=False)
+            if usa_nomenclatura_nova:
+                # Matching exato: "Tesouro IPCA+" ≠ "Tesouro IPCA+ com Juros Semestrais"
+                mask = df["tipo"] == subtipo
             else:
-                mask = df["tipo"].str.contains("NTN-B", na=False) & ~df[
-                    "tipo"
-                ].str.contains("Principal", na=False)
+                # Legado: "NTN-B Principal" vs "NTN-B" (sem Principal)
+                if tipo_upper == "NTN-B":
+                    mask = df["tipo"].str.contains("NTN-B Principal", na=False)
+                else:
+                    mask = df["tipo"].str.contains("NTN-B", na=False) & ~df[
+                        "tipo"
+                    ].str.contains("Principal", na=False)
+        elif tipo_upper in ("LTN",) and usa_nomenclatura_nova:
+            # "Tesouro Prefixado" ≠ "Tesouro Prefixado com Juros Semestrais"
+            mask = df["tipo"] == subtipo
         else:
             mask = df["tipo"].str.contains(subtipo, na=False)
 
