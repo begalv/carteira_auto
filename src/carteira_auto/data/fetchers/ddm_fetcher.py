@@ -6,12 +6,14 @@ Auth: Bearer token via header Authorization.
 Formato: JSON.
 
 Endpoints principais:
-    - /empresas/*: dados de empresas (balanços, dividendos, indicadores)
-    - /bolsa/*: cotações, índices, risco
+    - /empresas/*: dados de empresas (balanços, DRE, fluxo de caixa, indicadores)
+    - /bolsa/*: cotações, índices, risco, investidores estrangeiros
     - /fiis/*: FIIs e dividendos
-    - /titulos-publicos/*: Tesouro Direto
-    - /macro/*: índices econômicos, Focus, curvas de juros
-    - /moedas/*: câmbio
+    - /fundos-de-investimento/*: fundos de investimento
+    - /titulos-publicos/*: Tesouro Direto (preços, histórico)
+    - /macro/*: índices econômicos, Focus, expectativas, curvas de juros
+    - /moedas/*: câmbio, lista de moedas
+    - /noticias/*: últimas notícias por ativo
 """
 
 import requests
@@ -114,6 +116,90 @@ class DDMFetcher:
         """
         return self._get("/empresas/balancos", params={"ativo": ticker})
 
+    @log_execution
+    @cache_result(ttl_seconds=1800)
+    def get_income_statement(self, ticker: str) -> list[dict]:
+        """Demonstrativo de Resultados (DRE) de uma empresa.
+
+        Retorna série histórica de receita, lucro bruto, EBITDA, lucro líquido
+        e demais linhas do DRE.
+
+        Args:
+            ticker: Código do ativo (ex: "PETR4").
+
+        Returns:
+            Lista de demonstrativos de resultado por período.
+        """
+        return self._get("/empresas/resultados", params={"ativo": ticker})
+
+    @log_execution
+    @cache_result(ttl_seconds=1800)
+    def get_cash_flow(self, ticker: str) -> list[dict]:
+        """Fluxo de caixa de uma empresa.
+
+        Retorna fluxo operacional, de investimento e de financiamento.
+        Útil para calcular FCF (Free Cash Flow) e qualidade de caixa.
+
+        Args:
+            ticker: Código do ativo (ex: "VALE3").
+
+        Returns:
+            Lista de fluxos de caixa por período.
+        """
+        return self._get("/empresas/fluxos-de-caixa", params={"ativo": ticker})
+
+    @log_execution
+    @cache_result(ttl_seconds=1800)
+    def get_shares(self, ticker: str) -> list[dict]:
+        """Número de ações de uma empresa.
+
+        Retorna quantidade de ações ordinárias, preferenciais e total,
+        incluindo ações em tesouraria.
+
+        Args:
+            ticker: Código do ativo.
+
+        Returns:
+            Lista com histórico do número de ações.
+        """
+        return self._get("/empresas/numero-de-acoes", params={"ativo": ticker})
+
+    @log_execution
+    @cache_result(ttl_seconds=1800)
+    def get_company_assets(self, ticker: str) -> list[dict]:
+        """Ativos de uma empresa (composição do ativo total).
+
+        Args:
+            ticker: Código do ativo.
+
+        Returns:
+            Lista com composição dos ativos por período.
+        """
+        return self._get("/empresas/ativos-de-uma-empresa", params={"ativo": ticker})
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_corporate_events(self, ticker: str) -> list[dict]:
+        """Eventos corporativos (desdobramentos e bonificações).
+
+        Retorna histórico de splits, inplits e bonificações para
+        ajuste de preços históricos.
+
+        Args:
+            ticker: Código do ativo.
+
+        Returns:
+            Lista de eventos corporativos.
+        """
+        splits = self._get("/empresas/desdobramentos", params={"ativo": ticker})
+        bonuses = self._get("/empresas/bonificacoes", params={"ativo": ticker})
+        # Combina e marca tipo
+        for e in splits:
+            e.setdefault("tipo", "desdobramento")
+        for e in bonuses:
+            e.setdefault("tipo", "bonificacao")
+        return splits + bonuses
+
     # ============================================================================
     # BOLSA
     # ============================================================================
@@ -149,6 +235,45 @@ class DDMFetcher:
         """Rendimento de dividendos de um ativo."""
         return self._get("/bolsa/rendimento-de-dividendos", params={"ativo": ticker})
 
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_asset_list(self) -> list[dict]:
+        """Lista completa de ativos negociados na B3.
+
+        Retorna todos os ativos disponíveis com metadados (ticker, nome, tipo,
+        CNPJ quando disponível). Usado para mapeamento ticker→CNPJ.
+
+        Returns:
+            Lista de ativos com metadados.
+        """
+        return self._get("/bolsa/lista-de-ativos")
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_index_details(self, index: str) -> dict:
+        """Detalhes de um índice (composição, setor, retornos).
+
+        Args:
+            index: Código do índice (ex: "IBOV", "IFIX", "SMLL").
+
+        Returns:
+            Dict com detalhes e composição do índice.
+        """
+        return self._get("/bolsa/detalhes-de-um-indice", params={"indice": index})
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_foreign_investors(self) -> list[dict]:
+        """Fluxo de investidores estrangeiros na B3.
+
+        Retorna dados de compra/venda de estrangeiros — útil como
+        indicador de sentimento institucional.
+
+        Returns:
+            Lista com histórico de fluxo estrangeiro.
+        """
+        return self._get("/bolsa/investidores-estrangeiros")
+
     # ============================================================================
     # FIIs
     # ============================================================================
@@ -172,6 +297,31 @@ class DDMFetcher:
         """
         return self._get("/fiis/dividendos", params={"ativo": ticker})
 
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_fund_list(self) -> list[dict]:
+        """Lista de fundos de investimento disponíveis.
+
+        Returns:
+            Lista de fundos com metadados (nome, CNPJ, tipo).
+        """
+        return self._get("/fundos-de-investimento/lista-de-fundos")
+
+    @log_execution
+    @cache_result(ttl_seconds=900)
+    def get_fund_quotes(self, fund_id: str) -> list[dict]:
+        """Histórico de cotas de um fundo de investimento.
+
+        Args:
+            fund_id: Identificador do fundo (CNPJ ou código DDM).
+
+        Returns:
+            Lista de cotas históricas.
+        """
+        return self._get(
+            "/fundos-de-investimento/historico-de-cotacoes", params={"fundo": fund_id}
+        )
+
     # ============================================================================
     # TÍTULOS PÚBLICOS
     # ============================================================================
@@ -187,6 +337,38 @@ class DDMFetcher:
     def get_treasury_prices(self) -> list[dict]:
         """Preços atuais do Tesouro Direto."""
         return self._get("/titulos-publicos/precos-do-tesouro-direto")
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_all_treasury_list(self) -> list[dict]:
+        """Lista completa de todos os títulos públicos disponíveis.
+
+        Inclui títulos não disponíveis no Tesouro Direto (ex: emissões antigas).
+
+        Returns:
+            Lista de títulos públicos com metadados.
+        """
+        return self._get("/titulos-publicos/lista-de-titulos-publicos")
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_treasury_price_history(self, title: str | None = None) -> list[dict]:
+        """Histórico de preços de títulos públicos.
+
+        Fundamental para construir a curva de juros histórica e avaliar
+        LFTs, NTN-Bs e LTNs ao longo do tempo.
+
+        Args:
+            title: Nome/código do título (ex: "LFT 2029", "NTN-B 2035").
+                   Se None, retorna todos os títulos.
+
+        Returns:
+            Lista com histórico de preços e taxas.
+        """
+        params = {}
+        if title:
+            params["titulo"] = title
+        return self._get("/titulos-publicos/historico-de-precos", params=params or None)
 
     # ============================================================================
     # MACRO
@@ -210,6 +392,20 @@ class DDMFetcher:
         """Curvas de juros."""
         return self._get("/macro/curvas-de-juros")
 
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_market_expectations(self) -> list[dict]:
+        """Expectativas do mercado para indicadores macroeconômicos.
+
+        Retorna o consenso de mercado (mediana, média, desvio) para
+        SELIC, IPCA, PIB, câmbio e outros indicadores com horizonte
+        de até 5 anos. Complementa o Boletim Focus.
+
+        Returns:
+            Lista de expectativas por indicador e horizonte temporal.
+        """
+        return self._get("/macro/expectativas")
+
     # ============================================================================
     # MOEDAS
     # ============================================================================
@@ -232,6 +428,40 @@ class DDMFetcher:
             "/moedas/conversao",
             params={"de": from_currency, "para": to_currency},
         )
+
+    @log_execution
+    @cache_result(ttl_seconds=86400)
+    def get_currencies(self) -> list[dict]:
+        """Lista de moedas disponíveis para conversão.
+
+        Returns:
+            Lista de moedas com código e nome.
+        """
+        return self._get("/moedas/lista-de-moedas")
+
+    # ============================================================================
+    # NOTÍCIAS
+    # ============================================================================
+
+    @log_execution
+    @cache_result(ttl_seconds=1800)
+    def get_news(self, ticker: str | None = None) -> list[dict]:
+        """Últimas notícias do mercado, opcionalmente filtradas por ativo.
+
+        Principal fonte de dados para análise de sentimento (Fase 5 NLP).
+        Retorna títulos, resumos, fontes e timestamps.
+
+        Args:
+            ticker: Código do ativo para filtrar notícias (ex: "PETR4").
+                    Se None, retorna notícias gerais de mercado.
+
+        Returns:
+            Lista de artigos com título, resumo, fonte e data.
+        """
+        params = {}
+        if ticker:
+            params["ativo"] = ticker
+        return self._get("/noticias/ultimas-noticias", params=params or None)
 
     # ============================================================================
     # INTERNOS
