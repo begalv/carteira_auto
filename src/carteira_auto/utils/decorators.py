@@ -318,26 +318,48 @@ def cache_by_ticker(ttl_seconds: int = 300, max_size: int = 1000):
                 cache.pop(oldest_ticker, None)
 
         @functools.wraps(func)
-        def wrapper(ticker: str, *args, **kwargs):
+        def wrapper(*args, **kwargs):
+            # Detecta se é método de instância (primeiro arg não é str).
+            # Nesse caso o ticker está em args[1]; args[0] é `self`.
+            if args and not isinstance(args[0], str):
+                ticker_key = (
+                    args[1]
+                    if len(args) > 1
+                    else kwargs.get("symbol")
+                    or kwargs.get("ticker")
+                    or kwargs.get("symbols")
+                )
+            else:
+                ticker_key = (
+                    args[0]
+                    if args
+                    else kwargs.get("symbol")
+                    or kwargs.get("ticker")
+                    or kwargs.get("symbols")
+                )
+
             # Limpa periodicamente (a cada 10 chamadas)
             if len(cache) % 10 == 0:
                 _cleanup()
 
-            # Verifica cache
-            if ticker in cache:
-                cached_time, result = cache[ticker]
-                if datetime.now() - cached_time < timedelta(seconds=ttl_seconds):
-                    # Atualiza LRU (move para o final)
-                    cache_order.remove(ticker)
-                    cache_order.append(ticker)
-                    return result
+            if ticker_key is not None:
+                # Verifica cache
+                if ticker_key in cache:
+                    cached_time, result = cache[ticker_key]
+                    if datetime.now() - cached_time < timedelta(seconds=ttl_seconds):
+                        # Atualiza LRU (move para o final)
+                        if ticker_key in cache_order:
+                            cache_order.remove(ticker_key)
+                        cache_order.append(ticker_key)
+                        return result
 
             # Executa função
-            result = func(ticker, *args, **kwargs)
+            result = func(*args, **kwargs)
 
             # Armazena no cache
-            cache[ticker] = (datetime.now(), result)
-            cache_order.append(ticker)
+            if ticker_key is not None:
+                cache[ticker_key] = (datetime.now(), result)
+                cache_order.append(ticker_key)
 
             return result
 
