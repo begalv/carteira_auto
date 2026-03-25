@@ -8,7 +8,6 @@ from pydantic import BaseModel
 class Asset(BaseModel):
     """Ativo na carteira — mapeia uma linha da aba 'Carteira'."""
 
-    fator: str
     ticker: str
     nome: str
     classe: Optional[str] = None
@@ -30,7 +29,6 @@ class Asset(BaseModel):
     preco_atual: Optional[float] = None
     preco_medio: Optional[float] = None
     n_cotas_atual: Optional[float] = None
-    funcao_dialetica: Optional[str] = None
 
 
 class SoldAsset(BaseModel):
