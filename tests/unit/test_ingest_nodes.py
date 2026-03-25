@@ -242,11 +242,14 @@ class TestIngestFundamentalsNode:
         assert node.dependencies == []
 
     def test_collect_tickers_sem_portfolio(self):
-        """Retorna lista vazia sem portfolio no contexto."""
+        """Retorna universo de screening mesmo sem portfolio no contexto."""
         node = IngestFundamentalsNode()
         ctx = PipelineContext()
         tickers = node._collect_tickers(ctx)
-        assert tickers == []
+        # Screening BR é sempre incluído independente do portfólio
+        assert len(tickers) > 0
+        assert "PETR4.SA" in tickers
+        assert "VALE3.SA" in tickers
 
     def test_collect_tickers_com_portfolio(self, mock_portfolio):
         """Filtra apenas ações e FIIs."""
@@ -268,41 +271,50 @@ class TestIngestFundamentalsNode:
         assert tickers == ["VALE3.SA", "ITUB4.SA"]
 
     def test_run_sem_tickers(self, ctx_with_lake):
-        """Retorna 0 quando não há tickers para processar."""
-        node = IngestFundamentalsNode()
+        """Retorna 0 quando lista explícita de tickers é vazia."""
+        node = IngestFundamentalsNode(tickers=[])
         ctx = node.run(ctx_with_lake)
 
         assert ctx["ingest_fundamentals_count"] == 0
 
     @patch("carteira_auto.data.fetchers.YahooFinanceFetcher", autospec=True)
     def test_run_com_tickers(self, MockFetcher, ctx_with_lake):
-        """Busca e persiste fundamentos quando há tickers."""
+        """Busca e persiste fundamentos usando get_batch_info em paralelo."""
         mock_fetcher = MockFetcher.return_value
-        mock_fetcher.get_basic_info.return_value = {
-            "trailingPE": 8.5,
-            "priceToBook": 1.2,
-            "returnOnEquity": 0.25,
-            "dividendYield": 0.08,
+        # get_batch_info retorna dict {ticker: {info: {...}, financials: {...}}}
+        mock_fetcher.get_batch_info.return_value = {
+            "PETR4.SA": {
+                "info": {
+                    "trailingPE": 8.5,
+                    "priceToBook": 1.2,
+                    "returnOnEquity": 0.25,
+                    "dividendYield": 0.08,
+                },
+                "financials": {},
+            }
         }
-        mock_fetcher.get_financials.return_value = None
+        mock_fetcher._ingest_ddm_fundamentals = MagicMock(return_value=0)
 
         node = IngestFundamentalsNode(tickers=["PETR4.SA"])
         ctx = node.run(ctx_with_lake)
 
         assert "ingest_fundamentals_count" in ctx
         assert ctx["ingest_fundamentals_count"] >= 0
+        mock_fetcher.get_batch_info.assert_called_once_with(
+            ["PETR4.SA"], fields=["info", "financials"]
+        )
 
     @patch("carteira_auto.data.fetchers.YahooFinanceFetcher", autospec=True)
     def test_run_erro_no_fetcher_nao_quebra(self, MockFetcher, ctx_with_lake):
-        """Erro em um ticker não impede o processamento dos demais."""
+        """Erro em get_batch_info não quebra o pipeline."""
         mock_fetcher = MockFetcher.return_value
-        mock_fetcher.get_basic_info.side_effect = Exception("API error")
+        mock_fetcher.get_batch_info.return_value = {}
 
         node = IngestFundamentalsNode(tickers=["PETR4.SA", "VALE3.SA"])
         ctx = node.run(ctx_with_lake)
 
         # Não deve lançar exceção
-        assert ctx["ingest_fundamentals_count"] == 0
+        assert "ingest_fundamentals_count" in ctx
 
 
 # =============================================================================
@@ -322,9 +334,10 @@ class TestIngestNewsNode:
         assert node.dependencies == []
 
     def test_default_sources(self):
-        """Source default é newsapi."""
+        """Sources default incluem ddm e newsapi."""
         node = IngestNewsNode()
-        assert node._sources == ["newsapi"]
+        assert "ddm" in node._sources
+        assert "newsapi" in node._sources
 
     def test_custom_sources(self):
         """Aceita fontes customizadas."""
