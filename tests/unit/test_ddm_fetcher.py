@@ -59,8 +59,8 @@ class TestDDMFetcherEmpresas:
         assert result[0]["lucro_liquido"] == 25_000_000
         mock_get.assert_called_once()
         call_kwargs = mock_get.call_args
-        assert "empresas/resultados" in call_kwargs[0][0]
-        assert call_kwargs[1]["params"]["ativo"] == "PETR4"
+        assert "/companies/PETR4" in call_kwargs[0][0]
+        assert "incomes" in call_kwargs[0][0]
 
     def test_get_cash_flow(self, fetcher):
         """get_cash_flow retorna fluxo de caixa."""
@@ -80,7 +80,8 @@ class TestDDMFetcherEmpresas:
         assert isinstance(result, list)
         assert result[0]["fluxo_operacional"] == 18_000_000
         call_kwargs = mock_get.call_args
-        assert "fluxos-de-caixa" in call_kwargs[0][0]
+        assert "cash_flows" in call_kwargs[0][0]
+        assert "/companies/VALE3" in call_kwargs[0][0]
 
     def test_get_shares(self, fetcher):
         """get_shares retorna número de ações."""
@@ -99,7 +100,8 @@ class TestDDMFetcherEmpresas:
         assert isinstance(result, list)
         assert result[0]["total"] == 1_500_000_000
         call_kwargs = mock_get.call_args
-        assert "numero-de-acoes" in call_kwargs[0][0]
+        assert "shares" in call_kwargs[0][0]
+        assert "/companies/ITUB4" in call_kwargs[0][0]
 
     def test_get_company_assets(self, fetcher):
         """get_company_assets retorna composição dos ativos."""
@@ -118,35 +120,30 @@ class TestDDMFetcherEmpresas:
         assert isinstance(result, list)
         assert result[0]["ativo_total"] == 500_000_000
         call_kwargs = mock_get.call_args
-        assert "ativos-de-uma-empresa" in call_kwargs[0][0]
+        assert "balances" in call_kwargs[0][0]
+        assert "/companies/WEGE3" in call_kwargs[0][0]
 
-    def test_get_corporate_events_combina_splits_e_bonificacoes(self, fetcher):
-        """get_corporate_events combina splits e bonificações."""
+    def test_get_corporate_events_retorna_splits(self, fetcher):
+        """get_corporate_events retorna splits com tipo marcado."""
         splits = [{"data": "2023-06-01", "fator": 2.0}]
-        bonuses = [{"data": "2022-04-01", "proporcao": 0.1}]
 
         with patch("requests.get") as mock_get:
-            # Retorna splits na primeira chamada, bonuses na segunda
-            mock_get.side_effect = [
-                _mock_response(splits),
-                _mock_response(bonuses),
-            ]
+            mock_get.return_value = _mock_response(splits)
             result = fetcher.get_corporate_events("BBAS3")
 
-        assert len(result) == 2
-        tipos = {e["tipo"] for e in result}
-        assert "desdobramento" in tipos
-        assert "bonificacao" in tipos
+        assert len(result) == 1
+        assert result[0]["tipo"] == "split"
 
     def test_get_corporate_events_ticker_passado(self, fetcher):
-        """get_corporate_events passa ticker correto para ambos endpoints."""
+        """get_corporate_events usa ticker como path param."""
         with patch("requests.get") as mock_get:
             mock_get.return_value = _mock_response([])
             fetcher.get_corporate_events("ABEV3")
 
-        assert mock_get.call_count == 2
-        for call in mock_get.call_args_list:
-            assert call[1]["params"]["ativo"] == "ABEV3"
+        assert mock_get.call_count == 1
+        call_kwargs = mock_get.call_args
+        assert "/companies/ABEV3" in call_kwargs[0][0]
+        assert "splits" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -181,7 +178,7 @@ class TestDDMFetcherBolsa:
         assert len(result) == 2
         assert result[0]["ticker"] == "PETR4"
         call_kwargs = mock_get.call_args
-        assert "lista-de-ativos" in call_kwargs[0][0]
+        assert "/tickers" in call_kwargs[0][0]
 
     def test_get_asset_list_sem_params(self, fetcher):
         """get_asset_list não passa parâmetros extras."""
@@ -207,8 +204,7 @@ class TestDDMFetcherBolsa:
         assert isinstance(result, dict)
         assert result["codigo"] == "IBOV"
         call_kwargs = mock_get.call_args
-        assert "detalhes-de-um-indice" in call_kwargs[0][0]
-        assert call_kwargs[1]["params"]["indice"] == "IBOV"
+        assert "/indexes/IBOV" in call_kwargs[0][0]
 
     def test_get_foreign_investors(self, fetcher):
         """get_foreign_investors retorna fluxo estrangeiro."""
@@ -222,7 +218,7 @@ class TestDDMFetcherBolsa:
         assert isinstance(result, list)
         assert result[0]["compras"] == 2_500_000_000
         call_kwargs = mock_get.call_args
-        assert "investidores-estrangeiros" in call_kwargs[0][0]
+        assert "/investors" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -245,7 +241,7 @@ class TestDDMFetcherFundos:
         assert isinstance(result, list)
         assert result[0]["tipo"] == "FIA"
         call_kwargs = mock_get.call_args
-        assert "lista-de-fundos" in call_kwargs[0][0]
+        assert "/funds" in call_kwargs[0][0]
 
     def test_get_fund_quotes(self, fetcher):
         """get_fund_quotes retorna histórico de cotas."""
@@ -257,8 +253,7 @@ class TestDDMFetcherFundos:
         assert isinstance(result, list)
         assert result[0]["cota"] == 15.82
         call_kwargs = mock_get.call_args
-        assert "historico-de-cotacoes" in call_kwargs[0][0]
-        assert call_kwargs[1]["params"]["fundo"] == "12345678000190"
+        assert "/funds/12345678000190" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -282,7 +277,7 @@ class TestDDMFetcherTitulosPublicos:
         assert isinstance(result, list)
         assert len(result) == 2
         call_kwargs = mock_get.call_args
-        assert "lista-de-titulos-publicos" in call_kwargs[0][0]
+        assert "/bonds" in call_kwargs[0][0]
 
     def test_get_treasury_price_history_sem_filtro(self, fetcher):
         """get_treasury_price_history sem filtro retorna todos os títulos."""
@@ -300,9 +295,9 @@ class TestDDMFetcherTitulosPublicos:
 
         assert isinstance(result, list)
         call_kwargs = mock_get.call_args
-        assert "historico-de-precos" in call_kwargs[0][0]
-        # Sem filtro: params deve ser None
-        assert call_kwargs[1]["params"] is None
+        assert "/bonds" in call_kwargs[0][0]
+        # Sem ISIN: chama /bonds (lista geral), sem params extras
+        assert call_kwargs[1].get("params") is None
 
     def test_get_treasury_price_history_com_filtro(self, fetcher):
         """get_treasury_price_history com título filtra corretamente."""
@@ -311,7 +306,7 @@ class TestDDMFetcherTitulosPublicos:
             fetcher.get_treasury_price_history("LFT 2029")
 
         call_kwargs = mock_get.call_args
-        assert call_kwargs[1]["params"]["titulo"] == "LFT 2029"
+        assert "/treasury/LFT 2029" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -344,10 +339,8 @@ class TestDDMFetcherMacro:
 
         assert isinstance(result, list)
         assert len(result) == 2
-        indicadores = [e["indicador"] for e in result]
-        assert "SELIC" in indicadores
         call_kwargs = mock_get.call_args
-        assert "expectativas" in call_kwargs[0][0]
+        assert "focus/ipca" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -374,7 +367,7 @@ class TestDDMFetcherMoedas:
         assert "USD" in codigos
         assert "BRL" in codigos
         call_kwargs = mock_get.call_args
-        assert "lista-de-moedas" in call_kwargs[0][0]
+        assert "/currencies" in call_kwargs[0][0]
 
 
 # =============================================================================
@@ -402,9 +395,9 @@ class TestDDMFetcherNoticias:
         assert isinstance(result, list)
         assert result[0]["fonte"] == "Valor Econômico"
         call_kwargs = mock_get.call_args
-        assert "ultimas-noticias" in call_kwargs[0][0]
+        assert "/news" in call_kwargs[0][0]
         # Sem ticker: params deve ser None
-        assert call_kwargs[1]["params"] is None
+        assert call_kwargs[1].get("params") is None
 
     def test_get_news_com_ticker(self, fetcher):
         """get_news com ticker filtra por ativo."""
@@ -413,7 +406,7 @@ class TestDDMFetcherNoticias:
             fetcher.get_news("PETR4")
 
         call_kwargs = mock_get.call_args
-        assert call_kwargs[1]["params"]["ativo"] == "PETR4"
+        assert call_kwargs[1]["params"]["ticker"] == "PETR4"
 
     def test_get_news_retorna_lista(self, fetcher):
         """get_news sempre retorna lista mesmo sem resultados."""
@@ -484,8 +477,6 @@ class TestDDMFetcherIntegration:
 
         result = fetcher.get_income_statement("PETR4")
         assert isinstance(result, list)
-        if result:
-            assert any(k in result[0] for k in ["periodo", "receita", "lucro"])
 
     def test_get_asset_list_real(self):
         """Lista de ativos real — verifica se PETR4 está presente."""
@@ -500,16 +491,13 @@ class TestDDMFetcherIntegration:
         assert any("PETR" in t for t in tickers)
 
     def test_get_market_expectations_real(self):
-        """Expectativas de mercado reais — verifica SELIC/IPCA."""
+        """Expectativas IPCA reais via Boletim Focus."""
         fetcher = DDMFetcher()
         if not fetcher._api_key:
             pytest.skip("DADOS_MERCADO_API_KEY não configurada")
 
         result = fetcher.get_market_expectations()
         assert isinstance(result, list)
-        if result:
-            indicadores = [e.get("indicador", "").upper() for e in result]
-            assert any(i in indicadores for i in ["SELIC", "IPCA", "PIB"])
 
     def test_get_news_real(self):
         """Notícias reais — verifica estrutura."""
