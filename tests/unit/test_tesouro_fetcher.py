@@ -27,13 +27,13 @@ def fetcher():
 _CSV_TESOURO = (
     "Tipo Titulo;Data Vencimento;Data Base;Taxa Compra Manha;Taxa Venda Manha;"
     "PU Compra Manha;PU Venda Manha;PU Base Manha\n"
-    "LFT;01/03/2029;24/03/2025;0,12;0,13;14500,00;14550,00;14510,00\n"
-    "NTN-B Principal;15/05/2035;24/03/2025;7,25;7,30;3200,00;3210,00;3205,00\n"
-    "NTN-B;15/08/2040;24/03/2025;6,80;6,85;4100,00;4110,00;4105,00\n"
-    "LTN;01/01/2027;24/03/2025;13,50;13,55;850,00;851,00;850,50\n"
-    "NTN-F;01/01/2033;24/03/2025;13,20;13,25;1050,00;1055,00;1052,00\n"
+    "Tesouro Selic;01/03/2029;24/03/2025;0,12;0,13;14500,00;14550,00;14510,00\n"
+    "Tesouro IPCA+;15/05/2035;24/03/2025;7,25;7,30;3200,00;3210,00;3205,00\n"
+    "Tesouro IPCA+ com Juros Semestrais;15/08/2040;24/03/2025;6,80;6,85;4100,00;4110,00;4105,00\n"
+    "Tesouro Prefixado;01/01/2027;24/03/2025;13,50;13,55;850,00;851,00;850,50\n"
+    "Tesouro Prefixado com Juros Semestrais;01/01/2033;24/03/2025;13,20;13,25;1050,00;1055,00;1052,00\n"
     # Linha de data anterior para testar filtro de última data
-    "LFT;01/03/2029;23/03/2025;0,11;0,12;14490,00;14540,00;14500,00\n"
+    "Tesouro Selic;01/03/2029;23/03/2025;0,11;0,12;14490,00;14540,00;14500,00\n"
 )
 
 
@@ -136,45 +136,47 @@ class TestGetPriceHistoryByType:
     """Testes para get_price_history_by_type."""
 
     def test_filtra_lft(self, fetcher):
-        """Filtra apenas LFT."""
+        """Filtra apenas LFT (Tesouro Selic)."""
         resp = _make_response(_CSV_TESOURO)
 
         with patch.object(fetcher, "_fetch_raw", return_value=resp):
             df = fetcher.get_price_history_by_type("LFT")
 
         assert len(df) > 0
-        assert df["tipo"].str.contains("LFT").all()
+        assert df["tipo"].str.contains("Selic").all()
 
     def test_filtra_ntnb_principal(self, fetcher):
-        """Filtra NTN-B Principal (sem cupom)."""
+        """Filtra NTN-B Principal (Tesouro IPCA+ sem cupom)."""
         resp = _make_response(_CSV_TESOURO)
 
         with patch.object(fetcher, "_fetch_raw", return_value=resp):
             df = fetcher.get_price_history_by_type("NTN-B")
 
         assert len(df) > 0
-        assert df["tipo"].str.contains("Principal").all()
+        # Deve ser "Tesouro IPCA+" mas NÃO "com Juros Semestrais"
+        assert not df["tipo"].str.contains("Juros Semestrais").any()
 
     def test_filtra_ntnb_com_cupom(self, fetcher):
-        """Filtra NTN-B com cupom (não Principal)."""
+        """Filtra NTN-B com cupom (Tesouro IPCA+ com Juros Semestrais)."""
         resp = _make_response(_CSV_TESOURO)
 
         with patch.object(fetcher, "_fetch_raw", return_value=resp):
             df = fetcher.get_price_history_by_type("NTN-B CUPOM")
 
         assert len(df) > 0
-        # Não deve conter "Principal"
-        assert not df["tipo"].str.contains("Principal").any()
+        assert df["tipo"].str.contains("Juros Semestrais").all()
 
     def test_filtra_ltn(self, fetcher):
-        """Filtra apenas LTN."""
+        """Filtra apenas LTN (Tesouro Prefixado sem cupom)."""
         resp = _make_response(_CSV_TESOURO)
 
         with patch.object(fetcher, "_fetch_raw", return_value=resp):
             df = fetcher.get_price_history_by_type("LTN")
 
         assert len(df) > 0
-        assert df["tipo"].str.contains("LTN").all()
+        # "Tesouro Prefixado" mas não "com Juros Semestrais"
+        assert df["tipo"].str.contains("Prefixado").all()
+        assert not df["tipo"].str.contains("Juros Semestrais").any()
 
     def test_tipo_invalido_levanta_erro(self, fetcher):
         """Tipo não reconhecido levanta ValueError."""
@@ -316,7 +318,8 @@ class TestGetAvailableTitles:
 
         assert isinstance(titles, list)
         assert len(titles) > 0
-        assert "LFT" in titles
+        # CSV novo usa nomenclatura "Tesouro Selic" em vez de "LFT"
+        assert any("Selic" in t or "LFT" in t for t in titles)
 
     def test_lista_ordenada(self, fetcher):
         """Lista de títulos é ordenada alfabeticamente."""
