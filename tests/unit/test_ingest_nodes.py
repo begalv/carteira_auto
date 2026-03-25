@@ -164,34 +164,44 @@ class TestIngestMacroNode:
     def test_ingest_bcb(self, MockBCB, ctx_with_lake):
         """Ingere indicadores BCB no lake."""
         mock_fetcher = MockBCB.return_value
-        # Simula retorno do BCB
+        # Simula retorno real do BCB: colunas 'data' e 'valor' com RangeIndex
         df = pd.DataFrame(
-            {"valor": [13.75, 13.65]},
-            index=pd.to_datetime(["2025-01-01", "2025-02-01"]),
+            {
+                "data": pd.to_datetime(["2025-01-01", "2025-02-01"]),
+                "valor": [13.75, 13.65],
+            }
         )
         mock_fetcher.get_selic.return_value = df
         mock_fetcher.get_cdi.return_value = df
         mock_fetcher.get_ipca.return_value = df
-        mock_fetcher.get_indicator.return_value = df
+        mock_fetcher.get_ptax.return_value = df
 
         node = IngestMacroNode()
         count = node._ingest_bcb(ctx_with_lake["data_lake"])
-        assert count >= 0
+        # Deve inserir registros reais (4 indicadores × 2 datas = 8)
+        assert count > 0
 
     @patch("carteira_auto.data.fetchers.IBGEFetcher", autospec=True)
     def test_ingest_ibge(self, MockIBGE, ctx_with_lake):
         """Ingere indicadores IBGE no lake."""
         mock_fetcher = MockIBGE.return_value
+        # Simula retorno real do IBGE: colunas 'periodo' e 'valor' com RangeIndex
+        # IBGE SIDRA retorna periodo como nome descritivo (ex: "janeiro 2025")
+        # e opcionalmente periodo_codigo (ex: "202501")
         df = pd.DataFrame(
-            {"valor": [1.5, 1.8]},
-            index=pd.to_datetime(["2025-01-01", "2025-04-01"]),
+            {
+                "periodo": ["janeiro 2025", "abril 2025"],
+                "periodo_codigo": ["202501", "202504"],
+                "valor": [1.5, 1.8],
+            }
         )
         mock_fetcher.get_ipca.return_value = df
         mock_fetcher.get_pib.return_value = df
 
         node = IngestMacroNode()
         count = node._ingest_ibge(ctx_with_lake["data_lake"])
-        assert count >= 0
+        # Deve inserir registros reais (2 indicadores × 2 datas = 4)
+        assert count > 0
 
     @patch("carteira_auto.data.fetchers.IBGEFetcher", autospec=True)
     @patch("carteira_auto.data.fetchers.BCBFetcher", autospec=True)
@@ -202,7 +212,7 @@ class TestIngestMacroNode:
         mock_bcb.get_selic.return_value = None
         mock_bcb.get_cdi.return_value = None
         mock_bcb.get_ipca.return_value = None
-        mock_bcb.get_indicator.return_value = None
+        mock_bcb.get_ptax.return_value = None
         # Mock IBGE
         mock_ibge = MockIBGE.return_value
         mock_ibge.get_ipca.return_value = None
