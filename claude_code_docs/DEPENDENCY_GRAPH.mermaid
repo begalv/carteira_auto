@@ -1,0 +1,83 @@
+graph TD
+    subgraph config["config/"]
+        settings["settings.py<br/>Settings, PathsConfig, FetcherConfigs"]
+        constants["constants.py<br/>Constants, field maps, séries BCB"]
+    end
+
+    subgraph utils["utils/"]
+        logger["logger.py<br/>get_logger(), setup_logging()"]
+        decorators["decorators.py<br/>@retry, @cache, @rate_limit, @log"]
+        helpers["helpers.py<br/>validate_ticker()"]
+    end
+
+    subgraph core["core/"]
+        engine["engine.py<br/>DAGEngine, Node, PipelineContext"]
+        models["models/<br/>Asset, Portfolio, *Metrics"]
+        registry["registry.py<br/>PIPELINE_PRESETS, create_engine()"]
+        nodes["nodes/<br/>Load, Fetch, Export, Alert, Storage"]
+    end
+
+    subgraph data["data/"]
+        yahoo["fetchers/yahoo_fetcher.py<br/>YahooFinanceFetcher"]
+        bcb["fetchers/bcb_fetcher.py<br/>BCBFetcher"]
+        ibge["fetchers/ibge_fetcher.py<br/>IBGEFetcher"]
+        loaders["loaders/<br/>ExcelLoader, PortfolioLoader"]
+        exporters["exporters/<br/>ExcelExporter, PriceExporter"]
+        storage["storage/<br/>SnapshotStore"]
+    end
+
+    subgraph analyzers["analyzers/"]
+        portfolio_a["portfolio_analyzer.py<br/>→ ctx[portfolio_metrics]"]
+        risk_a["risk_analyzer.py<br/>→ ctx[risk_metrics]"]
+        macro_a["macro_analyzer.py<br/>→ ctx[macro_context]"]
+        market_a["market_analyzer.py<br/>→ ctx[market_metrics]"]
+        rebalancer["rebalancer.py<br/>→ ctx[rebalance_recommendations]"]
+    end
+
+    subgraph alerts["alerts/"]
+        alert_engine["engine.py<br/>AlertEngine, AlertRule"]
+        channels["channels.py<br/>Console, Log channels"]
+    end
+
+    %% Config → tudo
+    settings --> logger
+    settings --> yahoo
+    settings --> bcb
+    settings --> ibge
+    settings --> loaders
+    constants --> yahoo
+    constants --> bcb
+    constants --> loaders
+
+    %% Utils → componentes
+    decorators --> yahoo
+    decorators --> bcb
+    decorators --> ibge
+    decorators --> portfolio_a
+    decorators --> risk_a
+    decorators --> macro_a
+    logger --> engine
+
+    %% Core internals
+    engine --> nodes
+    engine --> registry
+    models --> nodes
+    models --> analyzers
+
+    %% Data → core
+    yahoo --> nodes
+    bcb --> macro_a
+    bcb --> market_a
+    ibge --> macro_a
+    loaders --> nodes
+    exporters --> nodes
+    storage --> nodes
+
+    %% Registry agrupa tudo
+    nodes --> registry
+    portfolio_a --> registry
+    risk_a --> registry
+    macro_a --> registry
+    market_a --> registry
+    rebalancer --> registry
+    alert_engine --> registry
