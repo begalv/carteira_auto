@@ -176,7 +176,7 @@ graph TB
 | Fetcher | Fonte | Dados |
 |---------|-------|-------|
 | `YahooFinanceFetcher` | Yahoo Finance API | Precos OHLCV, dividendos, dados fundamentalistas |
-| `BCBFetcher` | BCB SGS API | Selic, IPCA, cambio, CDI, IGPM |
+| `BCBFetcher` | BCB SGS API | Selic (432), CDI (12), IPCA (433), IGP-M (189), INPC (188), Poupanca (25), TR (226), PTAX compra (10813), PTAX venda (1) |
 | `IBGEFetcher` | IBGE SIDRA API | PIB, producao industrial, confianca consumidor |
 | `FREDFetcher` | Federal Reserve (FRED) | Fed Funds Rate, CPI US, Treasury yields |
 | `CVMFetcher` | CVM | Dados de fundos, demonstracoes financeiras |
@@ -599,7 +599,7 @@ carteira_auto/
 │   │   ├── portfolio_analyzer.py      # Metricas consolidadas da carteira
 │   │   ├── risk_analyzer.py           # VaR, Sharpe, beta, drawdown
 │   │   ├── macro_analyzer.py          # Contexto macroeconomico
-│   │   ├── market_analyzer.py         # Benchmarks (IBOV, CDI, IFIX)
+│   │   ├── market_analyzer.py         # 8 benchmarks (IBOV, IFIX, CDI, S&P500, USD, Ouro, Selic, PTAX)
 │   │   ├── rebalancer.py              # Recomendacoes de rebalanceamento
 │   │   ├── market_sector_analyzer.py  # Setores de mercado
 │   │   └── economic_sector_analyzer.py # Setores da economia real
