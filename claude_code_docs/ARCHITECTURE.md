@@ -1,18 +1,20 @@
-# Arquitetura — carteira_auto v0.1.0
+# Arquitetura — carteira_auto v0.2.0 (pós-hardening)
 
 > Referência compacta para Claude Code. Atualizar ao final de cada fase.
 
 ## Módulos e responsabilidades
 
-### core/ — Motor do sistema (NÃO alterar)
+### core/ — Motor do sistema
 | Arquivo | Exporta | Papel |
 |---------|---------|-------|
-| engine.py | DAGEngine, Node, PipelineContext | Motor DAG com topological sort (Kahn) |
-| models/portfolio.py | Asset, Portfolio, SoldAsset | Modelos da planilha Excel |
-| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext, MarketMetrics, RebalanceRecommendation | Outputs dos analyzers |
+| engine.py | DAGEngine(fail_fast), Node, PipelineContext, NodeExecutionError | Motor DAG com topological sort (Kahn), error handling per-node, Node.__init_subclass__() isola deps por subclass |
+| result.py | Ok[T], Err[T], Result (type alias) | Tipo Result funcional para operações falíveis |
+| models/portfolio.py | Asset, Portfolio, SoldAsset | Modelos da planilha Excel — validação Pydantic estrita (field_validator para ticker, preços, percentages) |
+| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext, MarketMetrics, RebalanceRecommendation, AllocationResult | Outputs dos analyzers — AllocationResult.action é Literal["comprar","vender","manter"], RiskMetrics.is_complete(), RebalanceRecommendation.action é Literal["comprar","vender"] |
 | models/economic.py | MacroIndicator, MarketIndicator, SectorIndicator, EconomicSectorIndicator | Indicadores econômicos |
 | registry.py | create_engine(), PIPELINE_PRESETS | Mapeamento CLI → node terminal |
-| nodes/portfolio_nodes.py | LoadPortfolioNode, FetchPricesNode, FetchPortfolioPricesNode, ExportPortfolioPricesNode | Operações de carteira |
+| nodes/portfolio_nodes.py | LoadPortfolioNode, FetchPricesNode, FetchPortfolioPricesNode, ExportPortfolioPricesNode | Operações de carteira — FetchPortfolioPricesNode usa model_copy() (sem mutação in-place) |
+| nodes/ingest_nodes.py | IngestPricesNode, IngestMacroNode, IngestFundamentalsNode | Ingestão de dados no DataLake |
 | nodes/alert_nodes.py | EvaluateAlertsNode | Avaliação de regras de alerta |
 | nodes/storage_nodes.py | SaveSnapshotNode | Persistência de snapshots JSON |
 | pipelines/update_excel_prices.py | UpdateExcelPricesPipeline | Pipeline legado (backward compat) |
@@ -23,6 +25,19 @@
 | yahoo_fetcher.py | YahooFinanceFetcher | yfinance | 30 req/min | 5min (preços), 24h (histórico) |
 | bcb_fetcher.py | BCBFetcher | SGS API | 30 req/min | 1h |
 | ibge_fetcher.py | IBGEFetcher | SIDRA API | 30 req/min | 2h |
+| fred_fetcher.py | FREDFetcher | FRED API | 120 req/min | 24h |
+| cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
+| tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API | 30 req/min | 1h |
+| ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
+
+### data/lake/ — DataLake (SQLite)
+| Arquivo | Classe | Papel |
+|---------|--------|-------|
+| base.py | DataLake | Classe agregadora — acesso unificado aos lakes |
+| price_lake.py | PriceLake | OHLCV em SQLite |
+| macro_lake.py | MacroLake | Indicadores macroeconômicos |
+| fundamentals_lake.py | FundamentalsLake | Dados fundamentalistas |
+| news_lake.py | NewsLake | Notícias e sentimento |
 
 ### data/ — Persistência e I/O
 | Arquivo | Classe | Papel |
@@ -52,8 +67,8 @@
 ### config/ — Configurações centralizadas
 | Arquivo | Exporta | Papel |
 |---------|---------|-------|
-| settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema |
-| constants.py | Constants | Colunas de planilha, field maps, séries BCB, tabelas IBGE, feriados B3 |
+| settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema — PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE |
+| constants.py | Constants | Colunas de planilha, field maps, séries BCB, tabelas IBGE, feriados B3 (sem ERROR_MESSAGES/SUCCESS_MESSAGES) |
 
 ### utils/ — Utilitários transversais
 | Arquivo | Exporta | Usar quando |
@@ -73,6 +88,7 @@
 | market | analyze_market | IBOV, IFIX, CDI |
 | market-sectors | analyze_market_sectors | Performance setorial |
 | economic-sectors | analyze_economic_sectors | Setores da economia real |
+| ingest | ingest_fundamentals | Ingestão de dados no DataLake |
 
 ## Paths do sistema
 | Variável | Default | Uso |
@@ -100,3 +116,17 @@
 | rebalance_recommendations | list[RebalanceRecommendation] | Rebalancer | — |
 | alerts | list[Alert] | EvaluateAlertsNode | — |
 | snapshot_path | Path | SaveSnapshotNode | — |
+| _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
+
+## Testes — cobertura atual
+| Arquivo | Qtd | Escopo |
+|---------|-----|--------|
+| test_models.py | 54 | Result type (Ok/Err), validação Asset/Portfolio, todos os model types |
+| test_analyzers.py | 19 | DAGEngine error handling, todos os 7 analyzers |
+| test_fetchers.py | 17 | Yahoo normalize, prices, historical |
+| test_cli.py | 15 | Parser, commands, main |
+| test_decorators.py | 20 | Todos os decorators |
+| test_integrations.py | 8 | E2E pipeline, dry_run, presets |
+| test_lake.py | — | PriceLake, MacroLake, FundamentalsLake, NewsLake |
+| test_cvm_fetcher.py | — | CVMFetcher |
+| test_fred_fetcher.py | — | FREDFetcher |

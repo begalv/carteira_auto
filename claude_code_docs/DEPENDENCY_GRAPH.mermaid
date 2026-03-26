@@ -12,15 +12,26 @@ graph TD
 
     subgraph core["core/"]
         engine["engine.py<br/>DAGEngine, Node, PipelineContext"]
+        result["result.py<br/>Ok, Err, Result"]
         models["models/<br/>Asset, Portfolio, *Metrics"]
         registry["registry.py<br/>PIPELINE_PRESETS, create_engine()"]
-        nodes["nodes/<br/>Load, Fetch, Export, Alert, Storage"]
+        subgraph core_nodes["nodes/"]
+            nodes["Load, Fetch, Export, Alert, Storage"]
+            ingest_nodes["IngestPricesNode, IngestMacroNode,<br/>IngestFundamentalsNode"]
+        end
     end
 
     subgraph data["data/"]
-        yahoo["fetchers/yahoo_fetcher.py<br/>YahooFinanceFetcher"]
-        bcb["fetchers/bcb_fetcher.py<br/>BCBFetcher"]
-        ibge["fetchers/ibge_fetcher.py<br/>IBGEFetcher"]
+        subgraph fetchers["fetchers/"]
+            yahoo["yahoo_fetcher.py<br/>YahooFinanceFetcher"]
+            bcb["bcb_fetcher.py<br/>BCBFetcher"]
+            ibge["ibge_fetcher.py<br/>IBGEFetcher"]
+            fred["fred_fetcher.py<br/>FREDFetcher"]
+            cvm["cvm_fetcher.py<br/>CVMFetcher"]
+            tesouro["tesouro_fetcher.py<br/>TesouroDiretoFetcher"]
+            ddm["ddm_fetcher.py<br/>DDMFetcher"]
+        end
+        lake["lake/<br/>DataLake, PriceLake, MacroLake,<br/>FundamentalsLake, NewsLake"]
         loaders["loaders/<br/>ExcelLoader, PortfolioLoader"]
         exporters["exporters/<br/>ExcelExporter, PriceExporter"]
         storage["storage/<br/>SnapshotStore"]
@@ -44,6 +55,9 @@ graph TD
     settings --> yahoo
     settings --> bcb
     settings --> ibge
+    settings --> fred
+    settings --> cvm
+    settings --> tesouro
     settings --> loaders
     constants --> yahoo
     constants --> bcb
@@ -53,16 +67,31 @@ graph TD
     decorators --> yahoo
     decorators --> bcb
     decorators --> ibge
+    decorators --> fred
+    decorators --> cvm
+    decorators --> tesouro
     decorators --> portfolio_a
     decorators --> risk_a
     decorators --> macro_a
     logger --> engine
 
     %% Core internals
+    result --> models
     engine --> nodes
     engine --> registry
     models --> nodes
     models --> analyzers
+
+    %% Fetchers → IngestNodes
+    yahoo --> ingest_nodes
+    bcb --> ingest_nodes
+    ibge --> ingest_nodes
+    fred --> ingest_nodes
+    cvm --> ingest_nodes
+    tesouro --> ingest_nodes
+
+    %% Lake → IngestNodes
+    lake --> ingest_nodes
 
     %% Data → core
     yahoo --> nodes
@@ -72,6 +101,9 @@ graph TD
     loaders --> nodes
     exporters --> nodes
     storage --> nodes
+
+    %% IngestNodes → Registry
+    ingest_nodes --> registry
 
     %% Registry agrupa tudo
     nodes --> registry
