@@ -75,6 +75,9 @@ def ctx_com_portfolio(portfolio_simples):
     """PipelineContext com portfolio carregado."""
     ctx = PipelineContext()
     ctx["portfolio"] = portfolio_simples
+    ctx["target_allocations"] = {"Ações": 0.80, "Renda Fixa": 0.20}
+    ctx["rebalance_threshold"] = 0.05
+    ctx["min_trade_value"] = 100.0
     return ctx
 
 
