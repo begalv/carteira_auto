@@ -8,7 +8,6 @@ import traceback
 
 import numpy as np
 
-from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import Portfolio, RiskMetrics
 from carteira_auto.utils import get_logger
@@ -74,7 +73,7 @@ class RiskAnalyzer(Node):
 
             portfolio_returns = (returns * weights).sum(axis=1)
 
-            risk_free_daily = settings.portfolio.RISK_FREE_DAILY
+            risk_free_daily = self._get_risk_free_daily(ctx)
 
             volatility = float(portfolio_returns.std() * np.sqrt(252))
             var_95 = float(np.percentile(portfolio_returns, 5))
@@ -127,8 +126,37 @@ class RiskAnalyzer(Node):
             return None
         return arr / arr.sum()
 
-    def _sharpe_ratio(self, returns, risk_free_daily: float = 0.0004) -> float | None:
-        """Sharpe ratio anualizado (rf ≈ CDI diário ~0.04%)."""
+    def _get_risk_free_daily(self, ctx: PipelineContext) -> float:
+        """Obtém taxa livre de risco diária.
+
+        Prioridade:
+        1. ctx["risk_free_daily"] — passado explicitamente pelo pipeline
+        2. CDI diário mais recente via BCB SGS
+        3. Fallback: 0 (sem ajuste de rf)
+        """
+        # 1. Contexto explícito
+        if "risk_free_daily" in ctx:
+            return float(ctx["risk_free_daily"])
+
+        # 2. CDI atual via BCB
+        try:
+            from carteira_auto.data.fetchers import BCBFetcher
+
+            bcb = BCBFetcher()
+            cdi = bcb.get_cdi(period_days=5)  # últimos 5 dias úteis
+            if not cdi.empty:
+                rf = float(cdi["valor"].iloc[-1]) / 100  # % → decimal
+                logger.debug(f"Risk-free diário via CDI: {rf:.6f}")
+                return rf
+        except Exception as e:
+            logger.warning(f"Falha ao obter CDI para risk-free: {e}")
+
+        # 3. Fallback
+        logger.warning("Risk-free diário não disponível — usando 0")
+        return 0.0
+
+    def _sharpe_ratio(self, returns, risk_free_daily: float = 0.0) -> float | None:
+        """Sharpe ratio anualizado."""
         excess = returns - risk_free_daily
         if excess.std() == 0:
             return None
