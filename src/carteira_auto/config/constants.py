@@ -185,8 +185,12 @@ class Constants:
         "YAHOO_CRYPTO": r"^[A-Z]{2,5}-[A-Z]{2,4}$",
         # Futuros: CL=F (petróleo), GC=F (ouro), ES=F (S&P)
         "YAHOO_FUTURES": r"^[A-Z]{1,3}=F$",
+        # Pares cambiais spot: BRL=X, EUR=X, USDBRL=X, EURUSD=X
+        "YAHOO_CURRENCY": r"^[A-Z]{2,6}=X$",
         # Tickers especiais Yahoo: DX-Y.NYB (Dollar Index), etc.
         "YAHOO_SPECIAL": r"^[A-Z0-9]{1,5}-[A-Z0-9]{1,5}\.[A-Z]{2,5}$",
+        # Índices BR no Yahoo com sufixo .SA sem dígito: IFIX.SA, IBOV.SA
+        "YAHOO_BR_INDEX": r"^[A-Z]{3,6}\.SA$",
     }
 
 
