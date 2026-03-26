@@ -37,6 +37,9 @@ PIPELINE_PRESETS: dict[str, str] = {
     "ingest-macro": "ingest_macro",
     "ingest-fundamentals": "ingest_fundamentals",
     "ingest-news": "ingest_news",
+    "currency": "analyze_currency",
+    "commodities": "analyze_commodities",
+    "fiscal": "analyze_fiscal",
 }
 
 # Descrições para o CLI
@@ -53,6 +56,9 @@ PIPELINE_DESCRIPTIONS: dict[str, str] = {
     "ingest-macro": "Ingere indicadores macro no DataLake (BCB, IBGE)",
     "ingest-fundamentals": "Ingere dados fundamentalistas no DataLake (Yahoo Finance)",
     "ingest-news": "Ingere notícias financeiras no DataLake (NewsAPI, RSS)",
+    "currency": "Analisa câmbio, DXY, carry trade e taxa real efetiva",
+    "commodities": "Analisa preços e ciclo de commodities (petróleo, ouro, agro)",
+    "fiscal": "Analisa dívida/PIB, resultado primário e trajetória fiscal",
 }
 
 
@@ -70,7 +76,10 @@ def create_engine(
         Engine pronto para executar pipelines.
     """
     from carteira_auto.analyzers import (
+        CommodityAnalyzer,
+        CurrencyAnalyzer,
         EconomicSectorAnalyzer,
+        FiscalAnalyzer,
         MacroAnalyzer,
         MarketAnalyzer,
         MarketSectorAnalyzer,
@@ -101,6 +110,9 @@ def create_engine(
             Rebalancer(),
             MarketSectorAnalyzer(),
             EconomicSectorAnalyzer(),
+            CurrencyAnalyzer(),
+            CommodityAnalyzer(),
+            FiscalAnalyzer(),
         ]
     )
 
