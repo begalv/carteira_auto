@@ -51,6 +51,10 @@ class EconomicSectorAnalyzer(Node):
                         )
                     )
         except Exception as e:
-            logger.warning(f"Falha ao buscar dados setoriais IBGE: {e}")
+            import traceback
+
+            logger.error(
+                f"Falha ao buscar dados setoriais IBGE: {e}\n{traceback.format_exc()}"
+            )
 
         return sectors
