@@ -4,13 +4,15 @@ Node DAG: name="analyze_portfolio", deps=["fetch_portfolio_prices"]
 Produz: ctx["portfolio_metrics"] -> PortfolioMetrics
 """
 
-from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import AllocationResult, Portfolio, PortfolioMetrics
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import log_execution
 
 logger = get_logger(__name__)
+
+# Threshold padrão para classificar ação (comprar/manter/vender)
+_DEFAULT_REBALANCE_THRESHOLD = 0.05
 
 
 class PortfolioAnalyzer(Node):
@@ -29,7 +31,7 @@ class PortfolioAnalyzer(Node):
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         portfolio: Portfolio = ctx["portfolio"]
-        metrics = self._calculate_metrics(portfolio)
+        metrics = self._calculate_metrics(portfolio, ctx)
         ctx["portfolio_metrics"] = metrics
         logger.info(
             f"Portfolio: valor={metrics.total_value:,.2f}, "
@@ -37,7 +39,9 @@ class PortfolioAnalyzer(Node):
         )
         return ctx
 
-    def _calculate_metrics(self, portfolio: Portfolio) -> PortfolioMetrics:
+    def _calculate_metrics(
+        self, portfolio: Portfolio, ctx: PipelineContext
+    ) -> PortfolioMetrics:
         """Calcula métricas consolidadas."""
         assets = portfolio.assets
 
@@ -52,7 +56,7 @@ class PortfolioAnalyzer(Node):
         dividend_yield = (total_dividends / total_value) if total_value > 0 else 0
 
         # Alocação por classe
-        allocations = self._calculate_allocations(assets, total_value)
+        allocations = self._calculate_allocations(assets, total_value, ctx)
 
         return PortfolioMetrics(
             total_value=total_value,
@@ -64,10 +68,23 @@ class PortfolioAnalyzer(Node):
         )
 
     def _calculate_allocations(
-        self, assets: list, total_value: float
+        self, assets: list, total_value: float, ctx: PipelineContext
     ) -> list[AllocationResult]:
-        """Calcula alocação atual vs meta por classe de ativo."""
-        targets = settings.portfolio.TARGET_ALLOCATIONS
+        """Calcula alocação atual vs meta por classe de ativo.
+
+        Parâmetros via PipelineContext:
+            - ctx["target_allocations"]: dict[str, float] — metas por classe
+            - ctx["rebalance_threshold"]: float — tolerância de desvio
+        """
+        targets: dict[str, float] = ctx.get("target_allocations", {})
+        threshold: float = ctx.get("rebalance_threshold", _DEFAULT_REBALANCE_THRESHOLD)
+
+        if not targets:
+            logger.warning(
+                "target_allocations não fornecido no contexto — "
+                "alocação calculada sem metas"
+            )
+            return []
 
         # Agrupa valor por classe
         class_values: dict[str, float] = {}
@@ -84,7 +101,6 @@ class PortfolioAnalyzer(Node):
             deviation = current_pct - target_pct
 
             # Determina ação
-            threshold = settings.portfolio.REBALANCE_THRESHOLD
             if deviation > threshold:
                 action = "vender"
             elif deviation < -threshold:
