@@ -185,6 +185,8 @@ class Constants:
         "YAHOO_CRYPTO": r"^[A-Z]{2,5}-[A-Z]{2,4}$",
         # Futuros: CL=F (petróleo), GC=F (ouro), ES=F (S&P)
         "YAHOO_FUTURES": r"^[A-Z]{1,3}=F$",
+        # Tickers especiais Yahoo: DX-Y.NYB (Dollar Index), etc.
+        "YAHOO_SPECIAL": r"^[A-Z0-9]{1,5}-[A-Z0-9]{1,5}\.[A-Z]{2,5}$",
     }
 
 
