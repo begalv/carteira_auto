@@ -54,7 +54,7 @@ class MarketAnalyzer(Node):
         # IBOV via Yahoo
         try:
             ibov_data = yahoo.get_historical_price_data(
-                ["^BVSP"], period="1y", interval="1d"
+                ["^BVSP"], period="5y", interval="1d"
             )
             if not ibov_data.empty and "Close" in ibov_data.columns:
                 closes = ibov_data["Close"].dropna()
@@ -67,7 +67,7 @@ class MarketAnalyzer(Node):
         # IFIX via Yahoo
         try:
             ifix_data = yahoo.get_historical_price_data(
-                ["IFIX.SA"], period="1y", interval="1d"
+                ["IFIX.SA"], period="5y", interval="1d"
             )
             if not ifix_data.empty and "Close" in ifix_data.columns:
                 closes = ifix_data["Close"].dropna()
@@ -80,7 +80,7 @@ class MarketAnalyzer(Node):
         # CDI acumulado via BCB
         try:
             bcb = BCBFetcher()
-            cdi_df = bcb.get_cdi(period_days=365)
+            cdi_df = bcb.get_cdi(period_days=5 * 365)
             if not cdi_df.empty:
                 daily_rates = cdi_df["valor"] / 100
                 cdi_return = ((1 + daily_rates).prod()) - 1
