@@ -222,11 +222,18 @@ data/exports/
 data/outputs/reports/*.parquet
 *.parquet
 
-# Dados brutos baixados (reconstruíveis)
+# Dados brutos do usuário (sensíveis — nunca commitar)
 data/raw/
+*.xlsx
+*.xlsm
+*.xls
+# Exceção: fixtures de teste com dados sintéticos
+!tests/fixtures/*.xlsx
 
-# Snapshots de portfolio (dados sensíveis do usuário)
-data/outputs/snapshots/*.json
+# Outputs gerados localmente (sensíveis e/ou reconstruíveis)
+data/outputs/portfolios/
+data/outputs/snapshots/
+data/outputs/reports/
 
 # Logs do sistema (gerados em runtime)
 data/outputs/logs/
