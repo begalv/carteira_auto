@@ -47,10 +47,6 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
   Templates canônicos para novos fetchers, analyzers, strategies, nodes,
   models e publishers. Inclui patterns de error handling e validação Pydantic.
 
-- **Decisões arquiteturais**: `docs/system/adr/`
-  Architecture Decision Records. Documentam o PORQUÊ das decisões.
-  Nunca reverta uma decisão documentada em ADR sem aprovação do humano.
-
 - **Grafo de dependências**: `docs/dev/DEPENDENCY_GRAPH.mermaid`
   Quem importa quem. Consulte antes de adicionar imports para evitar ciclos.
 
