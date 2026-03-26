@@ -1,106 +1,46 @@
-# Pacote de Documentação — carteira_auto
+# Pacote de Documentação — carteira_auto v0.2.0
 
-## Instruções de instalação
+## Inventário dos artefatos
 
-Copie os arquivos abaixo para o repositório `carteira_auto` respeitando
-a estrutura de diretórios. Todos os paths são relativos à raiz do repo.
+| # | Arquivo | Propósito | Impacto no Claude Code |
+|---|---------|-----------|----------------------|
+| 1 | `CLAUDE.md` | Governança de sprints, infra existente, estado atual, lembretes | Lido automaticamente — define comportamento |
+| 2 | `docs/plano_implementacao_carteira_auto.md` | Source of truth: 8 camadas, 8 fases, progresso, decisões | Referência por fase |
+| 3 | `claude_code_docs/ARCHITECTURE.md` | Mapa compacto: módulos, exports, ctx keys, pipelines, testes | Elimina redescoberta de código |
+| 4 | `claude_code_docs/PATTERNS.md` | 9 templates canônicos (fetcher, analyzer, strategy, result, validação) | Few-shot prompting — consistência |
+| 5 | `docs/adr/001-006` | Decisões e razões (DAG, Strategy!=Node, SQLite, Layered, Config, AI) | Impede reversão de decisões |
+| 6 | `claude_code_docs/DEPENDENCY_GRAPH.mermaid` | Grafo de dependências entre módulos | Previne imports circulares |
 
-### Estrutura a criar
+## O que mudou desde v0.1.0
 
-```
-carteira_auto/                         ← raiz do repositório
-├── CLAUDE.md                          ← SUBSTITUIR o existente
-├── .claudeignore                      ← NOVO
-├── .claude/
-│   ├── settings.json                  ← NOVO
-│   └── commands/
-│       ├── new-fetcher.md             ← NOVO
-│       ├── new-analyzer.md            ← NOVO
-│       ├── new-strategy.md            ← NOVO
-│       ├── sprint-review.md           ← NOVO
-│       └── audit-phase.md             ← NOVO
-└── docs/
-    ├── plano_implementacao_carteira_auto.md  ← NOVO
-    ├── ARCHITECTURE.md                ← NOVO
-    ├── PATTERNS.md                    ← NOVO
-    ├── DEPENDENCY_GRAPH.mermaid       ← NOVO
-    └── adr/
-        ├── 001-dag-engine-kahn-algorithm.md         ← NOVO
-        ├── 002-strategy-not-a-node.md               ← NOVO
-        ├── 003-sqlite-over-postgres.md              ← NOVO
-        ├── 004-layered-as-default-composition.md    ← NOVO
-        ├── 005-optimization-config-in-config-module.md ← NOVO
-        └── 006-ai-never-executes.md                 ← NOVO
-```
+### Hardening Sprint (PR #20)
+- **ARCHITECTURE.md** atualizado para v0.2.0 com novos módulos (result.py, lake/, 7 fetchers, ingest_nodes), seção de testes
+- **PATTERNS.md** expandido com 3 novos patterns: Result type (7), Error tracking parcial (8), Validação Pydantic estrita (9)
+- **DEPENDENCY_GRAPH.mermaid** atualizado com result, lake, 4 novos fetchers, ingest_nodes e suas conexões
+- **CLAUDE.md** atualizado com estado atual (v0.2.0), lembretes de decisões, regras de error handling
+- **Plano de implementação** atualizado com seção "Progresso Atual" e status das fases
 
-### Comandos para copiar (ajuste os paths de origem)
-
-```bash
-# Na raiz do repositório carteira_auto:
-
-# Criar diretórios
-mkdir -p docs/adr .claude/commands
-
-# Copiar arquivos raiz
-cp /path/to/CLAUDE.md ./CLAUDE.md
-cp /path/to/.claudeignore ./.claudeignore
-
-# Copiar docs
-cp /path/to/plano_implementacao_carteira_auto.md docs/
-cp /path/to/ARCHITECTURE.md docs/
-cp /path/to/PATTERNS.md docs/
-cp /path/to/DEPENDENCY_GRAPH.mermaid docs/
-
-# Copiar ADRs
-cp /path/to/adr/*.md docs/adr/
-
-# Copiar Claude Code config
-cp /path/to/settings.json .claude/
-cp /path/to/commands/*.md .claude/commands/
-
-# Commit
-git add -A
-git commit -m "docs: add complete documentation package for Claude Code co-development
-
-- CLAUDE.md: governance protocol for sprint-based development
-- docs/plano_implementacao_carteira_auto.md: 2200-line architectural plan (8 layers, 8 phases)
-- docs/ARCHITECTURE.md: compact code map (modules, exports, ctx keys, paths)
-- docs/PATTERNS.md: canonical code templates (fetcher, analyzer, strategy, node, model, publisher)
-- docs/DEPENDENCY_GRAPH.mermaid: module dependency graph
-- docs/adr/: 6 Architecture Decision Records
-- .claude/commands/: 5 reusable slash commands (new-fetcher, new-analyzer, new-strategy, sprint-review, audit-phase)
-- .claude/settings.json: safe permissions for Claude Code
-- .claudeignore: exclude irrelevant files from Claude Code context"
-```
-
-### Diagrama de arquitetura (SVGs opcionais)
-
-Os dois diagramas SVG podem ser colocados em `docs/diagrams/` para referência visual:
-- `carteira_auto_complete_layer_flow.svg` — Fluxo das 8 camadas
-- `carteira_auto_orchestration_feedback.svg` — Loops de feedback e orquestração
-
-## Inventário completo dos artefatos
-
-| # | Arquivo | Linhas | Propósito | Impacto no Claude Code |
-|---|---------|--------|-----------|----------------------|
-| 1 | `CLAUDE.md` | ~240 | Governança de sprints, protocolo de revisão, infra existente | Lido automaticamente em toda sessão — define o comportamento |
-| 2 | `docs/plano_implementacao_carteira_auto.md` | ~2200 | Source of truth: 8 camadas, estratégias, optimizer, AI, publishers | Referência sob demanda — consultado por fase |
-| 3 | `docs/ARCHITECTURE.md` | ~120 | Mapa compacto: módulos, exports, ctx keys, pipelines, paths | Elimina ~50% da redescoberta de código por sessão |
-| 4 | `docs/PATTERNS.md` | ~200 | Templates canônicos com checklists | Few-shot prompting implícito — consistência de código |
-| 5 | `docs/adr/001-006` | ~15 cada | Decisões e razões (DAG, Strategy≠Node, SQLite, Layered, Config, AI) | Impede reversão de decisões já tomadas |
-| 6 | `docs/DEPENDENCY_GRAPH.mermaid` | ~60 | Grafo de quem importa quem | Previne imports circulares |
-| 7 | `.claudeignore` | ~25 | Exclui .venv, __pycache__, data/, logs do contexto | Reduz ruído, economiza tokens |
-| 8 | `.claude/settings.json` | ~25 | Permite pytest/ruff/pip, bloqueia rm -rf/git push | Segurança em modo autônomo |
-| 9 | `.claude/commands/` | ~20 cada | 5 workflows reutilizáveis (new-*, sprint-review, audit-phase) | Padroniza operações recorrentes |
-| 10 | `*.svg` (2 diagramas) | — | Visualização da arquitetura de camadas e orquestração | Referência visual humana |
+### Decisões arquiteturais incorporadas
+- Result type `Ok[T] | Err[T]` como padrão de error handling
+- Validação Pydantic estrita com `field_validator`
+- Per-node error handling no DAGEngine
+- Imutabilidade via `model_copy()` em vez de mutação in-place
+- Error tracking parcial em analyzers via `ctx["_errors"]`
 
 ## Manutenção
 
 | Artefato | Quando atualizar | Quem |
 |----------|-----------------|------|
-| ARCHITECTURE.md | Final de cada fase (novos módulos, chaves ctx) | Claude Code + revisão humana |
-| PATTERNS.md | Se padrões mudarem significativamente | Humano |
+| ARCHITECTURE.md | Final de cada fase (novos módulos, chaves ctx, testes) | Claude Code + revisão humana |
+| PATTERNS.md | Se padrões mudarem ou novos patterns surgirem | Humano |
 | ADRs | Nunca editar existentes; criar novo ADR se decisão mudar | Humano |
 | DEPENDENCY_GRAPH.mermaid | Final de cada fase | Claude Code |
-| CLAUDE.md | Raramente (se protocolo de sprints mudar) | Humano |
-| Plano de implementação | Se escopo mudar (novas features, repriorizações) | Humano via Claude.ai |
+| CLAUDE.md | A cada fase concluída (status, lembretes novos) | Claude Code + revisão humana |
+| Plano de implementação | A cada fase concluída (progresso, decisões) | Claude Code + revisão humana |
+
+## Próximos passos
+
+A **Fase 2** (Analyzers Avançados) é a próxima. Consulte o plano de implementação
+para os 9 analyzers a criar: FundamentalAnalyzer, CurrencyAnalyzer,
+CommodityAnalyzer, YieldCurveAnalyzer, FiscalAnalyzer, GlobalMacroAnalyzer,
+CorrelationAnalyzer, DividendAnalyzer, PersonalFinanceAnalyzer.
