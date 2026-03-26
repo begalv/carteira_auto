@@ -55,6 +55,9 @@ def list_pipelines_cmd(args: argparse.Namespace) -> None:
     from carteira_auto.core.registry import list_pipelines
 
     pipelines = list_pipelines()
+    if not pipelines:
+        print("Nenhum pipeline disponível.")
+        return
     print("Pipelines disponíveis:")
     max_name = max(len(name) for name in pipelines)
     for name, desc in sorted(pipelines.items()):
