@@ -334,28 +334,95 @@ class TestMacroAnalyzer:
     @patch("carteira_auto.data.fetchers.IBGEFetcher")
     @patch("carteira_auto.data.fetchers.BCBFetcher")
     def test_contexto_macro_completo(self, mock_bcb_cls, mock_ibge_cls):
+        """Verifica que todos os 11 campos de MacroContext são preenchidos."""
         from carteira_auto.analyzers import MacroAnalyzer
 
         mock_bcb = MagicMock()
         mock_bcb_cls.return_value = mock_bcb
+        # Taxas de juros
         mock_bcb.get_selic.return_value = pd.DataFrame({"valor": [11.75]})
+        mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.042, 0.042, 0.042]})
+        mock_bcb.get_poupanca.return_value = pd.DataFrame({"valor": [0.6183]})
+        mock_bcb.get_tr.return_value = pd.DataFrame({"valor": [0.0]})
+        # Inflação
         mock_bcb.get_ipca.return_value = pd.DataFrame({"valor": [0.38, 0.42, 0.35]})
+        mock_bcb.get_igpm.return_value = pd.DataFrame({"valor": [0.15, 0.22, 0.31]})
+        mock_bcb.get_inpc.return_value = pd.DataFrame({"valor": [0.40, 0.41, 0.36]})
+        # Câmbio
         mock_bcb.get_ptax.return_value = pd.DataFrame({"valor": [5.25]})
+        mock_bcb.get_ptax_venda.return_value = pd.DataFrame({"valor": [5.27]})
 
         mock_ibge = MagicMock()
         mock_ibge_cls.return_value = mock_ibge
         mock_ibge.get_pib.return_value = pd.DataFrame({"valor": [2.5]})
+        mock_ibge.get_unemployment.return_value = pd.DataFrame({"valor": [6.2]})
 
         analyzer = MacroAnalyzer()
         ctx = PipelineContext()
         ctx = analyzer.run(ctx)
 
         macro: MacroContext = ctx["macro_context"]
+        # Taxas de juros
         assert macro.selic == 11.75
-        assert macro.ipca is not None
+        assert macro.cdi is not None  # CDI acumulado % a.a.
+        assert macro.poupanca == pytest.approx(0.6183)
+        assert macro.tr == pytest.approx(0.0)
+        # Inflação
+        assert macro.ipca is not None  # IPCA acumulado 12m
+        assert macro.igpm is not None  # IGP-M acumulado 12m
+        assert macro.inpc is not None  # INPC acumulado 12m
+        # Câmbio
         assert macro.cambio == 5.25
+        assert macro.dolar_ptax_venda == 5.27
+        # Atividade
         assert macro.pib_growth == 2.5
+        assert macro.desocupacao == 6.2  # ← novo campo (taxa de desemprego)
+        # Summary
         assert "Selic" in macro.summary
+        assert "Desocup" in macro.summary
+
+    @patch("carteira_auto.data.fetchers.IBGEFetcher")
+    @patch("carteira_auto.data.fetchers.BCBFetcher")
+    def test_macro_campos_novos_independentes(self, mock_bcb_cls, mock_ibge_cls):
+        """Falha em campos novos (CDI, IGP-M, desocupação) não afeta campos legados."""
+        from carteira_auto.analyzers import MacroAnalyzer
+
+        mock_bcb = MagicMock()
+        mock_bcb_cls.return_value = mock_bcb
+        mock_bcb.get_selic.return_value = pd.DataFrame({"valor": [11.75]})
+        mock_bcb.get_cdi.side_effect = ConnectionError("CDI down")
+        mock_bcb.get_igpm.side_effect = TimeoutError("IGP-M timeout")
+        mock_bcb.get_inpc.side_effect = TimeoutError("INPC timeout")
+        mock_bcb.get_poupanca.side_effect = ConnectionError("Poupança down")
+        mock_bcb.get_tr.side_effect = ConnectionError("TR down")
+        mock_bcb.get_ipca.return_value = pd.DataFrame({"valor": [0.38]})
+        mock_bcb.get_ptax.return_value = pd.DataFrame({"valor": [5.25]})
+        mock_bcb.get_ptax_venda.return_value = pd.DataFrame({"valor": [5.27]})
+
+        mock_ibge = MagicMock()
+        mock_ibge_cls.return_value = mock_ibge
+        mock_ibge.get_pib.return_value = pd.DataFrame({"valor": [2.5]})
+        mock_ibge.get_unemployment.side_effect = TimeoutError("PNAD timeout")
+
+        analyzer = MacroAnalyzer()
+        ctx = PipelineContext()
+        ctx = analyzer.run(ctx)
+
+        macro: MacroContext = ctx["macro_context"]
+        assert macro.selic == 11.75  # sucesso
+        assert macro.ipca is not None  # sucesso
+        assert macro.cambio == 5.25  # sucesso
+        assert macro.dolar_ptax_venda == 5.27  # sucesso
+        assert macro.pib_growth == 2.5  # sucesso
+        # Campos que falharam → None
+        assert macro.cdi is None
+        assert macro.igpm is None
+        assert macro.inpc is None
+        assert macro.poupanca is None
+        assert macro.tr is None
+        assert macro.desocupacao is None
+        # Erros registrados
+        assert ctx.has_errors
 
     @patch("carteira_auto.data.fetchers.IBGEFetcher")
     @patch("carteira_auto.data.fetchers.BCBFetcher")
@@ -397,24 +464,79 @@ class TestMarketAnalyzer:
     @patch("carteira_auto.data.fetchers.BCBFetcher")
     @patch("carteira_auto.data.fetchers.YahooFinanceFetcher")
     def test_benchmarks_completos(self, mock_yahoo_cls, mock_bcb_cls):
+        """Verifica todos os 8 benchmarks de MarketMetrics."""
         from carteira_auto.analyzers import MarketAnalyzer
 
         mock_yahoo = MagicMock()
         mock_yahoo_cls.return_value = mock_yahoo
 
-        ibov_data = pd.DataFrame({"Close": [100000, 112000]})
-        ifix_data = pd.DataFrame({"Close": [2800, 2900]})
+        ibov_data = pd.DataFrame({"Close": [100_000.0, 112_000.0]})
+        ifix_data = pd.DataFrame({"Close": [2_800.0, 2_900.0]})
+        sp500_data = pd.DataFrame({"Close": [4_000.0, 4_800.0]})
+        dolar_data = pd.DataFrame({"Close": [5.0, 5.5]})
+        ouro_data = pd.DataFrame({"Close": [1_800.0, 2_100.0]})
 
         def side_effect(tickers, **kwargs):
-            if "^BVSP" in tickers:
+            t = tickers if isinstance(tickers, str) else tickers[0]
+            if t == "^BVSP":
                 return ibov_data
-            return ifix_data
+            elif t == "IFIX.SA":
+                return ifix_data
+            elif t == "^GSPC":
+                return sp500_data
+            elif t == "BRL=X":
+                return dolar_data
+            elif t == "GC=F":
+                return ouro_data
+            return pd.DataFrame({"Close": [100.0, 100.0]})
 
         mock_yahoo.get_historical_price_data.side_effect = side_effect
 
         mock_bcb = MagicMock()
         mock_bcb_cls.return_value = mock_bcb
-        mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.04, 0.04, 0.04]})
+        mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.042, 0.042, 0.042]})
+        mock_bcb.get_selic.return_value = pd.DataFrame({"valor": [11.75, 11.75]})
+        mock_bcb.get_ptax.return_value = pd.DataFrame({"valor": [5.25]})
+
+        analyzer = MarketAnalyzer()
+        ctx = PipelineContext()
+        ctx = analyzer.run(ctx)
+
+        metrics: MarketMetrics = ctx["market_metrics"]
+        # Benchmarks BR
+        assert metrics.ibov_return == pytest.approx(0.12, rel=1e-4)
+        assert metrics.ifix_return == pytest.approx(2900 / 2800 - 1, rel=1e-4)
+        assert metrics.cdi_return is not None
+        assert metrics.selic_retorno is not None
+        # Internacional
+        assert metrics.sp500_return == pytest.approx(4800 / 4000 - 1, rel=1e-4)
+        assert metrics.dolar_retorno == pytest.approx(5.5 / 5.0 - 1, rel=1e-4)
+        assert metrics.ouro_retorno == pytest.approx(2100 / 1800 - 1, rel=1e-3)
+        # Câmbio atual
+        assert metrics.brl_usd == pytest.approx(5.25)
+
+    @patch("carteira_auto.data.fetchers.BCBFetcher")
+    @patch("carteira_auto.data.fetchers.YahooFinanceFetcher")
+    def test_benchmarks_falha_parcial(self, mock_yahoo_cls, mock_bcb_cls):
+        """Falha em um benchmark não impede os demais."""
+        from carteira_auto.analyzers import MarketAnalyzer
+
+        mock_yahoo = MagicMock()
+        mock_yahoo_cls.return_value = mock_yahoo
+
+        def side_effect(tickers, **kwargs):
+            t = tickers if isinstance(tickers, str) else tickers[0]
+            if t == "^BVSP":
+                return pd.DataFrame({"Close": [100_000.0, 112_000.0]})
+            raise ConnectionError(f"Yahoo down para {t}")
+
+        mock_yahoo.get_historical_price_data.side_effect = side_effect
+
+        mock_bcb = MagicMock()
+        mock_bcb_cls.return_value = mock_bcb
+        mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.042]})
+        mock_bcb.get_selic.side_effect = TimeoutError("BCB timeout")
+        mock_bcb.get_ptax.side_effect = TimeoutError("BCB timeout")
 
         analyzer = MarketAnalyzer()
         ctx = PipelineContext()
@@ -423,6 +545,10 @@ class TestMarketAnalyzer:
         metrics: MarketMetrics = ctx["market_metrics"]
         assert metrics.ibov_return == pytest.approx(0.12, rel=1e-4)
         assert metrics.cdi_return is not None
+        assert metrics.ifix_return is None
+        assert metrics.sp500_return is None
+        assert metrics.selic_retorno is None
+        assert ctx.has_errors
 
 
 # ============================================================================

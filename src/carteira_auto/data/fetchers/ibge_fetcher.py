@@ -1,10 +1,14 @@
 """Fetcher do IBGE — API SIDRA (Sistema IBGE de Recuperação Automática).
 
 Tabelas utilizadas:
-    - 1737: IPCA — variação mensal (%)
-    - 7060: IPCA por grupos de produtos
-    - 5932: PIB trimestral — taxa de variação (%)
-    - 6381: PNAD — taxa de desocupação (%)
+
+    Inflação:
+        - 1737: IPCA — variação mensal (%) | Mensal (~9 dias após fim do mês)
+        - 7060: IPCA por grupos — variação mensal (%) | Mensal
+
+    Atividade econômica:
+        - 5932: PIB trimestral — variação % vs mesmo trimestre do ano anterior | Trimestral
+        - 6381: PNAD — taxa de desocupação (%) | Trimestral móvel (divulgação trimestral)
 
 API: https://apisidra.ibge.gov.br/values/t/{tabela}/...
 Formato: JSON (default)
@@ -12,7 +16,7 @@ Sem autenticação. Limite: 100.000 valores por consulta.
 
 Estrutura da URL:
     /t/{tabela}           — tabela
-    /p/last {n}           — últimos n períodos
+    /p/last {n}           — últimos n períodos (mês, trimestre etc. conforme tabela)
     /v/{variáveis}        — variáveis (allxp = todas exceto %)
     /n1/1                 — nível Brasil
     /c{classificação}/all — todas as categorias
@@ -49,16 +53,15 @@ class IBGEFetcher:
     @log_execution
     @cache_result(ttl_seconds=7200)
     def get_ipca(self, months: int = 12) -> pd.DataFrame:
-        """IPCA — variação mensal (%).
-
-        Tabela 1737, variável 63 (variação mensal).
-        Nível Brasil (n1/1).
+        """IPCA — variação mensal (%) | Mensal (~9 dias após fim do mês) | Tabela 1737.
 
         Args:
-            months: Número de meses a buscar.
+            months: Número de meses a buscar (cada período = 1 mês).
 
         Returns:
             DataFrame com colunas ['periodo', 'valor', 'variavel'].
+            valor = variação % mensal (ex: 0.52 = 0,52%).
+            Para acumulado anual: ((1 + valor/100).prod() - 1) * 100
         """
         path = (
             f"/t/{self._tables['ipca']}"
@@ -72,16 +75,17 @@ class IBGEFetcher:
     @log_execution
     @cache_result(ttl_seconds=7200)
     def get_ipca_detailed(self, months: int = 12) -> pd.DataFrame:
-        """IPCA por grupos de produtos.
+        """IPCA por grupos de produtos — variação mensal (%) | Mensal | Tabela 7060.
 
-        Tabela 7060, variável 63 (variação mensal).
-        Todas as categorias da classificação 315 (grupos).
+        Desagregação por grupos: Alimentação, Habitação, Transportes, Saúde,
+        Comunicação, Despesas pessoais, Vestuário, Educação.
 
         Args:
-            months: Número de meses a buscar.
+            months: Número de meses a buscar (cada período = 1 mês).
 
         Returns:
             DataFrame com colunas ['periodo', 'valor', 'variavel', 'grupo'].
+            valor = variação % mensal por grupo.
         """
         path = (
             f"/t/{self._tables['ipca_grupos']}"
@@ -96,16 +100,15 @@ class IBGEFetcher:
     @log_execution
     @cache_result(ttl_seconds=7200)
     def get_pib(self, quarters: int = 8) -> pd.DataFrame:
-        """PIB trimestral — taxa de variação (%).
-
-        Tabela 5932, variável 6561 (taxa de variação % contra trimestre anterior).
-        Nível Brasil (n1/1).
+        """PIB trimestral — variação % vs mesmo trimestre do ano anterior | Trimestral | Tabela 5932.
 
         Args:
-            quarters: Número de trimestres a buscar.
+            quarters: Número de trimestres a buscar (cada período = 1 trimestre).
 
         Returns:
             DataFrame com colunas ['periodo', 'valor', 'variavel'].
+            valor = variação % em relação ao mesmo trimestre do ano anterior.
+            Exemplo: 2.3 = PIB cresceu 2,3% vs mesmo trimestre do ano anterior.
         """
         path = (
             f"/t/{self._tables['pib_trimestral']}"
@@ -118,21 +121,22 @@ class IBGEFetcher:
 
     @log_execution
     @cache_result(ttl_seconds=7200)
-    def get_unemployment(self, months: int = 12) -> pd.DataFrame:
-        """Taxa de desocupação — PNAD Contínua (%).
+    def get_unemployment(self, quarters: int = 8) -> pd.DataFrame:
+        """Taxa de desocupação — PNAD Contínua (%) | Trimestral | Tabela 6381.
 
-        Tabela 6381, variável 4099 (taxa de desocupação).
-        Nível Brasil (n1/1).
+        Cada período = 1 trimestre móvel (ex: jan-fev-mar, fev-mar-abr...).
+        Reflete a média da taxa no trimestre, não um mês específico.
 
         Args:
-            months: Número de trimestres móveis a buscar.
+            quarters: Número de trimestres a buscar (cada período = 1 trimestre móvel).
 
         Returns:
             DataFrame com colunas ['periodo', 'valor', 'variavel'].
+            valor = taxa de desocupação % (ex: 8.2 = 8,2% da força de trabalho).
         """
         path = (
             f"/t/{self._tables['pnad_desocupacao']}"
-            f"/p/last {months}"
+            f"/p/last {quarters}"
             "/v/4099"  # Taxa de desocupação
             "/n1/1"  # Brasil
             "/f/c"
