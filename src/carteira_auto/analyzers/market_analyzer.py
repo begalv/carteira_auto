@@ -138,15 +138,21 @@ class MarketAnalyzer(Node):
             errors.append(f"Ouro: {e}")
 
         # ---- Selic acumulada via BCB (SGS 432 — meta % a.a.) ----
-        # Converte meta anual → diária via (1 + r_aa/100)^(1/252) - 1 e acumula.
+        # SGS 432 retorna meta Selic apenas nas datas de reunião COPOM (~8×/ano).
+        # Precisamos forward-fill para cada dia útil e então compor diariamente.
         try:
+            import pandas as pd
+
             selic_df = bcb.get_selic(period_days=5 * 365)
             if not selic_df.empty:
-                # Meta Selic é divulgada por reunião do COPOM (dias úteis de vigência)
-                # Aproximação: taxa anual → diária, acumulada pelo número de registros
-                annual_rates = selic_df["valor"] / 100
-                daily_rates = (1 + annual_rates) ** (1 / 252) - 1
-                selic_retorno = float((1 + daily_rates).prod() - 1)
+                selic_ts = selic_df.copy()
+                selic_ts["data"] = pd.to_datetime(selic_ts["data"])
+                selic_ts = selic_ts.set_index("data").sort_index()
+                # Forward-fill meta para cada dia útil (B = business day)
+                selic_daily = selic_ts.resample("B").ffill().dropna()
+                # Meta % a.a. → fator diário: (1 + r_aa/100)^(1/252)
+                selic_daily["fator"] = (1 + selic_daily["valor"] / 100) ** (1 / 252)
+                selic_retorno = float(selic_daily["fator"].prod() - 1)
         except Exception as e:
             logger.error(
                 f"Falha ao buscar Selic acumulada: {e}\n{traceback.format_exc()}"

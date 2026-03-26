@@ -345,8 +345,9 @@ class TestMacroAnalyzer:
         # Taxas de juros
         mock_bcb.get_selic.return_value = pd.DataFrame({"valor": [11.75]})
         mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.042, 0.042, 0.042]})
-        mock_bcb.get_poupanca.return_value = pd.DataFrame({"valor": [0.6183]})
-        mock_bcb.get_tr.return_value = pd.DataFrame({"valor": [0.0]})
+        # Poupança e TR: 12 meses de dados (% a.m.) → macro_analyzer acumula 12m
+        mock_bcb.get_poupanca.return_value = pd.DataFrame({"valor": [0.5] * 12})
+        mock_bcb.get_tr.return_value = pd.DataFrame({"valor": [0.0] * 12})
         # Inflação
         mock_bcb.get_ipca.return_value = pd.DataFrame({"valor": [0.38, 0.42, 0.35]})
         mock_bcb.get_igpm.return_value = pd.DataFrame({"valor": [0.15, 0.22, 0.31]})
@@ -368,7 +369,9 @@ class TestMacroAnalyzer:
         # Taxas de juros
         assert macro.selic == 11.75
         assert macro.cdi is not None  # CDI acumulado % a.a.
-        assert macro.poupanca == pytest.approx(0.6183)
+        # Poupança: 12 meses de 0.5% a.m. → ((1.005)^12 - 1) * 100 ≈ 6.17% a.a.
+        assert macro.poupanca == pytest.approx(((1.005) ** 12 - 1) * 100, rel=1e-4)
+        # TR: 12 meses de 0.0% → 0.0% a.a.
         assert macro.tr == pytest.approx(0.0)
         # Inflação
         assert macro.ipca is not None  # IPCA acumulado 12m
@@ -498,7 +501,12 @@ class TestMarketAnalyzer:
         mock_bcb = MagicMock()
         mock_bcb_cls.return_value = mock_bcb
         mock_bcb.get_cdi.return_value = pd.DataFrame({"valor": [0.042, 0.042, 0.042]})
-        mock_bcb.get_selic.return_value = pd.DataFrame({"valor": [11.75, 11.75]})
+        mock_bcb.get_selic.return_value = pd.DataFrame(
+            {
+                "data": ["2025-01-01", "2025-06-01"],
+                "valor": [11.75, 11.75],
+            }
+        )
         mock_bcb.get_ptax.return_value = pd.DataFrame({"valor": [5.25]})
 
         analyzer = MarketAnalyzer()
