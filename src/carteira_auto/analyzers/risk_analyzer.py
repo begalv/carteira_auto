@@ -58,7 +58,7 @@ class RiskAnalyzer(Node):
 
         try:
             yahoo = YahooFinanceFetcher()
-            hist = yahoo.get_historical_price_data(tickers, period="1y", interval="1d")
+            hist = yahoo.get_historical_price_data(tickers, period="5y", interval="1d")
 
             if hist.empty:
                 return RiskMetrics()
@@ -150,7 +150,7 @@ class RiskAnalyzer(Node):
         try:
             yahoo = YahooFinanceFetcher()
             ibov = yahoo.get_historical_price_data(
-                ["^BVSP"], period="1y", interval="1d"
+                ["^BVSP"], period="5y", interval="1d"
             )
             if ibov.empty:
                 return None

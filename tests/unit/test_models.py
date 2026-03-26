@@ -184,6 +184,52 @@ class TestAsset:
         asset = Asset(ticker="PETR4", nome="Petrobras", diferenca=-2000.0)
         assert asset.diferenca == -2000.0
 
+    def test_asset_campos_fundamentalistas(self):
+        """Campos fundamentalistas são opcionais e aceitos corretamente."""
+        asset = Asset(
+            ticker="ITUB4",
+            nome="Itaú Unibanco PN",
+            p_l=8.5,
+            p_vp=1.8,
+            ev_ebitda=6.2,
+            dy_12m=5.3,
+            market_cap=280_000.0,
+            roe=19.5,
+            roa=2.1,
+            margem_liquida=25.0,
+            margem_ebitda=40.0,
+            receita_liquida=95_000.0,
+            ebitda=38_000.0,
+            lpa=3.85,
+            vpa=21.3,
+            cagr_receita_5a=8.5,
+            divida_liquida_ebitda=2.1,
+            beta_5a=0.85,
+            free_float=65.0,
+            liquidez_media_diaria=500.0,
+        )
+        assert asset.p_l == 8.5
+        assert asset.roe == 19.5
+        assert asset.dy_12m == 5.3
+        assert asset.beta_5a == 0.85
+        # Campos não preenchidos devem ser None
+        assert asset.preco_atual is None
+
+    def test_asset_fundamentalistas_podem_ser_negativos(self):
+        """P/L, ROE, margens etc. podem ser negativos (empresa com prejuízo)."""
+        asset = Asset(
+            ticker="MGLU3",
+            nome="Magazine Luiza ON",
+            p_l=-12.5,  # prejuízo
+            roe=-8.3,  # ROE negativo
+            margem_liquida=-2.1,  # margem negativa
+            divida_liquida_ebitda=-0.5,  # caixa líquido (negativo = posição de caixa)
+        )
+        assert asset.p_l == -12.5
+        assert asset.roe == -8.3
+        assert asset.margem_liquida == -2.1
+        assert asset.divida_liquida_ebitda == -0.5
+
     def test_asset_serializacao(self):
         """Asset serializa e deserializa corretamente."""
         asset = Asset(ticker="PETR4", nome="Petrobras", preco_atual=35.0)
