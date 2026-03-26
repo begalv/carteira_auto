@@ -4,7 +4,6 @@ Node DAG: name="rebalance", deps=["analyze_portfolio"]
 Produz: ctx["rebalance_recommendations"] -> list[RebalanceRecommendation]
 """
 
-from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import (
     Portfolio,
@@ -35,7 +34,7 @@ class Rebalancer(Node):
     def run(self, ctx: PipelineContext) -> PipelineContext:
         portfolio: Portfolio = ctx["portfolio"]
         metrics: PortfolioMetrics = ctx["portfolio_metrics"]
-        recommendations = self._generate_recommendations(portfolio, metrics)
+        recommendations = self._generate_recommendations(portfolio, metrics, ctx)
         ctx["rebalance_recommendations"] = recommendations
 
         if recommendations:
@@ -45,13 +44,26 @@ class Rebalancer(Node):
         return ctx
 
     def _generate_recommendations(
-        self, portfolio: Portfolio, metrics: PortfolioMetrics
+        self, portfolio: Portfolio, metrics: PortfolioMetrics, ctx: PipelineContext
     ) -> list[RebalanceRecommendation]:
-        """Gera recomendações baseadas nos desvios de alocação."""
-        targets = settings.portfolio.TARGET_ALLOCATIONS
-        threshold = settings.portfolio.REBALANCE_THRESHOLD
-        min_trade = settings.portfolio.MIN_TRADE_VALUE
+        """Gera recomendações baseadas nos desvios de alocação.
+
+        Parâmetros via PipelineContext:
+            - ctx["target_allocations"]: dict[str, float] — metas por classe
+            - ctx["rebalance_threshold"]: float — tolerância de desvio (default 0.05)
+            - ctx["min_trade_value"]: float — valor mínimo por operação (default 100)
+        """
+        targets: dict[str, float] = ctx.get("target_allocations", {})
+        threshold: float = ctx.get("rebalance_threshold", 0.05)
+        min_trade: float = ctx.get("min_trade_value", 100.0)
         total_value = metrics.total_value
+
+        if not targets:
+            logger.warning(
+                "target_allocations não fornecido no contexto — "
+                "rebalanceamento ignorado"
+            )
+            return []
 
         if total_value <= 0:
             return []
@@ -85,16 +97,16 @@ class Rebalancer(Node):
                 continue
 
             if diff > 0:
-                recs = self._distribute_buy(assets_in_class, diff)
+                recs = self._distribute_buy(assets_in_class, diff, min_trade)
             else:
-                recs = self._distribute_sell(assets_in_class, abs(diff))
+                recs = self._distribute_sell(assets_in_class, abs(diff), min_trade)
 
             recommendations.extend(recs)
 
         return recommendations
 
     def _distribute_buy(
-        self, assets: list, total_to_buy: float
+        self, assets: list, total_to_buy: float, min_trade: float = 100.0
     ) -> list[RebalanceRecommendation]:
         """Distribui compra entre ativos da classe."""
         total_meta = sum(a.pct_meta or 0 for a in assets)
@@ -107,7 +119,7 @@ class Rebalancer(Node):
         recs = []
         for asset in assets:
             value = total_to_buy * weights.get(asset.ticker, 0)
-            if value < settings.portfolio.MIN_TRADE_VALUE:
+            if value < min_trade:
                 continue
 
             quantity = None
@@ -126,7 +138,7 @@ class Rebalancer(Node):
         return recs
 
     def _distribute_sell(
-        self, assets: list, total_to_sell: float
+        self, assets: list, total_to_sell: float, min_trade: float = 100.0
     ) -> list[RebalanceRecommendation]:
         """Distribui venda entre ativos da classe."""
         total_pos = sum(a.posicao_atual or 0 for a in assets)
@@ -137,7 +149,7 @@ class Rebalancer(Node):
         for asset in assets:
             weight = (asset.posicao_atual or 0) / total_pos
             value = total_to_sell * weight
-            if value < settings.portfolio.MIN_TRADE_VALUE:
+            if value < min_trade:
                 continue
 
             quantity = None
