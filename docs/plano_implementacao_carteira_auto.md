@@ -1505,7 +1505,38 @@ class ContentRouter:
 
 ## Fases de Implementação
 
-### Fase 0: Infraestrutura Base (Pré-requisito) — ~1 semana
+### Progresso Atual (atualizado 2026-03-25)
+
+| Fase | Status | PR | Notas |
+|------|--------|----|-------|
+| 0 | CONCLUÍDA | #18 | DataLake SQLite (4 sub-lakes), IngestNodes, settings expandido |
+| 1 | CONCLUÍDA | #19 | FRED, CVM, Tesouro, DDM fetchers + testes |
+| Hardening | CONCLUÍDA | #20 | Result type, validação estrita, error handling, 350 testes |
+| 2 | PRÓXIMA | — | 9 analyzers novos |
+| 3-7 | Pendente | — | — |
+
+**Decisões estratégicas tomadas no hardening (PR #20):**
+- Result type `Ok[T] | Err[T]` para error handling explícito
+- Validação Pydantic estrita: ticker obrigatório, preços >= 0, Literal types
+- Per-node error handling no DAGEngine com `fail_fast` flag
+- Erros parciais em analyzers via `ctx["_errors"]` (sem silenciar exceções)
+- Imutabilidade: `model_copy()` em vez de mutação in-place
+- `RISK_FREE_DAILY` e `MIN_TRADE_VALUE` extraídos para settings
+- `ERROR_MESSAGES`/`SUCCESS_MESSAGES` removidos (dead code)
+- Node.__init_subclass__() para isolar dependencies entre subclasses
+
+**Cobertura de testes (350 passando):**
+- test_models.py (54) — Result type, validação Asset/Portfolio, todos os models
+- test_analyzers.py (19) — DAGEngine error handling, 7 analyzers com mocks
+- test_fetchers.py (17) — Yahoo normalize, preços, histórico
+- test_cli.py (15) — parser, comandos, main
+- test_decorators.py (20) — todos os decorators
+- test_integrations.py (8) — E2E pipeline, dry_run, presets
+- test_lake.py, test_cvm_fetcher.py, test_fred_fetcher.py, etc. (pré-existentes)
+
+---
+
+### Fase 0: Infraestrutura Base (Pré-requisito) — CONCLUÍDA
 
 **Objetivo:** Preparar o terreno para tudo que vem depois.
 
@@ -1529,7 +1560,7 @@ class ContentRouter:
    - Fixtures para DataLake (SQLite in-memory)
    - Mocks para fetchers (evitar chamadas reais em testes)
 
-### Fase 1: Fontes de Dados Críticas — ~2 semanas
+### Fase 1: Fontes de Dados Críticas — CONCLUÍDA
 
 **Objetivo:** Alimentar o data lake com dados suficientes para as primeiras estratégias.
 
