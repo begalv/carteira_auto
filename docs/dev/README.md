@@ -1,26 +1,29 @@
-# Pacote de Documentação — carteira_auto v0.2.0
+# Documentação Claude Code — carteira_auto v0.2.1
 
-## Inventário dos artefatos
+Artefatos de referência para desenvolvimento com Claude Code.
+Atualizados ao final de cada fase/sprint.
 
-| # | Arquivo | Propósito | Impacto no Claude Code |
-|---|---------|-----------|----------------------|
-| 1 | `CLAUDE.md` | Governança de sprints, infra existente, estado atual, lembretes | Lido automaticamente — define comportamento |
-| 2 | `docs/plano_implementacao_carteira_auto.md` | Source of truth: 8 camadas, 8 fases, progresso, decisões | Referência por fase |
-| 3 | `claude_code_docs/ARCHITECTURE.md` | Mapa compacto: módulos, exports, ctx keys, pipelines, testes | Elimina redescoberta de código |
-| 4 | `claude_code_docs/PATTERNS.md` | 9 templates canônicos (fetcher, analyzer, strategy, result, validação) | Few-shot prompting — consistência |
-| 5 | `docs/adr/001-006` | Decisões e razões (DAG, Strategy!=Node, SQLite, Layered, Config, AI) | Impede reversão de decisões |
-| 6 | `claude_code_docs/DEPENDENCY_GRAPH.mermaid` | Grafo de dependências entre módulos | Previne imports circulares |
+## Inventário
 
-## O que mudou desde v0.1.0
+| Arquivo | Propósito | Quando consultar |
+|---------|-----------|-----------------|
+| `ARCHITECTURE.md` | Mapa compacto: módulos, exports, ctx keys, pipelines, testes | Antes de criar qualquer arquivo novo |
+| `PATTERNS.md` | 9 templates canônicos (fetcher, analyzer, strategy, result, validação) | Ao implementar novos componentes |
+| `DEPENDENCY_GRAPH.mermaid` | Grafo de dependências entre módulos | Antes de adicionar imports (previne ciclos) |
 
-### Hardening Sprint (PR #20)
-- **ARCHITECTURE.md** atualizado para v0.2.0 com novos módulos (result.py, lake/, 7 fetchers, ingest_nodes), seção de testes
-- **PATTERNS.md** expandido com 3 novos patterns: Result type (7), Error tracking parcial (8), Validação Pydantic estrita (9)
-- **DEPENDENCY_GRAPH.mermaid** atualizado com result, lake, 4 novos fetchers, ingest_nodes e suas conexões
-- **CLAUDE.md** atualizado com estado atual (v0.2.0), lembretes de decisões, regras de error handling
-- **Plano de implementação** atualizado com seção "Progresso Atual" e status das fases
+**Nota:** A governança completa de sprints fica em `CLAUDE.md` na raiz do repositório
+(carregado automaticamente pelo Claude Code). O plano arquitetural fica em
+`docs/system/plano_implementacao_carteira_auto.md`.
 
-### Decisões arquiteturais incorporadas
+## Estado atual — Fase 2 Sprint 1
+
+### Novo (Sprint 0 + Sprint 1)
+- **ARCHITECTURE.md** atualizado para v0.2.1 com 3 novos analyzers (currency, commodity, fiscal),
+  3 ctx keys, 3 pipelines CLI, 3 arquivos de teste
+- **DEPENDENCY_GRAPH.mermaid** atualizado com novos nodes e conexões BCB/FRED/Yahoo → analyzers
+- Códigos SGS fiscais corrigidos: 13762 (dívida/PIB), 5727 (juros/PIB)
+
+### Decisões arquiteturais incorporadas (Hardening)
 - Result type `Ok[T] | Err[T]` como padrão de error handling
 - Validação Pydantic estrita com `field_validator`
 - Per-node error handling no DAGEngine
@@ -29,18 +32,15 @@
 
 ## Manutenção
 
-| Artefato | Quando atualizar | Quem |
-|----------|-----------------|------|
-| ARCHITECTURE.md | Final de cada fase (novos módulos, chaves ctx, testes) | Claude Code + revisão humana |
-| PATTERNS.md | Se padrões mudarem ou novos patterns surgirem | Humano |
-| ADRs | Nunca editar existentes; criar novo ADR se decisão mudar | Humano |
-| DEPENDENCY_GRAPH.mermaid | Final de cada fase | Claude Code |
-| CLAUDE.md | A cada fase concluída (status, lembretes novos) | Claude Code + revisão humana |
-| Plano de implementação | A cada fase concluída (progresso, decisões) | Claude Code + revisão humana |
+| Artefato | Quando atualizar |
+|----------|-----------------|
+| `ARCHITECTURE.md` | Final de cada fase (novos módulos, chaves ctx, testes) |
+| `PATTERNS.md` | Se padrões mudarem ou novos patterns surgirem |
+| `DEPENDENCY_GRAPH.mermaid` | Final de cada fase |
+| `CLAUDE.md` (raiz) | A cada fase concluída (status, lembretes novos) |
+| Plano de implementação | A cada fase concluída (progresso, decisões) |
 
-## Próximos passos
+## Próximos sprints (Fase 2)
 
-A **Fase 2** (Analyzers Avançados) é a próxima. Consulte o plano de implementação
-para os 9 analyzers a criar: FundamentalAnalyzer, CurrencyAnalyzer,
-CommodityAnalyzer, YieldCurveAnalyzer, FiscalAnalyzer, GlobalMacroAnalyzer,
+Restam 6 analyzers: FundamentalAnalyzer, YieldCurveAnalyzer, GlobalMacroAnalyzer,
 CorrelationAnalyzer, DividendAnalyzer, PersonalFinanceAnalyzer.
