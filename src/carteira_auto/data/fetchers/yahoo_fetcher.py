@@ -3,7 +3,7 @@
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Optional, Union
+from typing import Any
 
 import pandas as pd
 import yfinance as yf
@@ -28,7 +28,7 @@ logger = get_logger(__name__)
 class YahooFinanceFetcher:
     """Busca dados do Yahoo Finance com cache, retry e paralelismo."""
 
-    def __init__(self, max_workers: Optional[int] = None):
+    def __init__(self, max_workers: int | None = None):
         self.max_workers = max_workers or min(32, os.cpu_count() + 4)
         self.timeout = settings.yahoo.TIMEOUT
         self.retries = settings.yahoo.RETRIES
@@ -85,11 +85,11 @@ class YahooFinanceFetcher:
     @cache_result(ttl_seconds=86400)  # 24h
     def get_historical_price_data(
         self,
-        symbols: Union[str, list[str]],
-        period: str = "10y",
+        symbols: str | list[str],
+        period: str = "5y",
         interval: str = "1d",
-        start: Optional[str] = None,
-        end: Optional[str] = None,
+        start: str | None = None,
+        end: str | None = None,
         **kwargs,
     ) -> pd.DataFrame:
         """Obtém dados históricos de preço de um ou mais ativos.
@@ -133,7 +133,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_basic_info(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_basic_info(self, symbol: str) -> dict[str, Any] | None:
         """Obtém informações básicas: preço, setor, nome, market cap, etc."""
         try:
             return Ticker(symbol).info or None
@@ -147,7 +147,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_financials(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_financials(self, symbol: str) -> dict[str, Any] | None:
         """Obtém dados financeiros: DRE, balanço, fluxo de caixa."""
         try:
             ticker = Ticker(symbol)
@@ -174,7 +174,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_dividends(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_dividends(self, symbol: str) -> dict[str, Any] | None:
         """Obtém histórico de dividendos, splits e ações corporativas."""
         try:
             ticker = Ticker(symbol)
@@ -199,7 +199,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_earnings(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_earnings(self, symbol: str) -> dict[str, Any] | None:
         """Obtém dados de lucros e estimativas."""
         try:
             ticker = Ticker(symbol)
@@ -224,7 +224,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_holders(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_holders(self, symbol: str) -> dict[str, Any] | None:
         """Obtém dados de acionistas e insiders."""
         try:
             ticker = Ticker(symbol)
@@ -251,7 +251,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_recommendations(self, symbol: str) -> Optional[dict[str, Any]]:
+    def get_recommendations(self, symbol: str) -> dict[str, Any] | None:
         """Obtém recomendações de analistas e price targets."""
         try:
             ticker = Ticker(symbol)
@@ -281,7 +281,7 @@ class YahooFinanceFetcher:
     @log_execution
     @validate_tickers
     @cache_by_ticker(ttl_seconds=86400)  # 24h
-    def get_dividend_yield(self, symbol: str) -> Optional[float]:
+    def get_dividend_yield(self, symbol: str) -> float | None:
         """Obtém o dividend yield de um ativo."""
         try:
             ticker = Ticker(symbol)
@@ -326,7 +326,7 @@ class YahooFinanceFetcher:
     @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_by_ticker(ttl_seconds=300)  # 5min
-    def get_current_price(self, symbol: str) -> Optional[float]:
+    def get_current_price(self, symbol: str) -> float | None:
         """Obtém o preço mais recente de um ativo."""
         try:
             ticker = Ticker(symbol)
@@ -350,7 +350,7 @@ class YahooFinanceFetcher:
     @rate_limit(calls_per_minute=settings.yahoo.RATE_LIMIT)
     @timeout(seconds=settings.yahoo.TIMEOUT * 2)
     @log_execution
-    def get_multiple_prices(self, symbols: list[str]) -> dict[str, Optional[float]]:
+    def get_multiple_prices(self, symbols: list[str]) -> dict[str, float | None]:
         """Obtém preços atuais de múltiplos ativos via yf.download.
 
         Aceita tickers originais (ex: PETR4) — normalização e filtragem
@@ -370,7 +370,7 @@ class YahooFinanceFetcher:
         yahoo_to_original = {v: k for k, v in original_to_yahoo.items()}
         yahoo_symbols = list(original_to_yahoo.values())
 
-        results: dict[str, Optional[float]] = {}
+        results: dict[str, float | None] = {}
         try:
             data = download(
                 tickers=yahoo_symbols,
@@ -427,7 +427,7 @@ class YahooFinanceFetcher:
     def get_batch_info(
         self,
         symbols: list[str],
-        fields: Optional[list[str]] = None,
+        fields: list[str] | None = None,
     ) -> dict[str, dict[str, Any]]:
         """Busca múltiplos tipos de dados para múltiplos tickers em paralelo.
 
@@ -522,7 +522,7 @@ class YahooFinanceFetcher:
     @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=300)  # 5min
-    def get_market_summary(self, market: str = "us") -> Optional[dict[str, Any]]:
+    def get_market_summary(self, market: str = "us") -> dict[str, Any] | None:
         """Obtém resumo do mercado ('us', 'br', 'au', etc.)."""
         try:
             summary = Market(market).summary
@@ -557,7 +557,7 @@ class YahooFinanceFetcher:
     @timeout(seconds=settings.yahoo.TIMEOUT)
     @log_execution
     @cache_result(ttl_seconds=3600)  # 1h
-    def get_market_calendar(self, days: int = 30) -> Optional[pd.DataFrame]:
+    def get_market_calendar(self, days: int = 30) -> pd.DataFrame | None:
         """Obtém calendário de eventos do mercado."""
         try:
             calendar_data = Calendars(days=days).events
@@ -581,7 +581,7 @@ class YahooFinanceFetcher:
     @cache_result(ttl_seconds=3600)  # 1h
     def get_sector_performance(
         self, sector: str = "technology"
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Obtém performance de um setor específico.
 
         Setores: 'communication_services', 'consumer_cyclical', 'consumer_defensive',
@@ -605,7 +605,7 @@ class YahooFinanceFetcher:
     @cache_result(ttl_seconds=3600)  # 1h
     def get_industry_performance(
         self, industry: str = "software"
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """Obtém performance de uma indústria específica."""
         try:
             industry_obj = yf.Industry(industry)
