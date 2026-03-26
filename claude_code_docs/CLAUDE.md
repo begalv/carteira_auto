@@ -7,17 +7,19 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.0 — pós-hardening)
+## Estado atual do projeto (v0.2.1 — Fase 2 Sprint 1 concluído)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
 | 0 | CONCLUÍDA | DataLake SQLite, IngestNodes, settings expandido |
 | 1 | CONCLUÍDA | FREDFetcher, CVMFetcher, TesouroDiretoFetcher, DDMFetcher |
 | Hardening | CONCLUÍDA | Result type, validação estrita, error handling, 350 testes |
-| 2 | PRÓXIMA | 9 analyzers novos (fundamental, currency, commodity...) |
+| 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
+| 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
+| 2 Sprint 2+ | PRÓXIMA | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 350 passando (unit + integration). 1 falha pré-existente (CVM 404).
-**Cobertura:** models, analyzers, fetchers, CLI, decorators, E2E pipelines.
+**Testes:** 407 passando (unit + integration). 2 falhas pré-existentes (CVM 404, Excel fixture).
+**Cobertura:** models, analyzers (10), fetchers, CLI, decorators, E2E pipelines.
 
 ## Documentos de referência
 
@@ -147,7 +149,8 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 
 ### Analyzers (src/carteira_auto/analyzers/)
 - PortfolioAnalyzer, RiskAnalyzer, MacroAnalyzer, MarketAnalyzer,
-  Rebalancer, MarketSectorAnalyzer, EconomicSectorAnalyzer.
+  Rebalancer, MarketSectorAnalyzer, EconomicSectorAnalyzer,
+  CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer (10 analyzers).
   → Todos usam error tracking parcial (Pattern 8).
   → ADICIONE novos analyzers no mesmo padrão (Pattern 2).
 
@@ -188,7 +191,7 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | 0 | Infra: DataLake SQLite, IngestNodes, settings | CONCLUÍDA |
 | 1 | Fontes: FRED, CVM, Tesouro, DDM | CONCLUÍDA |
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
-| 2 | Analyzers: 9 novos (fundamental, currency, commodity...) | PRÓXIMA |
+| 2 | Analyzers: 9 novos — Sprint 1 concluído (currency, commodity, fiscal) | EM ANDAMENTO |
 | 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
 | 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |
 | 5 | NLP: sentimento, geopolítica, crisis hedge | Pendente |
@@ -207,6 +210,8 @@ antes de iniciar cada fase.
 - **ruff UP007**: usar `X | Y` em vez de `Optional[X]` para type annotations.
 - **Pre-commit hooks**: black + ruff rodam automaticamente. Sempre corrigir antes
   de commitar.
+- **Códigos SGS fiscais validados**: Dívida bruta/PIB = 13762 (NÃO 13621, que
+  retorna valor absoluto em R$). Juros nominais/PIB = 5727 (NÃO 4185, que não existe).
 
 ## Como iniciar
 

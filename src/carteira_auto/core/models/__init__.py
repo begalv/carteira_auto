@@ -8,6 +8,9 @@ Usage:
 
 from carteira_auto.core.models.analysis import (
     AllocationResult,
+    CommodityMetrics,
+    CurrencyMetrics,
+    FiscalMetrics,
     MacroContext,
     MarketMetrics,
     PortfolioMetrics,
@@ -36,6 +39,9 @@ __all__ = [
     "MarketMetrics",
     "MacroContext",
     "RebalanceRecommendation",
+    "CurrencyMetrics",
+    "CommodityMetrics",
+    "FiscalMetrics",
     # Economic
     "MacroIndicator",
     "MacroSnapshot",

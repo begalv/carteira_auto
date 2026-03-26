@@ -135,6 +135,165 @@ class MacroContext(BaseModel):
     """Sumário textual do cenário macro gerado automaticamente."""
 
 
+class CurrencyMetrics(BaseModel):
+    """Métricas de câmbio e carry trade.
+
+    Produzida por: CurrencyAnalyzer (analyze_currency)
+    Fontes: BCBFetcher (PTAX, Selic), FREDFetcher (Fed Funds), YahooFinanceFetcher (DXY)
+    """
+
+    # ---- USD/BRL ----
+    usd_brl: float | None = None
+    """Dólar PTAX compra corrente — R$/USD | BCB SGS 10813."""
+
+    usd_brl_ptax_venda: float | None = None
+    """Dólar PTAX venda corrente — R$/USD | BCB SGS 1."""
+
+    usd_brl_change_1m: float | None = None
+    """Variação % do USD/BRL no último mês."""
+
+    usd_brl_change_3m: float | None = None
+    """Variação % do USD/BRL nos últimos 3 meses."""
+
+    usd_brl_change_12m: float | None = None
+    """Variação % do USD/BRL nos últimos 12 meses."""
+
+    # ---- Dollar Index ----
+    dxy: float | None = None
+    """Dollar Index (DXY) corrente | Yahoo DX-Y.NYB."""
+
+    dxy_change_1m: float | None = None
+    """Variação % do DXY no último mês."""
+
+    # ---- Carry trade ----
+    selic_rate: float | None = None
+    """Taxa Selic meta corrente — % a.a. | BCB SGS 432."""
+
+    fed_funds_rate: float | None = None
+    """Fed Funds Rate corrente — % a.a. | FRED DFF."""
+
+    carry_spread: float | None = None
+    """Spread Selic - Fed Funds em pp. Positivo = carry favorável ao BRL."""
+
+    # ---- Câmbio real ----
+    taxa_cambio_real_efetiva: float | None = None
+    """Índice de taxa de câmbio real efetiva (IPCA) | BCB SGS 11752."""
+
+    # ---- Sumário ----
+    summary: str | None = None
+    """Sumário textual do cenário cambial."""
+
+
+class CommodityMetrics(BaseModel):
+    """Métricas de commodities relevantes para carteira brasileira.
+
+    Produzida por: CommodityAnalyzer (analyze_commodities)
+    Fontes: YahooFinanceFetcher (futuros CL=F, BZ=F, GC=F, SI=F, ZS=F, ZC=F, ZW=F)
+    """
+
+    # ---- Petróleo ----
+    oil_wti: float | None = None
+    """Petróleo WTI corrente — USD/bbl | Yahoo CL=F."""
+
+    oil_brent: float | None = None
+    """Petróleo Brent corrente — USD/bbl | Yahoo BZ=F."""
+
+    oil_change_1m: float | None = None
+    """Variação % do Brent no último mês."""
+
+    oil_change_3m: float | None = None
+    """Variação % do Brent nos últimos 3 meses."""
+
+    oil_change_12m: float | None = None
+    """Variação % do Brent nos últimos 12 meses."""
+
+    # ---- Metais ----
+    gold: float | None = None
+    """Ouro corrente — USD/oz | Yahoo GC=F."""
+
+    gold_change_1m: float | None = None
+    """Variação % do ouro no último mês."""
+
+    gold_change_3m: float | None = None
+    """Variação % do ouro nos últimos 3 meses."""
+
+    gold_change_12m: float | None = None
+    """Variação % do ouro nos últimos 12 meses."""
+
+    silver: float | None = None
+    """Prata corrente — USD/oz | Yahoo SI=F."""
+
+    silver_change_1m: float | None = None
+    """Variação % da prata no último mês."""
+
+    # ---- Agrícolas ----
+    soybean: float | None = None
+    """Soja corrente — USD/bushel | Yahoo ZS=F."""
+
+    soybean_change_1m: float | None = None
+    """Variação % da soja no último mês."""
+
+    soybean_change_3m: float | None = None
+    """Variação % da soja nos últimos 3 meses."""
+
+    corn: float | None = None
+    """Milho corrente — USD/bushel | Yahoo ZC=F."""
+
+    wheat: float | None = None
+    """Trigo corrente — USD/bushel | Yahoo ZW=F."""
+
+    # ---- Indicadores compostos ----
+    commodity_index_change_3m: float | None = None
+    """Variação média ponderada das commodities em 3m (proxy para ciclo)."""
+
+    cycle_signal: str | None = None
+    """Sinal do ciclo de commodities: 'expansion', 'peak', 'contraction', 'trough'."""
+
+    # ---- Sumário ----
+    summary: str | None = None
+    """Sumário textual do cenário de commodities."""
+
+
+class FiscalMetrics(BaseModel):
+    """Métricas fiscais do governo brasileiro.
+
+    Produzida por: FiscalAnalyzer (analyze_fiscal)
+    Fontes: BCBFetcher (séries SGS 13762, 4503, 5793, 4649, 5727)
+    """
+
+    # ---- Dívida ----
+    divida_bruta_pib: float | None = None
+    """Dívida Bruta do Governo Geral / PIB — % | BCB SGS 13762."""
+
+    divida_liquida_pib: float | None = None
+    """Dívida Líquida do Setor Público / PIB — % | BCB SGS 4503."""
+
+    # ---- Resultado fiscal ----
+    resultado_primario_pib: float | None = None
+    """Resultado Primário acumulado 12m / PIB — % | BCB SGS 5793."""
+
+    resultado_nominal: float | None = None
+    """Resultado Nominal acumulado 12m — R$ milhões | BCB SGS 4649."""
+
+    juros_nominais_pib: float | None = None
+    """Juros Nominais acumulados 12m / PIB — % | BCB SGS 5727."""
+
+    # ---- Variação temporal ----
+    divida_bruta_pib_change_12m: float | None = None
+    """Variação da dívida bruta/PIB em 12 meses — pp."""
+
+    resultado_primario_pib_change_12m: float | None = None
+    """Variação do resultado primário/PIB em 12 meses — pp."""
+
+    # ---- Avaliação ----
+    fiscal_trajectory: str | None = None
+    """Avaliação da trajetória fiscal: 'improving', 'stable', 'warning', 'deteriorating', 'critical', 'severe'."""
+
+    # ---- Sumário ----
+    summary: str | None = None
+    """Sumário textual da situação fiscal."""
+
+
 class RebalanceRecommendation(BaseModel):
     """Recomendação de rebalanceamento para um ativo."""
 

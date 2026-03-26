@@ -1,4 +1,4 @@
-# Arquitetura — carteira_auto v0.2.0 (pós-hardening)
+# Arquitetura — carteira_auto v0.2.1 (Fase 2 Sprint 1)
 
 > Referência compacta para Claude Code. Atualizar ao final de cada fase.
 
@@ -10,7 +10,7 @@
 | engine.py | DAGEngine(fail_fast), Node, PipelineContext, NodeExecutionError | Motor DAG com topological sort (Kahn), error handling per-node, Node.__init_subclass__() isola deps por subclass |
 | result.py | Ok[T], Err[T], Result (type alias) | Tipo Result funcional para operações falíveis |
 | models/portfolio.py | Asset (+ 17 campos fundamentalistas), Portfolio, SoldAsset | Modelos da planilha Excel — validação Pydantic estrita (field_validator para ticker, preços, percentages). Asset inclui campos fundamentalistas (P/L, P/VP, ROE, DY, beta, etc.) populados via Yahoo Finance. |
-| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext (12 campos), MarketMetrics (8 campos), RebalanceRecommendation, AllocationResult | Outputs dos analyzers — AllocationResult.action é Literal["comprar","vender","manter"], RiskMetrics.is_complete(), RebalanceRecommendation.action é Literal["comprar","vender"] |
+| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext (12 campos), MarketMetrics (8 campos), CurrencyMetrics (11 campos), CommodityMetrics (18 campos), FiscalMetrics (9 campos), RebalanceRecommendation, AllocationResult | Outputs dos analyzers — AllocationResult.action é Literal["comprar","vender","manter"], RiskMetrics.is_complete(), RebalanceRecommendation.action é Literal["comprar","vender"] |
 | models/economic.py | MacroIndicator, MarketIndicator, SectorIndicator, EconomicSectorIndicator | Indicadores econômicos |
 | registry.py | create_engine(), PIPELINE_PRESETS | Mapeamento CLI → node terminal |
 | nodes/portfolio_nodes.py | LoadPortfolioNode, FetchPricesNode, FetchPortfolioPricesNode, ExportPortfolioPricesNode | Operações de carteira — FetchPortfolioPricesNode usa model_copy() (sem mutação in-place) |
@@ -56,6 +56,9 @@
 | market_sector_analyzer.py | analyze_market_sectors | [] | ctx["market_sectors"] |
 | economic_sector_analyzer.py | analyze_economic_sectors | [] | ctx["economic_sectors"] |
 | rebalancer.py | rebalance | [analyze_portfolio] | ctx["rebalance_recommendations"] |
+| currency_analyzer.py | analyze_currency | [] | ctx["currency_metrics"] |
+| commodity_analyzer.py | analyze_commodities | [] | ctx["commodity_metrics"] |
+| fiscal_analyzer.py | analyze_fiscal | [] | ctx["fiscal_metrics"] |
 
 ### alerts/ — Sistema de alertas
 | Arquivo | Exporta | Papel |
@@ -88,7 +91,13 @@
 | market | analyze_market | 8 benchmarks (IBOV, IFIX, CDI, S&P500, USD/BRL, Ouro, Selic acum., PTAX) |
 | market-sectors | analyze_market_sectors | Performance setorial |
 | economic-sectors | analyze_economic_sectors | Setores da economia real |
-| ingest | ingest_fundamentals | Ingestão de dados no DataLake |
+| currency | analyze_currency | Câmbio, DXY, carry trade e taxa real efetiva |
+| commodities | analyze_commodities | Preços e ciclo de commodities (petróleo, ouro, agro) |
+| fiscal | analyze_fiscal | Dívida/PIB, resultado primário e trajetória fiscal |
+| ingest-prices | ingest_prices | Ingestão de preços no DataLake |
+| ingest-macro | ingest_macro | Ingestão de indicadores macro no DataLake |
+| ingest-fundamentals | ingest_fundamentals | Ingestão de dados fundamentalistas no DataLake |
+| ingest-news | ingest_news | Ingestão de notícias no DataLake |
 
 ## Paths do sistema
 | Variável | Default | Uso |
@@ -114,6 +123,9 @@
 | market_sectors | list[SectorIndicator] | MarketSectorAnalyzer | — |
 | economic_sectors | list[EconomicSectorIndicator] | EconomicSectorAnalyzer | — |
 | rebalance_recommendations | list[RebalanceRecommendation] | Rebalancer | — |
+| currency_metrics | CurrencyMetrics | CurrencyAnalyzer | — |
+| commodity_metrics | CommodityMetrics | CommodityAnalyzer | — |
+| fiscal_metrics | FiscalMetrics | FiscalAnalyzer | — |
 | alerts | list[Alert] | EvaluateAlertsNode | — |
 | snapshot_path | Path | SaveSnapshotNode | — |
 | _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
@@ -130,3 +142,6 @@
 | test_lake.py | — | PriceLake, MacroLake, FundamentalsLake, NewsLake |
 | test_cvm_fetcher.py | — | CVMFetcher |
 | test_fred_fetcher.py | — | FREDFetcher |
+| test_currency_analyzer.py | 9 | CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais) |
+| test_commodity_analyzer.py | 8 | CommodityAnalyzer (preços, ciclo, índice, falhas) |
+| test_fiscal_analyzer.py | 16 | FiscalAnalyzer (métricas, trajetória, variação 12m, falhas) |

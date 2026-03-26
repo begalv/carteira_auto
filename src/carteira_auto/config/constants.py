@@ -127,6 +127,14 @@ class Constants:
         "tr": 226,  # Taxa Referencial — % a.m.
         "inpc": 188,  # INPC — variação mensal %
         "poupanca": 25,  # Rendimento poupança — % a.m.
+        # ---- Fiscal ----
+        "divida_bruta_pib": 13762,  # Dívida Bruta do Governo Geral / PIB — %
+        "divida_liquida_pib": 4503,  # Dívida Líquida do Setor Público / PIB — %
+        "resultado_primario_pib": 5793,  # Resultado Primário acum. 12m / PIB — %
+        "resultado_nominal": 4649,  # Resultado Nominal acum. 12m — R$ milhões
+        "juros_nominais_pib": 5727,  # Juros Nominais acum. 12m / PIB — %
+        # ---- Câmbio ----
+        "taxa_cambio_real": 11752,  # Taxa de câmbio real efetiva (IPCA) — índice
     }
 
     # ============================================================================
