@@ -184,33 +184,21 @@ class CoinGeckoConfig(BaseFetcherConfig):
 
 @dataclass
 class PortfolioConfig:
-    """Configurações da carteira."""
+    """Configurações da carteira.
+
+    Parâmetros de decisão financeira (target_allocations, rebalance_threshold,
+    min_trade_value, risk_free_rate) NÃO ficam aqui — são passados via
+    PipelineContext por serem específicos do investidor e do momento.
+    """
 
     # Arredondamento
     DECIMAL_PLACES: int = 4
     CURRENCY_DECIMAL_PLACES: int = 2
 
-    # Rebalanceamento
-    REBALANCE_THRESHOLD: float = 0.05  # 5% de diferença
-    MIN_TRADE_VALUE: float = 100.0  # Valor mínimo por operação
-
-    # Risco
-    RISK_FREE_DAILY: float = 0.0004  # CDI diário ~0.04% (~10.5% a.a.)
-
-    # Impostos
-    TAX_RATE_STOCKS: float = 0.15  # 15% para ações
-    TAX_RATE_FII: float = 0.20  # 20% para FIIs
-    TAX_EXEMPTION: float = 20000.0  # Isenção mensal
-
-    # Metas
-    TARGET_ALLOCATIONS: dict[str, float] = field(
-        default_factory=lambda: {
-            "Renda Fixa": 0.24,
-            "Fundos de Investimentos": 0.27,
-            "Ações": 0.31,
-            "Internacional": 0.18,
-        }
-    )
+    # Impostos (alíquotas legais — Lei 11.033/2004)
+    TAX_RATE_STOCKS: float = 0.15  # 15% IR sobre ações (swing trade)
+    TAX_RATE_FII: float = 0.20  # 20% IR sobre FIIs
+    TAX_EXEMPTION: float = 20000.0  # Isenção mensal vendas até R$20k
 
 
 @dataclass
