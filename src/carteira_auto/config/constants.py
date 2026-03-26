@@ -167,23 +167,6 @@ class Constants:
     ]
 
     # ============================================================================
-    # MENSAGENS E TEXTOS
-    # ============================================================================
-
-    ERROR_MESSAGES: dict[str, str] = {
-        "DATA_FETCH_ERROR": "Erro ao buscar dados para o ticker {ticker}",
-        "INVALID_TICKER": "Ticker {ticker} não encontrado ou inválido",
-        "INSUFFICIENT_DATA": "Dados insuficientes para análise",
-        "REBALANCE_THRESHOLD_NOT_MET": "Desvio ({deviation:.2%}) abaixo do threshold ({threshold:.2%})",
-    }
-
-    SUCCESS_MESSAGES: dict[str, str] = {
-        "DATA_FETCH_SUCCESS": "Dados atualizados com sucesso para {count} ativos",
-        "REBALANCE_TRIGGERED": "Rebalanceamento recomendado para {count} ativos",
-        "REPORT_GENERATED": "Relatório gerado com sucesso: {filepath}",
-    }
-
-    # ============================================================================
     # VALIDAÇÕES
     # ============================================================================
 

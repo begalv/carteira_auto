@@ -52,6 +52,10 @@ class MarketSectorAnalyzer(Node):
                         )
                     )
         except Exception as e:
-            logger.warning(f"Falha ao buscar setores de mercado: {e}")
+            import traceback
+
+            logger.error(
+                f"Falha ao buscar setores de mercado: {e}\n{traceback.format_exc()}"
+            )
 
         return sectors
