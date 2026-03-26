@@ -144,8 +144,38 @@ Ativo na carteira — mapeia uma linha da aba "Carteira".
 | `preco_medio` | `float \| None` | Preco medio de compra R$ | >= 0 |
 | `n_cotas_atual` | `float \| None` | Numero de cotas/acoes | >= 0 |
 
+**Campos fundamentalistas** — populados via Yahoo Finance (`get_batch_info`), nao pela planilha Excel.
+
+| Campo | Tipo | Descricao | Validacao |
+|---|---|---|---|
+| **Valuation** | | | |
+| `p_l` | `float \| None` | Preco/Lucro (P/E) — vezes | — (pode ser negativo) |
+| `p_vp` | `float \| None` | Preco/Valor Patrimonial (P/BV) — vezes | — |
+| `ev_ebitda` | `float \| None` | EV/EBITDA — vezes | — |
+| `dy_12m` | `float \| None` | Dividend Yield 12m — % a.a. | — |
+| `market_cap` | `float \| None` | Capitalizacao de mercado — R$ MM | — |
+| **Qualidade** | | | |
+| `roe` | `float \| None` | Return on Equity — % a.a. | — (pode ser negativo) |
+| `roa` | `float \| None` | Return on Assets — % a.a. | — |
+| `margem_liquida` | `float \| None` | Margem Liquida — % | — (pode ser negativo) |
+| `margem_ebitda` | `float \| None` | Margem EBITDA — % | — |
+| **Crescimento** | | | |
+| `receita_liquida` | `float \| None` | Receita Liquida — R$ MM (ultimos 12m) | — |
+| `ebitda` | `float \| None` | EBITDA — R$ MM (ultimos 12m) | — |
+| `lpa` | `float \| None` | Lucro por Acao — R$ (ultimos 12m) | — |
+| `vpa` | `float \| None` | Valor Patrimonial por Acao — R$ | — |
+| `cagr_receita_5a` | `float \| None` | CAGR Receita 5 anos — % a.a. | — |
+| **Endividamento** | | | |
+| `divida_liquida_ebitda` | `float \| None` | Divida Liquida/EBITDA — vezes | — (negativo = caixa liquido) |
+| **Mercado** | | | |
+| `beta_5a` | `float \| None` | Beta 5 anos vs IBOV — adimensional | — |
+| `free_float` | `float \| None` | Free Float — % | — |
+| `liquidez_media_diaria` | `float \| None` | Liquidez Media Diaria — R$ MM | — |
+
 ```python
 asset = Asset(ticker="PETR4", nome="Petrobras", preco_atual=38.50)
+# Com dados fundamentalistas (populados por FundamentalsNode futuro):
+asset = Asset(ticker="ITUB4", nome="Itau", p_l=8.5, roe=19.5, dy_12m=5.3)
 ```
 
 ### SoldAsset
@@ -198,16 +228,16 @@ Metricas consolidadas da carteira.
 
 ### RiskMetrics
 
-Metricas de risco da carteira.
+Metricas de risco da carteira — calculadas sobre historico de 5 anos.
 
-| Campo | Tipo | Descricao |
-|---|---|---|
-| `volatility` | `float \| None` | Volatilidade anualizada |
-| `var_95` | `float \| None` | Value-at-Risk 95% |
-| `var_99` | `float \| None` | Value-at-Risk 99% |
-| `sharpe_ratio` | `float \| None` | Sharpe ratio anualizado |
-| `max_drawdown` | `float \| None` | Maximo drawdown |
-| `beta` | `float \| None` | Beta contra IBOV |
+| Campo | Tipo | Descricao | Unidade |
+|---|---|---|---|
+| `volatility` | `float \| None` | Volatilidade anualizada (desvio padrao) | % a.a. |
+| `var_95` | `float \| None` | Value-at-Risk 95% (perda diaria maxima esperada) | % |
+| `var_99` | `float \| None` | Value-at-Risk 99% (perda diaria maxima esperada) | % |
+| `sharpe_ratio` | `float \| None` | Sharpe ratio anualizado (retorno exc. / vol.) | adimensional |
+| `max_drawdown` | `float \| None` | Maximo drawdown (queda pico a vale) | % |
+| `beta` | `float \| None` | Beta contra IBOV (sensibilidade ao mercado) | adimensional |
 
 | Metodo | Retorno | Descricao |
 |---|---|---|
@@ -215,21 +245,42 @@ Metricas de risco da carteira.
 
 ### MarketMetrics
 
-| Campo | Tipo | Descricao |
-|---|---|---|
-| `ibov_return` | `float \| None` | Retorno do Ibovespa |
-| `ifix_return` | `float \| None` | Retorno do IFIX |
-| `cdi_return` | `float \| None` | Retorno acumulado do CDI |
+Metricas de benchmarks de mercado — periodo padrao de 5 anos.
+
+| Campo | Tipo | Descricao | Fonte |
+|---|---|---|---|
+| `ibov_return` | `float \| None` | Retorno total IBOV — % acumulado 5a | Yahoo `^BVSP` |
+| `ifix_return` | `float \| None` | Retorno total IFIX (FIIs) — % acumulado 5a | Yahoo `IFIX.SA` |
+| `cdi_return` | `float \| None` | CDI acumulado — % (composicao de taxas % a.d.) | BCB SGS 12 |
+| `sp500_return` | `float \| None` | Retorno total S&P 500 em USD — % acumulado 5a | Yahoo `^GSPC` |
+| `dolar_retorno` | `float \| None` | Variacao USD/BRL — % acumulado 5a | Yahoo `BRL=X` |
+| `ouro_retorno` | `float \| None` | Variacao ouro em USD — % acumulado 5a | Yahoo `GC=F` |
+| `selic_retorno` | `float \| None` | Selic acumulada — % (composicao diaria da meta) | BCB SGS 432 |
+| `brl_usd` | `float \| None` | Taxa cambio BRL/USD corrente — R$ por USD | BCB SGS 10813 |
 
 ### MacroContext
 
-| Campo | Tipo | Descricao |
-|---|---|---|
-| `selic` | `float \| None` | Taxa Selic % a.a. |
-| `ipca` | `float \| None` | IPCA acumulado 12m % |
-| `cambio` | `float \| None` | Dolar PTAX R$ |
-| `pib_growth` | `float \| None` | Crescimento PIB % |
-| `summary` | `str \| None` | Sumario textual |
+Contexto macroeconomico consolidado — indicadores BCB e IBGE.
+
+| Campo | Tipo | Descricao | Fonte |
+|---|---|---|---|
+| **Taxas de juros** | | | |
+| `selic` | `float \| None` | Taxa Selic meta — % a.a. | BCB SGS 432 (COPOM ~8x/ano) |
+| `cdi` | `float \| None` | CDI acumulado 12m — % a.a. (composicao de % a.d.) | BCB SGS 12 (diario) |
+| `poupanca` | `float \| None` | Rendimento poupanca — % a.m. | BCB SGS 25 (mensal) |
+| `tr` | `float \| None` | Taxa Referencial — % a.m. | BCB SGS 226 (mensal) |
+| **Inflacao** | | | |
+| `ipca` | `float \| None` | IPCA acumulado 12m — % | BCB SGS 433 (mensal) |
+| `igpm` | `float \| None` | IGP-M acumulado 12m — % | BCB SGS 189 (mensal) |
+| `inpc` | `float \| None` | INPC acumulado 12m — % | BCB SGS 188 (mensal) |
+| **Cambio** | | | |
+| `cambio` | `float \| None` | Dolar PTAX compra — R$/USD | BCB SGS 10813 (dias uteis) |
+| `dolar_ptax_venda` | `float \| None` | Dolar PTAX venda — R$/USD | BCB SGS 1 (dias uteis) |
+| **Atividade economica** | | | |
+| `pib_growth` | `float \| None` | PIB variacao % vs mesmo trim. ano anterior | IBGE SIDRA 5932 (trimestral) |
+| `desocupacao` | `float \| None` | Taxa de desocupacao PNAD — % | IBGE SIDRA 6381 (trimestral) |
+| **Sumario** | | | |
+| `summary` | `str \| None` | Sumario textual gerado automaticamente | — |
 
 ### AllocationResult
 
@@ -362,7 +413,7 @@ Config base herdada por todos os fetchers.
 | `MACRO_TTL` | 86400 (24h) | TTL de macro |
 | `FUNDAMENTALS_TTL` | 604800 (7d) | TTL de fundamentos |
 | `NEWS_TTL` | 3600 (1h) | TTL de noticias |
-| `DEFAULT_LOOKBACK_YEARS` | 10 | Anos de historico padrao |
+| `DEFAULT_LOOKBACK_YEARS` | 5 | Anos de historico padrao |
 
 #### PortfolioConfig
 
@@ -417,7 +468,7 @@ fetcher = YahooFinanceFetcher(max_workers=8)
 |---|---|---|---|
 | `__init__` | `max_workers: int \| None` | — | Default: `min(32, cpu_count + 4)` |
 | `normalize_br_ticker` | `ticker: str` | `str` | Adiciona `.SA` para tickers B3. Estatico. |
-| `get_historical_price_data` | `symbols: str \| list[str], period="10y", interval="1d", start=None, end=None` | `pd.DataFrame` | OHLCV historico via `yf.download`. Cache 24h. |
+| `get_historical_price_data` | `symbols: str \| list[str], period="5y", interval="1d", start=None, end=None` | `pd.DataFrame` | OHLCV historico via `yf.download`. Cache 24h. |
 | `get_current_price` | `symbol: str` | `float \| None` | Preco mais recente. Cache 5min. |
 | `get_multiple_prices` | `symbols: list[str]` | `dict[str, float \| None]` | Precos atuais em lote. Normaliza e filtra tickers automaticamente. |
 | `get_basic_info` | `symbol: str` | `dict \| None` | Infos basicas: preco, setor, market cap. Cache 24h. |
@@ -451,12 +502,15 @@ bcb = BCBFetcher()
 
 | Metodo | Parametros | Retorno | Descricao |
 |---|---|---|---|
-| `get_selic` | `period_days: int = 365` | `pd.DataFrame` | Taxa Selic meta % a.a. |
-| `get_cdi` | `period_days: int = 365` | `pd.DataFrame` | Taxa CDI % a.d. |
-| `get_ipca` | `period_days: int = 365` | `pd.DataFrame` | IPCA variacao mensal %. |
-| `get_ptax` | `period_days: int = 30` | `pd.DataFrame` | Dolar PTAX compra R$. |
-| `get_igpm` | `period_days: int = 365` | `pd.DataFrame` | IGP-M variacao mensal %. |
-| `get_tr` | `period_days: int = 365` | `pd.DataFrame` | Taxa Referencial % a.m. |
+| `get_selic` | `period_days: int = 1825` | `pd.DataFrame` | Taxa Selic meta — % a.a. \| COPOM (~8x/ano) \| SGS 432 |
+| `get_cdi` | `period_days: int = 1825` | `pd.DataFrame` | Taxa CDI — % a.d. \| Diario \| SGS 12 |
+| `get_ipca` | `period_days: int = 1825` | `pd.DataFrame` | IPCA variacao mensal — % \| Mensal \| SGS 433 |
+| `get_igpm` | `period_days: int = 1825` | `pd.DataFrame` | IGP-M variacao mensal — % \| Mensal \| SGS 189 |
+| `get_inpc` | `period_days: int = 1825` | `pd.DataFrame` | INPC variacao mensal — % \| Mensal \| SGS 188 |
+| `get_poupanca` | `period_days: int = 1825` | `pd.DataFrame` | Rendimento poupanca — % a.m. \| Mensal \| SGS 25 |
+| `get_tr` | `period_days: int = 1825` | `pd.DataFrame` | Taxa Referencial — % a.m. \| Mensal \| SGS 226 |
+| `get_ptax` | `period_days: int = 30` | `pd.DataFrame` | Dolar PTAX compra — R$/USD \| Dias uteis \| SGS 10813 |
+| `get_ptax_venda` | `period_days: int = 30` | `pd.DataFrame` | Dolar PTAX venda — R$/USD \| Dias uteis \| SGS 1 |
 | `get_indicator` | `series_code: int, start_date, end_date` | `pd.DataFrame` | Qualquer serie SGS por codigo. |
 | `get_all_indicators` | — | `dict[str, pd.DataFrame]` | Todos os indicadores configurados. |
 | `get_latest_values` | — | `dict[str, float \| None]` | Ultimo valor de cada indicador. |
@@ -475,10 +529,10 @@ Dados do IBGE via API SIDRA.
 
 | Metodo | Parametros | Retorno | Descricao |
 |---|---|---|---|
-| `get_ipca` | `months: int = 12` | `pd.DataFrame` | IPCA variacao mensal. Colunas: `periodo, valor, variavel`. |
-| `get_ipca_detailed` | `months: int = 12` | `pd.DataFrame` | IPCA por grupos. Colunas: `periodo, valor, variavel, grupo`. |
-| `get_pib` | `quarters: int = 8` | `pd.DataFrame` | PIB trimestral taxa de variacao %. |
-| `get_unemployment` | `months: int = 12` | `pd.DataFrame` | PNAD taxa de desocupacao %. |
+| `get_ipca` | `months: int = 12` | `pd.DataFrame` | IPCA variacao mensal — % \| Mensal \| Tabela 1737. Colunas: `periodo, valor, variavel`. |
+| `get_ipca_detailed` | `months: int = 12` | `pd.DataFrame` | IPCA por grupos — % \| Mensal \| Tabela 1737. Colunas: `periodo, valor, variavel, grupo`. |
+| `get_pib` | `quarters: int = 8` | `pd.DataFrame` | PIB taxa de variacao — % \| Trimestral \| Tabela 5932. |
+| `get_unemployment` | `quarters: int = 8` | `pd.DataFrame` | PNAD taxa de desocupacao — % \| Trimestral \| Tabela 6381. |
 
 ```python
 ibge = IBGEFetcher()
@@ -869,7 +923,7 @@ Calcula: valor total, custo total, retorno, dividend yield, alocacao por classe 
 
 ### RiskAnalyzer
 
-Calcula metricas de risco via dados historicos de 1 ano.
+Calcula metricas de risco via dados historicos de 5 anos.
 
 | Atributo | Valor |
 |---|---|
@@ -891,11 +945,11 @@ Consolida contexto macroeconomico a partir de BCB e IBGE.
 | **Le do ctx** | — (busca dados diretamente) |
 | **Escreve no ctx** | `macro_context: MacroContext` |
 
-Busca: Selic (BCB), IPCA acumulado 12m (BCB), PTAX (BCB), PIB trimestral (IBGE). Falhas parciais sao registradas em `ctx["_errors"]`.
+Busca 11 indicadores: Selic, CDI 12m, IPCA 12m, IGP-M 12m, INPC 12m, poupanca, TR, PTAX compra/venda (BCB), PIB trimestral, desocupacao PNAD (IBGE). Falhas parciais sao registradas em `ctx["_errors"]`.
 
 ### MarketAnalyzer
 
-Calcula retornos dos benchmarks de mercado.
+Calcula retornos de 8 benchmarks: IBOV, IFIX, CDI, S&P 500, Dolar/BRL, Ouro, Selic acumulada, PTAX atual.
 
 | Atributo | Valor |
 |---|---|
@@ -904,7 +958,7 @@ Calcula retornos dos benchmarks de mercado.
 | **Le do ctx** | — (busca dados diretamente) |
 | **Escreve no ctx** | `market_metrics: MarketMetrics` |
 
-Busca: IBOV 1 ano (Yahoo), IFIX 1 ano (Yahoo), CDI acumulado (BCB).
+Busca: IBOV 5a (Yahoo), IFIX 5a (Yahoo), CDI 5a (BCB), S&P 500 5a (Yahoo), USD/BRL 5a (Yahoo), Ouro 5a (Yahoo), Selic 5a (BCB), PTAX corrente (BCB). Falhas parciais registradas em `ctx["_errors"]`.
 
 ### Rebalancer
 
@@ -1141,8 +1195,8 @@ Mapeamento de nomes CLI para nodes terminais do DAG.
 | `analyze` | `analyze_portfolio` | Analisa metricas da carteira (alocacao, retorno) |
 | `rebalance` | `rebalance` | Gera recomendacoes de rebalanceamento |
 | `risk` | `analyze_risk` | Calcula metricas de risco (VaR, Sharpe, beta) |
-| `macro` | `analyze_macro` | Analisa contexto macroeconomico (Selic, IPCA, cambio, PIB) |
-| `market` | `analyze_market` | Analisa benchmarks de mercado (IBOV, IFIX, CDI) |
+| `macro` | `analyze_macro` | Analisa 11 indicadores macro (Selic, CDI, IPCA, IGP-M, INPC, poupanca, TR, PTAX, PIB, desocupacao) |
+| `market` | `analyze_market` | Analisa 8 benchmarks (IBOV, IFIX, CDI, S&P500, USD/BRL, Ouro, Selic acum., PTAX) |
 | `market-sectors` | `analyze_market_sectors` | Analisa performance por setor de mercado |
 | `economic-sectors` | `analyze_economic_sectors` | Analisa setores da economia real (IBGE) |
 | `ingest-prices` | `ingest_prices` | Ingere precos historicos no DataLake (Yahoo Finance) |
