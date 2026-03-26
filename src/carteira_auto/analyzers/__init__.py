@@ -1,6 +1,9 @@
 """Analyzers — blocos de análise modulares (cada um é um Node do DAG)."""
 
+from .commodity_analyzer import CommodityAnalyzer
+from .currency_analyzer import CurrencyAnalyzer
 from .economic_sector_analyzer import EconomicSectorAnalyzer
+from .fiscal_analyzer import FiscalAnalyzer
 from .macro_analyzer import MacroAnalyzer
 from .market_analyzer import MarketAnalyzer
 from .market_sector_analyzer import MarketSectorAnalyzer
@@ -16,4 +19,7 @@ __all__ = [
     "EconomicSectorAnalyzer",
     "RiskAnalyzer",
     "Rebalancer",
+    "CurrencyAnalyzer",
+    "CommodityAnalyzer",
+    "FiscalAnalyzer",
 ]

@@ -43,6 +43,9 @@ graph TD
         macro_a["macro_analyzer.py<br/>→ ctx[macro_context]"]
         market_a["market_analyzer.py<br/>→ ctx[market_metrics]"]
         rebalancer["rebalancer.py<br/>→ ctx[rebalance_recommendations]"]
+        currency_a["currency_analyzer.py<br/>→ ctx[currency_metrics]"]
+        commodity_a["commodity_analyzer.py<br/>→ ctx[commodity_metrics]"]
+        fiscal_a["fiscal_analyzer.py<br/>→ ctx[fiscal_metrics]"]
     end
 
     subgraph alerts["alerts/"]
@@ -105,6 +108,13 @@ graph TD
     %% IngestNodes → Registry
     ingest_nodes --> registry
 
+    %% Fetchers → novos analyzers
+    bcb --> currency_a
+    bcb --> fiscal_a
+    fred --> currency_a
+    yahoo --> currency_a
+    yahoo --> commodity_a
+
     %% Registry agrupa tudo
     nodes --> registry
     portfolio_a --> registry
@@ -112,4 +122,7 @@ graph TD
     macro_a --> registry
     market_a --> registry
     rebalancer --> registry
+    currency_a --> registry
+    commodity_a --> registry
+    fiscal_a --> registry
     alert_engine --> registry
