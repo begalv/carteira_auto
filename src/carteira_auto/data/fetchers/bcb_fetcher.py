@@ -1,15 +1,23 @@
 """Fetcher do Banco Central do Brasil (BCB) — API SGS.
 
 Séries do SGS (Sistema Gerenciador de Séries Temporais):
-    - SELIC (432): Taxa Selic meta — % a.a.
-    - CDI (12): Taxa CDI — % a.d.
-    - IPCA (433): IPCA variação mensal — %
-    - PTAX compra (10813): Dólar PTAX compra — R$
-    - PTAX venda (1): Dólar PTAX venda — R$
-    - IGP-M (189): IGP-M variação mensal — %
-    - TR (226): Taxa Referencial — % a.m.
-    - INPC (188): INPC variação mensal — %
-    - Poupança (25): Rendimento poupança — % a.m.
+
+    Taxas de juros:
+        - SELIC meta (432)      : % a.a.  | Reuniões COPOM (~8×/ano)
+        - CDI diário (12)       : % a.d.  | Divulgação diária (dias úteis)
+        - TR (226)              : % a.m.  | Divulgação mensal
+
+    Inflação:
+        - IPCA mensal (433)     : %       | Divulgação ~9 dias após fim do mês
+        - IGP-M mensal (189)    : %       | Divulgação ~último dia útil do mês
+        - INPC mensal (188)     : %       | Divulgação ~9 dias após fim do mês
+
+    Câmbio:
+        - PTAX compra (10813)   : R$/USD  | Divulgação diária (dias úteis)
+        - PTAX venda (1)        : R$/USD  | Divulgação diária (dias úteis)
+
+    Poupança:
+        - Poupança (25)         : % a.m.  | Divulgação mensal
 
 API: https://api.bcb.gov.br/dados/serie/bcdata.sgs.{code}/dados?formato=json
 Formato de data: DD/MM/YYYY
@@ -49,39 +57,129 @@ class BCBFetcher:
 
     @log_execution
     @cache_result(ttl_seconds=3600)
-    def get_selic(self, period_days: int = 365) -> pd.DataFrame:
-        """Taxa Selic meta (% a.a.)."""
+    def get_selic(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """Taxa Selic meta — % a.a. | Reuniões COPOM (~8×/ano) | SGS 432.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é % a.a.
+        """
         return self._fetch_series("selic", period_days)
 
     @log_execution
     @cache_result(ttl_seconds=3600)
-    def get_cdi(self, period_days: int = 365) -> pd.DataFrame:
-        """Taxa CDI (% a.d.)."""
+    def get_cdi(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """CDI diário — % a.d. | Divulgação diária (dias úteis) | SGS 12.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é % a.d.
+            Para % a.a.: ((1 + valor/100) ** 252 - 1) * 100
+        """
         return self._fetch_series("cdi", period_days)
 
     @log_execution
     @cache_result(ttl_seconds=3600)
-    def get_ipca(self, period_days: int = 365) -> pd.DataFrame:
-        """IPCA — variação mensal (%)."""
+    def get_ipca(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """IPCA — variação mensal (%) | Divulgação ~9 dias após fim do mês | SGS 433.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é variação % mensal.
+            Para acumulado 12m: ((1 + v/100).prod() - 1) * 100
+        """
         return self._fetch_series("ipca", period_days)
 
     @log_execution
     @cache_result(ttl_seconds=3600)
     def get_ptax(self, period_days: int = 30) -> pd.DataFrame:
-        """Dólar PTAX compra (R$)."""
+        """Dólar PTAX compra — R$ por USD | Dias úteis | SGS 10813.
+
+        Args:
+            period_days: Número de dias retroativos (default: 30 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é R$/USD.
+        """
         return self._fetch_series("ptax_compra", period_days)
 
     @log_execution
     @cache_result(ttl_seconds=3600)
-    def get_igpm(self, period_days: int = 365) -> pd.DataFrame:
-        """IGP-M — variação mensal (%)."""
+    def get_ptax_venda(self, period_days: int = 30) -> pd.DataFrame:
+        """Dólar PTAX venda — R$ por USD | Dias úteis | SGS 1.
+
+        Args:
+            period_days: Número de dias retroativos (default: 30 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é R$/USD.
+        """
+        return self._fetch_series("ptax_venda", period_days)
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_igpm(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """IGP-M — variação mensal (%) | Divulgação ~último dia útil do mês | SGS 189.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é variação % mensal.
+        """
         return self._fetch_series("igpm", period_days)
 
     @log_execution
     @cache_result(ttl_seconds=3600)
-    def get_tr(self, period_days: int = 365) -> pd.DataFrame:
-        """Taxa Referencial (% a.m.)."""
+    def get_tr(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """Taxa Referencial (TR) — % a.m. | Divulgação mensal | SGS 226.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é % a.m.
+        """
         return self._fetch_series("tr", period_days)
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_inpc(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """INPC — variação mensal (%) | Divulgação ~9 dias após fim do mês | SGS 188.
+
+        Índice Nacional de Preços ao Consumidor — mede inflação para famílias
+        com renda de 1 a 5 salários mínimos.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é variação % mensal.
+        """
+        return self._fetch_series("inpc", period_days)
+
+    @log_execution
+    @cache_result(ttl_seconds=3600)
+    def get_poupanca(self, period_days: int = 5 * 365) -> pd.DataFrame:
+        """Rendimento da poupança — % a.m. | Divulgação mensal | SGS 25.
+
+        Desde maio/2012: TR + 0,5% a.m. quando Selic <= 8,5% a.a.;
+        ou 70% Selic/252 + TR quando Selic > 8,5% a.a.
+
+        Args:
+            period_days: Número de dias retroativos (default: 5 anos = 1825 dias).
+
+        Returns:
+            DataFrame com colunas ['data', 'valor'] onde valor é % a.m.
+            Para % a.a.: ((1 + valor/100) ** 12 - 1) * 100
+        """
+        return self._fetch_series("poupanca", period_days)
 
     # ============================================================================
     # MÉTODOS PÚBLICOS — GENÉRICOS
@@ -94,11 +192,26 @@ class BCBFetcher:
         start_date: date | None = None,
         end_date: date | None = None,
     ) -> pd.DataFrame:
-        """Busca qualquer série do SGS por código.
+        """Busca qualquer série do SGS por código numérico.
+
+        Use este método para séries não cobertas pelos métodos específicos,
+        ou para consultas com janelas de datas precisas.
+
+        Exemplos de séries úteis (além das cobertas pelos métodos específicos):
+            - 4390: IPCA-15 (prévia do IPCA mensal — %)
+            - 7445: INCC (variação mensal — %)
+            - 13521: Meta de inflação do CMN para o ano corrente (% a.a.)
+            - 4175: Superávit/déficit primário do governo (R$ MM)
+            - 13762: Resultado nominal do setor público (R$ MM)
+            - 4051: Dívida líquida do setor público / PIB (%)
+            - 7478: Balança comercial (saldo mensal em USD MM)
+            - 3545: IBC-Br (proxy mensal do PIB — %)
+            - 28750: Expectativa IPCA 12 meses à frente (Focus — %)
+            - 28751: Expectativa Selic fim de ano (Focus — % a.a.)
 
         Args:
             series_code: Código da série no SGS.
-            start_date: Data inicial (default: 1 ano atrás).
+            start_date: Data inicial (default: 5 anos atrás).
             end_date: Data final (default: hoje).
 
         Returns:
@@ -107,7 +220,7 @@ class BCBFetcher:
         if end_date is None:
             end_date = date.today()
         if start_date is None:
-            start_date = end_date - timedelta(days=365)
+            start_date = end_date - timedelta(days=5 * 365)
 
         return self._fetch_raw(series_code, start_date, end_date)
 
@@ -155,7 +268,7 @@ class BCBFetcher:
     # INTERNOS
     # ============================================================================
 
-    def _fetch_series(self, name: str, period_days: int = 365) -> pd.DataFrame:
+    def _fetch_series(self, name: str, period_days: int = 5 * 365) -> pd.DataFrame:
         """Busca uma série por nome configurado."""
         code = self._series.get(name)
         if code is None:
