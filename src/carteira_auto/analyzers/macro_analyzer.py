@@ -103,20 +103,22 @@ class MacroAnalyzer(Node):
             logger.error(f"Falha ao buscar INPC: {e}\n{traceback.format_exc()}")
             errors.append(f"INPC: {e}")
 
-        # ---- Poupança: valor mais recente (% a.m.) ----
+        # ---- Poupança: acumulado 12 meses (% a.a.) via composição de % a.m. ----
         try:
-            poupanca_df = bcb.get_poupanca(period_days=60)
+            poupanca_df = bcb.get_poupanca(period_days=365)
             if not poupanca_df.empty:
-                poupanca = float(poupanca_df["valor"].iloc[-1])
+                monthly_rates = poupanca_df["valor"].tail(12) / 100
+                poupanca = float(((1 + monthly_rates).prod() - 1) * 100)
         except Exception as e:
             logger.error(f"Falha ao buscar Poupança: {e}\n{traceback.format_exc()}")
             errors.append(f"Poupança: {e}")
 
-        # ---- TR: valor mais recente (% a.m.) ----
+        # ---- TR: acumulada 12 meses (% a.a.) via composição de % a.m. ----
         try:
-            tr_df = bcb.get_tr(period_days=60)
+            tr_df = bcb.get_tr(period_days=365)
             if not tr_df.empty:
-                tr = float(tr_df["valor"].iloc[-1])
+                monthly_rates = tr_df["valor"].tail(12) / 100
+                tr = float(((1 + monthly_rates).prod() - 1) * 100)
         except Exception as e:
             logger.error(f"Falha ao buscar TR: {e}\n{traceback.format_exc()}")
             errors.append(f"TR: {e}")

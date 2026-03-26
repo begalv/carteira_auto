@@ -101,10 +101,10 @@ class MacroContext(BaseModel):
     """CDI acumulado 12 meses — % a.a. (composição de taxas % a.d.) | Diário | Fonte: BCB SGS 12."""
 
     poupanca: float | None = None
-    """Rendimento da poupança — % a.m. | Mensal | Fonte: BCB SGS 25."""
+    """Rendimento da poupança acumulado 12 meses — % a.a. (composição de taxas % a.m.) | Mensal | Fonte: BCB SGS 25."""
 
     tr: float | None = None
-    """Taxa Referencial (TR) — % a.m. | Mensal | Fonte: BCB SGS 226."""
+    """Taxa Referencial (TR) acumulada 12 meses — % a.a. (composição de taxas % a.m.) | Mensal | Fonte: BCB SGS 226."""
 
     # ---- Inflação ----
     ipca: float | None = None
