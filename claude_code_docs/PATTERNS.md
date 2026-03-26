@@ -293,3 +293,118 @@ class NovoPublisher(Publisher):
         # ... envio ...
         pass
 ```
+
+---
+
+## Pattern 7: Error Handling com Result Type
+
+Reference: `src/carteira_auto/core/result.py`
+
+```python
+from carteira_auto.core import Ok, Err, Result
+
+# Retornar sucesso
+def fetch_data(ticker: str) -> Result[pd.DataFrame]:
+    try:
+        df = fetcher.get_data(ticker)
+        return Ok(df)
+    except Exception as e:
+        return Err(str(e), {"ticker": ticker, "traceback": traceback.format_exc()})
+
+# Consumir resultado
+result = fetch_data("PETR4")
+if result.is_ok():
+    df = result.unwrap()
+else:
+    logger.error(f"Falha: {result.error}")
+    df = result.unwrap_or(pd.DataFrame())  # fallback seguro
+```
+
+---
+
+## Pattern 8: Error Tracking Parcial em Analyzers
+
+Reference: `src/carteira_auto/analyzers/macro_analyzer.py`
+
+```python
+class NovoAnalyzer(Node):
+    name = "analyze_novo"
+    dependencies: list[str] = []
+
+    @log_execution
+    def run(self, ctx: PipelineContext) -> PipelineContext:
+        ctx.setdefault("_errors", {})
+        errors: list[str] = []
+
+        # Busca parcial — cada indicador pode falhar independente
+        valor_a = None
+        try:
+            valor_a = self._fetch_a()
+        except Exception as e:
+            logger.error(f"Falha em A: {e}\n{traceback.format_exc()}")
+            errors.append(f"A: {e}")
+
+        valor_b = None
+        try:
+            valor_b = self._fetch_b()
+        except Exception as e:
+            logger.error(f"Falha em B: {e}\n{traceback.format_exc()}")
+            errors.append(f"B: {e}")
+
+        if errors:
+            ctx["_errors"]["analyze_novo.partial"] = "; ".join(errors)
+
+        ctx["novo_metrics"] = NovoMetrics(a=valor_a, b=valor_b)
+        return ctx
+```
+
+**Checklist error handling:**
+- [ ] `ctx.setdefault("_errors", {})` no início do run()
+- [ ] try-except por indicador/fonte independente
+- [ ] `logger.error()` com traceback.format_exc()
+- [ ] Erros coletados em lista, registrados em ctx["_errors"]["node_name.partial"]
+- [ ] Métricas com None para campos que falharam (não exceção total)
+
+---
+
+## Pattern 9: Validação Pydantic Estrita
+
+Reference: `src/carteira_auto/core/models/portfolio.py`
+
+```python
+from pydantic import BaseModel, field_validator
+
+class NovoModel(BaseModel):
+    ticker: str
+    preco: float | None = None
+    pct: float | None = None
+
+    @field_validator("ticker")
+    @classmethod
+    def ticker_nao_vazio(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("ticker não pode ser vazio")
+        return v
+
+    @field_validator("preco")
+    @classmethod
+    def preco_nao_negativo(cls, v: float | None) -> float | None:
+        if v is not None and v < 0:
+            raise ValueError(f"preco não pode ser negativo: {v}")
+        return v
+
+    @field_validator("pct")
+    @classmethod
+    def pct_no_range(cls, v: float | None) -> float | None:
+        if v is not None and (v < 0 or v > 1):
+            raise ValueError(f"pct deve estar entre 0 e 1: {v}")
+        return v
+```
+
+**Checklist validação:**
+- [ ] Campos identificadores (ticker, nome): obrigatórios, non-empty
+- [ ] Preços e valores: `>= 0` (Optional com validator)
+- [ ] Percentuais: `0 <= x <= 1` (Optional com validator)
+- [ ] Actions: `Literal["comprar", "vender", "manter"]`
+- [ ] Listas: validar não-vazia quando obrigatório (`Portfolio.assets`)
