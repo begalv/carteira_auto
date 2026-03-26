@@ -16,6 +16,7 @@ from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import MarketMetrics
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import log_execution
+from carteira_auto.utils.helpers import accumulate_rates, convert_rate
 
 logger = get_logger(__name__)
 
@@ -91,8 +92,7 @@ class MarketAnalyzer(Node):
         try:
             cdi_df = bcb.get_cdi(period_days=5 * 365)
             if not cdi_df.empty:
-                daily_rates = cdi_df["valor"] / 100
-                cdi_return = float((1 + daily_rates).prod() - 1)
+                cdi_return = accumulate_rates(cdi_df["valor"], "a.d.") / 100
         except Exception as e:
             logger.error(f"Falha ao buscar CDI: {e}\n{traceback.format_exc()}")
             errors.append(f"CDI: {e}")
@@ -150,9 +150,13 @@ class MarketAnalyzer(Node):
                 selic_ts = selic_ts.set_index("data").sort_index()
                 # Forward-fill meta para cada dia útil (B = business day)
                 selic_daily = selic_ts.resample("B").ffill().dropna()
-                # Meta % a.a. → fator diário: (1 + r_aa/100)^(1/252)
-                selic_daily["fator"] = (1 + selic_daily["valor"] / 100) ** (1 / 252)
-                selic_retorno = float(selic_daily["fator"].prod() - 1)
+                # Meta % a.a. → taxa % a.d. via convert_rate, depois acumula
+                selic_daily["taxa_diaria"] = selic_daily["valor"].apply(
+                    lambda r: convert_rate(r, "a.a.", "a.d.")
+                )
+                selic_retorno = (
+                    accumulate_rates(selic_daily["taxa_diaria"], "a.d.") / 100
+                )
         except Exception as e:
             logger.error(
                 f"Falha ao buscar Selic acumulada: {e}\n{traceback.format_exc()}"
