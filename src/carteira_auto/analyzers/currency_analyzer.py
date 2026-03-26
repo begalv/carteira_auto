@@ -6,6 +6,8 @@ Produz: ctx["currency_metrics"] -> CurrencyMetrics
 
 import traceback
 
+import pandas as pd
+
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import CurrencyMetrics
 from carteira_auto.utils import get_logger
@@ -82,7 +84,11 @@ class CurrencyAnalyzer(Node):
             yahoo = YahooFinanceFetcher()
             dxy_data = yahoo.get_historical_price_data("DX-Y.NYB", period="3mo")
             if not dxy_data.empty:
-                close = dxy_data["Close"].dropna()
+                # yfinance pode retornar MultiIndex (Ticker, Price) para single ticker
+                if isinstance(dxy_data.columns, pd.MultiIndex):
+                    close = dxy_data.xs("Close", axis=1, level=1).squeeze().dropna()
+                else:
+                    close = dxy_data["Close"].dropna()
                 if not close.empty:
                     dxy = float(close.iloc[-1])
                     dxy_change_1m = self._pct_change(close, 21)
