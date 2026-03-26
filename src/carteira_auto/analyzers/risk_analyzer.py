@@ -4,8 +4,11 @@ Node DAG: name="analyze_risk", deps=["fetch_portfolio_prices", "analyze_portfoli
 Produz: ctx["risk_metrics"] -> RiskMetrics
 """
 
+import traceback
+
 import numpy as np
 
+from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import Portfolio, RiskMetrics
 from carteira_auto.utils import get_logger
@@ -30,7 +33,7 @@ class RiskAnalyzer(Node):
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
         portfolio: Portfolio = ctx["portfolio"]
-        metrics = self._calculate_risk(portfolio)
+        metrics = self._calculate_risk(portfolio, ctx)
         ctx["risk_metrics"] = metrics
         logger.info(
             f"Risco: vol={metrics.volatility}, "
@@ -38,7 +41,9 @@ class RiskAnalyzer(Node):
         )
         return ctx
 
-    def _calculate_risk(self, portfolio: Portfolio) -> RiskMetrics:
+    def _calculate_risk(
+        self, portfolio: Portfolio, ctx: PipelineContext
+    ) -> RiskMetrics:
         """Calcula métricas de risco via dados históricos."""
         from carteira_auto.data.fetchers import YahooFinanceFetcher
 
@@ -51,7 +56,6 @@ class RiskAnalyzer(Node):
         if not tickers:
             return RiskMetrics()
 
-        # Busca histórico
         try:
             yahoo = YahooFinanceFetcher()
             hist = yahoo.get_historical_price_data(tickers, period="1y", interval="1d")
@@ -59,25 +63,23 @@ class RiskAnalyzer(Node):
             if hist.empty:
                 return RiskMetrics()
 
-            # Calcula retornos diários
             returns = hist.pct_change().dropna()
 
             if returns.empty or len(returns) < 20:
                 return RiskMetrics()
 
-            # Pesos por posição atual
             weights = self._get_weights(portfolio, tickers, returns.columns)
             if weights is None:
                 return RiskMetrics()
 
-            # Retorno ponderado da carteira
             portfolio_returns = (returns * weights).sum(axis=1)
 
-            # Métricas
+            risk_free_daily = settings.portfolio.RISK_FREE_DAILY
+
             volatility = float(portfolio_returns.std() * np.sqrt(252))
             var_95 = float(np.percentile(portfolio_returns, 5))
             var_99 = float(np.percentile(portfolio_returns, 1))
-            sharpe = self._sharpe_ratio(portfolio_returns)
+            sharpe = self._sharpe_ratio(portfolio_returns, risk_free_daily)
             max_dd = self._max_drawdown(portfolio_returns)
             beta = self._beta(portfolio_returns)
 
@@ -91,7 +93,10 @@ class RiskAnalyzer(Node):
             )
 
         except Exception as e:
-            logger.warning(f"Falha ao calcular risco: {e}")
+            tb = traceback.format_exc()
+            logger.error(f"Falha ao calcular risco: {e}\n{tb}")
+            ctx.setdefault("_errors", {})
+            ctx["_errors"]["analyze_risk._calculate_risk"] = str(e)
             return RiskMetrics()
 
     def _get_weights(

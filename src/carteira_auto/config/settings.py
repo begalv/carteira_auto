@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -195,6 +194,9 @@ class PortfolioConfig:
     REBALANCE_THRESHOLD: float = 0.05  # 5% de diferença
     MIN_TRADE_VALUE: float = 100.0  # Valor mínimo por operação
 
+    # Risco
+    RISK_FREE_DAILY: float = 0.0004  # CDI diário ~0.04% (~10.5% a.a.)
+
     # Impostos
     TAX_RATE_STOCKS: float = 0.15  # 15% para ações
     TAX_RATE_FII: float = 0.20  # 20% para FIIs
@@ -239,8 +241,8 @@ class LoggingConfig:
     LOG_MAX_SIZE: int = 10 * 1024 * 1024  # 10MB
 
     # Arquivos de log (serão configurados post-init)
-    LOG_FILE: Optional[Path] = None
-    ERROR_LOG_FILE: Optional[Path] = None
+    LOG_FILE: Path | None = None
+    ERROR_LOG_FILE: Path | None = None
 
 
 @dataclass
@@ -267,7 +269,7 @@ class Settings:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
 
     # Segurança
-    API_KEYS: dict[str, Optional[str]] = field(
+    API_KEYS: dict[str, str | None] = field(
         default_factory=lambda: {
             "ddm": os.getenv("DADOS_MERCADO_API_KEY"),
             "deepseek": os.getenv("DEEPSEEK_API_KEY"),

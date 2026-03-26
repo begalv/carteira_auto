@@ -4,6 +4,8 @@ Node DAG: name="analyze_macro", deps=[]
 Produz: ctx["macro_context"] -> MacroContext
 """
 
+import traceback
+
 from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import MacroContext
 from carteira_auto.utils import get_logger
@@ -16,6 +18,8 @@ class MacroAnalyzer(Node):
     """Consolida contexto macroeconômico a partir de BCB e IBGE.
 
     Não depende de outros nodes — busca dados diretamente.
+    Falhas parciais são registradas em ctx["_errors"] mas não impedem
+    o retorno dos indicadores que foram obtidos com sucesso.
 
     Produz no contexto:
         - "macro_context": MacroContext
@@ -26,7 +30,7 @@ class MacroAnalyzer(Node):
 
     @log_execution
     def run(self, ctx: PipelineContext) -> PipelineContext:
-        macro = self._build_macro_context()
+        macro = self._build_macro_context(ctx)
         ctx["macro_context"] = macro
         logger.info(
             f"Macro: Selic={macro.selic}, IPCA={macro.ipca}, "
@@ -34,43 +38,47 @@ class MacroAnalyzer(Node):
         )
         return ctx
 
-    def _build_macro_context(self) -> MacroContext:
+    def _build_macro_context(self, ctx: PipelineContext) -> MacroContext:
         """Busca indicadores e consolida contexto macro."""
         from carteira_auto.data.fetchers import BCBFetcher, IBGEFetcher
+
+        ctx.setdefault("_errors", {})
+        errors: list[str] = []
 
         selic = None
         ipca = None
         cambio = None
         pib_growth = None
 
+        bcb = BCBFetcher()
+
         # Selic via BCB
         try:
-            bcb = BCBFetcher()
             selic_df = bcb.get_selic(period_days=30)
             if not selic_df.empty:
                 selic = selic_df["valor"].iloc[-1]
         except Exception as e:
-            logger.warning(f"Falha ao buscar Selic: {e}")
+            logger.error(f"Falha ao buscar Selic: {e}\n{traceback.format_exc()}")
+            errors.append(f"Selic: {e}")
 
         # IPCA via BCB (acumulado 12 meses)
         try:
-            bcb = BCBFetcher()
             ipca_df = bcb.get_ipca(period_days=365)
             if not ipca_df.empty:
-                # Acumula variações mensais
                 monthly_rates = ipca_df["valor"] / 100
                 ipca = ((1 + monthly_rates).prod() - 1) * 100
         except Exception as e:
-            logger.warning(f"Falha ao buscar IPCA: {e}")
+            logger.error(f"Falha ao buscar IPCA: {e}\n{traceback.format_exc()}")
+            errors.append(f"IPCA: {e}")
 
         # Câmbio (PTAX) via BCB
         try:
-            bcb = BCBFetcher()
             ptax_df = bcb.get_ptax(period_days=7)
             if not ptax_df.empty:
                 cambio = ptax_df["valor"].iloc[-1]
         except Exception as e:
-            logger.warning(f"Falha ao buscar PTAX: {e}")
+            logger.error(f"Falha ao buscar PTAX: {e}\n{traceback.format_exc()}")
+            errors.append(f"PTAX: {e}")
 
         # PIB via IBGE
         try:
@@ -79,9 +87,12 @@ class MacroAnalyzer(Node):
             if not pib_df.empty:
                 pib_growth = pib_df["valor"].iloc[-1]
         except Exception as e:
-            logger.warning(f"Falha ao buscar PIB: {e}")
+            logger.error(f"Falha ao buscar PIB: {e}\n{traceback.format_exc()}")
+            errors.append(f"PIB: {e}")
 
-        # Sumário textual
+        if errors:
+            ctx["_errors"]["analyze_macro.partial"] = "; ".join(errors)
+
         summary = self._generate_summary(selic, ipca, cambio, pib_growth)
 
         return MacroContext(
