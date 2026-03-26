@@ -10,6 +10,7 @@ from carteira_auto.core.engine import Node, PipelineContext
 from carteira_auto.core.models import MacroContext
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import log_execution
+from carteira_auto.utils.helpers import accumulate_rates
 
 logger = get_logger(__name__)
 
@@ -67,8 +68,7 @@ class MacroAnalyzer(Node):
         try:
             cdi_df = bcb.get_cdi(period_days=365)
             if not cdi_df.empty:
-                daily_rates = cdi_df["valor"] / 100
-                cdi = float(((1 + daily_rates).prod() - 1) * 100)
+                cdi = accumulate_rates(cdi_df["valor"], "a.d.")
         except Exception as e:
             logger.error(f"Falha ao buscar CDI: {e}\n{traceback.format_exc()}")
             errors.append(f"CDI: {e}")
@@ -77,8 +77,7 @@ class MacroAnalyzer(Node):
         try:
             ipca_df = bcb.get_ipca(period_days=365)
             if not ipca_df.empty:
-                monthly_rates = ipca_df["valor"] / 100
-                ipca = float(((1 + monthly_rates).prod() - 1) * 100)
+                ipca = accumulate_rates(ipca_df["valor"], "a.m.")
         except Exception as e:
             logger.error(f"Falha ao buscar IPCA: {e}\n{traceback.format_exc()}")
             errors.append(f"IPCA: {e}")
@@ -87,8 +86,7 @@ class MacroAnalyzer(Node):
         try:
             igpm_df = bcb.get_igpm(period_days=365)
             if not igpm_df.empty:
-                monthly_rates = igpm_df["valor"] / 100
-                igpm = float(((1 + monthly_rates).prod() - 1) * 100)
+                igpm = accumulate_rates(igpm_df["valor"], "a.m.")
         except Exception as e:
             logger.error(f"Falha ao buscar IGP-M: {e}\n{traceback.format_exc()}")
             errors.append(f"IGP-M: {e}")
@@ -97,8 +95,7 @@ class MacroAnalyzer(Node):
         try:
             inpc_df = bcb.get_inpc(period_days=365)
             if not inpc_df.empty:
-                monthly_rates = inpc_df["valor"] / 100
-                inpc = float(((1 + monthly_rates).prod() - 1) * 100)
+                inpc = accumulate_rates(inpc_df["valor"], "a.m.")
         except Exception as e:
             logger.error(f"Falha ao buscar INPC: {e}\n{traceback.format_exc()}")
             errors.append(f"INPC: {e}")
@@ -107,8 +104,7 @@ class MacroAnalyzer(Node):
         try:
             poupanca_df = bcb.get_poupanca(period_days=365)
             if not poupanca_df.empty:
-                monthly_rates = poupanca_df["valor"].tail(12) / 100
-                poupanca = float(((1 + monthly_rates).prod() - 1) * 100)
+                poupanca = accumulate_rates(poupanca_df["valor"].tail(12), "a.m.")
         except Exception as e:
             logger.error(f"Falha ao buscar Poupança: {e}\n{traceback.format_exc()}")
             errors.append(f"Poupança: {e}")
@@ -117,8 +113,7 @@ class MacroAnalyzer(Node):
         try:
             tr_df = bcb.get_tr(period_days=365)
             if not tr_df.empty:
-                monthly_rates = tr_df["valor"].tail(12) / 100
-                tr = float(((1 + monthly_rates).prod() - 1) * 100)
+                tr = accumulate_rates(tr_df["valor"].tail(12), "a.m.")
         except Exception as e:
             logger.error(f"Falha ao buscar TR: {e}\n{traceback.format_exc()}")
             errors.append(f"TR: {e}")
