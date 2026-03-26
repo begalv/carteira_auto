@@ -15,7 +15,7 @@ O `carteira_auto` e um sistema modular que automatiza a coleta, analise e gestao
 │  DAGEngine  ->  Nodes (Load -> Fetch -> Analyze -> Export)  │
 ├──────────┬──────────┬───────────────┬───────────────────────┤
 │ Analyzers│ Alerts   │  DataLake     │  Strategies (futuro)  │
-│ 7 modulos│ Engine   │  SQLite       │  Optimizer            │
+│10 modulos│ Engine   │  SQLite       │  Optimizer            │
 ├──────────┴──────────┴───────────────┴───────────────────────┤
 │  Fetchers: Yahoo | BCB | IBGE | FRED | CVM | DDM | Tesouro │
 ├─────────────────────────────────────────────────────────────┤
@@ -46,6 +46,9 @@ O `carteira_auto` e um sistema modular que automatiza a coleta, analise e gestao
 | `Rebalancer` | Desvios de alocacao, recomendacoes de compra/venda |
 | `MarketSectorAnalyzer` | Performance setorial via Yahoo |
 | `EconomicSectorAnalyzer` | Crescimento setorial via IBGE |
+| `CurrencyAnalyzer` | Cambio USD/BRL, DXY, carry trade Selic-Fed, cambio real efetivo |
+| `CommodityAnalyzer` | Petroleo (WTI/Brent), ouro, prata, soja, milho, trigo, ciclo 5y |
+| `FiscalAnalyzer` | Divida/PIB, resultado primario, juros nominais, trajetoria fiscal |
 
 ## Instalacao
 
@@ -86,14 +89,20 @@ cp .env.example .env
 ### CLI
 
 ```bash
-# Dashboard Streamlit
-carteira dashboard
+# Listar pipelines disponiveis
+python -m carteira_auto list
+
+# Analise macro (Selic, IPCA, cambio, PIB)
+python -m carteira_auto run macro
+
+# Analise fiscal (divida/PIB, resultado primario)
+python -m carteira_auto run fiscal
 
 # Atualizar precos na planilha Excel
-carteira update-prices
+python -m carteira_auto run update-excel-portfolio-prices
 
-# Pipeline completo
-carteira run --pipeline full
+# Dry-run (ver plano de execucao sem executar)
+python -m carteira_auto run analyze --dry-run
 ```
 
 ### Python
@@ -115,16 +124,17 @@ ipca = bcb.get_ipca()
 ### Pipeline DAG
 
 ```python
-from carteira_auto.core.registry import create_engine
+from carteira_auto.core.registry import create_engine, get_terminal_node
 
-# Pipeline pre-configurado
-engine = create_engine("full")
-ctx = engine.run()
+# Cria engine com todos os nodes registrados
+engine = create_engine()
+
+# Executa pipeline "macro" (resolve dependencias automaticamente)
+terminal = get_terminal_node("macro")
+ctx = engine.run(terminal)
 
 # Resultados
-print(ctx.get("portfolio_metrics"))
-print(ctx.get("risk_metrics"))
-print(ctx.get("rebalance_recommendations"))
+print(ctx.get("macro_context"))
 ```
 
 ### Notebook Interativo
@@ -136,26 +146,28 @@ O notebook `notebooks/demo_fase1.ipynb` demonstra todas as funcionalidades com v
 ```
 carteira_auto/
 ├── src/carteira_auto/
-│   ├── config/           # Settings, constants, optimization
-│   ├── core/             # DAGEngine, Pydantic models, registry, nodes
+│   ├── config/           # Settings, constants
+│   ├── core/             # DAGEngine, models Pydantic, registry, nodes, Result type
 │   ├── data/
-│   │   ├── fetchers/     # Yahoo, BCB, IBGE, FRED, CVM, DDM, Tesouro
+│   │   ├── fetchers/     # Yahoo, BCB, IBGE, FRED, CVM, DDM, Tesouro (7 fetchers)
+│   │   ├── lake/         # DataLake SQLite (prices, macro, fundamentals, news)
 │   │   ├── loaders/      # Excel, portfolio
 │   │   ├── exporters/    # Excel, portfolio prices
-│   │   └── storage/      # SnapshotStore, DataLake (SQLite)
-│   ├── analyzers/        # Portfolio, risk, macro, market, rebalancer
+│   │   └── storage/      # SnapshotStore (JSON)
+│   ├── analyzers/        # 10 analyzers (portfolio, risk, macro, market, currency, commodity, fiscal...)
 │   ├── alerts/           # AlertEngine, rules, channels
 │   ├── utils/            # Decorators, logger, helpers
 │   └── cli/              # Comandos CLI
 ├── dashboards/           # Streamlit app + paginas
 ├── notebooks/            # Notebooks de analise interativa
-├── tests/                # Unit + integration tests
+├── tests/                # Unit + integration tests (407 testes)
 ├── data/                 # Dados locais (gitignored)
 │   ├── lake/             # SQLite DataLake
-│   ├── raw/              # Downloads brutos
-│   ├── processed/        # Dados processados
-│   └── templates/        # Templates Excel
-└── docs/                 # Plano de implementacao
+│   ├── raw/              # Planilha da carteira
+│   └── outputs/          # Portfolios, snapshots, logs, reports
+└── docs/
+    ├── system/           # Docs do sistema (plano, arquitetura, API, guias)
+    └── dev/              # Docs Claude Code (ARCHITECTURE, PATTERNS, grafo deps)
 ```
 
 ## Desenvolvimento
@@ -203,7 +215,8 @@ O desenvolvimento segue 8 fases:
 |------|--------|--------|
 | 0 | Infraestrutura: DataLake SQLite, IngestNodes | Concluida |
 | 1 | Fontes: FRED, CVM, Tesouro, DDM | Concluida |
-| 2 | Analyzers avancados (fundamentalista, moeda, commodity) | Planejada |
+| H | Hardening: Result type, validacao estrita, error handling | Concluida |
+| 2 | Analyzers avancados (currency, commodity, fiscal + 6 restantes) | Em andamento |
 | 3 | Estrategias + Optimizer (PyPortfolioOpt) + Backtesting | Planejada |
 | 4 | ML: scoring fundamentalista, integracao ML-optimizer | Planejada |
 | 5 | NLP: sentimento, geopolitica, crisis hedge | Planejada |

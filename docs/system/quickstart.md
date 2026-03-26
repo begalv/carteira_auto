@@ -62,6 +62,24 @@ python -m carteira_auto run market-sectors
 python -m carteira_auto run economic-sectors
 ```
 
+**Análise cambial** — USD/BRL, DXY, carry trade Selic-Fed:
+
+```bash
+python -m carteira_auto run currency
+```
+
+**Commodities** — petróleo, ouro, soja, ciclo de preços:
+
+```bash
+python -m carteira_auto run commodities
+```
+
+**Análise fiscal** — dívida/PIB, resultado primário, trajetória fiscal:
+
+```bash
+python -m carteira_auto run fiscal
+```
+
 **Rebalanceamento** — gera recomendações de ajuste da carteira:
 
 ```bash
@@ -91,6 +109,10 @@ python -m carteira_auto run analyze --dry-run
 ```bash
 python -m carteira_auto ingest --mode daily    # últimos dias
 python -m carteira_auto ingest --mode full     # backfill histórico
+
+# Ou via pipelines individuais:
+python -m carteira_auto run ingest-prices      # apenas preços
+python -m carteira_auto run ingest-macro       # apenas indicadores macro
 ```
 
 **Dashboard interativo (Streamlit):**
