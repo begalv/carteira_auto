@@ -243,7 +243,7 @@ nova_composite = CompositeStrategy(
 
 ```python
 from datetime import date
-from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -257,10 +257,10 @@ class NovoMetrics(BaseModel):
     # Obrigatórios
     nome: str
 
-    # Opcionais (Optional + default None)
-    valor: Optional[float] = None
-    data: Optional[date] = None
-    fonte: Optional[str] = None
+    # Opcionais (float | None, conforme ruff UP007)
+    valor: float | None = None
+    data: date | None = None
+    fonte: str | None = None
 ```
 
 ---
