@@ -75,7 +75,7 @@ graph LR
 graph TB
     CLI[CLI - argparse] --> CORE[Core - DAGEngine, Node, Registry]
     CORE --> DATA[Data - Fetchers, Lake, Loaders, Exporters]
-    CORE --> ANALYZERS[Analyzers - 7 analyzers]
+    CORE --> ANALYZERS[Analyzers - 10 analyzers]
     CORE --> ALERTS[Alerts - Engine, Rules, Channels]
     DATA --> CONFIG[Config - Settings, Constants]
     ANALYZERS --> CONFIG
@@ -120,7 +120,7 @@ Orquestracao de pipelines. O coracao do sistema.
 | `engine.py` | `DAGEngine` (registro + resolucao + execucao), `Node` (ABC), `PipelineContext` (dict tipado) |
 | `result.py` | `Result` type (`Ok[T]` / `Err[T]`) para propagacao explicita de erros |
 | `registry.py` | `PIPELINE_PRESETS` (mapa CLI -> node terminal), `create_engine()` (fabrica que registra todos os nodes) |
-| `models/` | Modelos Pydantic: `Asset`, `Portfolio`, `SoldAsset`, `PortfolioMetrics`, `RiskMetrics`, `MacroContext`, `MarketMetrics`, `RebalanceRecommendation`, modelos economicos |
+| `models/` | Modelos Pydantic: `Asset`, `Portfolio`, `SoldAsset`, `PortfolioMetrics`, `RiskMetrics`, `MacroContext`, `MarketMetrics`, `CurrencyMetrics`, `CommodityMetrics`, `FiscalMetrics`, `RebalanceRecommendation`, modelos economicos |
 | `nodes/` | Implementacoes de `Node`: `portfolio_nodes.py`, `ingest_nodes.py`, `storage_nodes.py`, `alert_nodes.py` |
 | `pipelines/` | Scripts de pipeline legados (ex: `update_excel_prices.py`) |
 
@@ -181,7 +181,7 @@ graph TB
 | `FREDFetcher` | Federal Reserve (FRED) | Fed Funds Rate, CPI US, Treasury yields |
 | `CVMFetcher` | CVM | Dados de fundos, demonstracoes financeiras |
 | `TesouroDiretoFetcher` | Tesouro Nacional | Titulos publicos, taxas, curva de juros |
-| `DDMFetcher` | Calculos internos | Dividend Discount Model, valuation |
+| `DDMFetcher` | Dados de Mercado API | Cotacoes, fundamentos, DRE, FIIs, macro |
 
 **DataLake** — fachada unificada (`DataLake`) sobre 4 sub-lakes SQLite:
 
@@ -206,6 +206,9 @@ metricas e escreve resultados de volta no contexto.
 | `Rebalancer` | `rebalance` | `analyze_portfolio` | `rebalance_recommendations` |
 | `MarketSectorAnalyzer` | `analyze_market_sectors` | `fetch_portfolio_prices` | `market_sectors` |
 | `EconomicSectorAnalyzer` | `analyze_economic_sectors` | (nenhuma) | `economic_sectors` |
+| `CurrencyAnalyzer` | `analyze_currency` | (nenhuma) | `currency_metrics` |
+| `CommodityAnalyzer` | `analyze_commodities` | (nenhuma) | `commodity_metrics` |
+| `FiscalAnalyzer` | `analyze_fiscal` | (nenhuma) | `fiscal_metrics` |
 
 ### 2.6 Alerts (`alerts/`)
 
@@ -539,8 +542,16 @@ carteira_auto/
 ├── requirements-dev.txt               # Dependencias de desenvolvimento
 │
 ├── docs/
-│   ├── architecture.md                # Este documento
-│   └── plano_implementacao_carteira_auto.md  # Source of truth arquitetural
+│   ├── system/                        # Docs do sistema (plano, arquitetura, guias)
+│   │   ├── architecture.md            # Este documento
+│   │   ├── plano_implementacao_carteira_auto.md  # Source of truth arquitetural
+│   │   ├── api_reference.md           # Referencia de API dos fetchers
+│   │   ├── quickstart.md              # Guia de inicio rapido
+│   │   └── developer_guide.md         # Guia para contribuidores
+│   └── dev/                           # Docs de referencia para Claude Code
+│       ├── ARCHITECTURE.md            # Mapa compacto de modulos e ctx keys
+│       ├── PATTERNS.md                # Templates canonicos de codigo
+│       └── DEPENDENCY_GRAPH.mermaid   # Grafo de dependencias
 │
 ├── src/carteira_auto/
 │   ├── __init__.py                    # Versao e metadata
@@ -595,14 +606,17 @@ carteira_auto/
 │   │   └── storage/                   # Persistencia auxiliar
 │   │       └── snapshot_store.py      # SnapshotStore (JSON)
 │   │
-│   ├── analyzers/                     # Analise e metricas
+│   ├── analyzers/                     # Analise e metricas (10 analyzers)
 │   │   ├── portfolio_analyzer.py      # Metricas consolidadas da carteira
 │   │   ├── risk_analyzer.py           # VaR, Sharpe, beta, drawdown
 │   │   ├── macro_analyzer.py          # Contexto macroeconomico
 │   │   ├── market_analyzer.py         # 8 benchmarks (IBOV, IFIX, CDI, S&P500, USD, Ouro, Selic, PTAX)
 │   │   ├── rebalancer.py              # Recomendacoes de rebalanceamento
 │   │   ├── market_sector_analyzer.py  # Setores de mercado
-│   │   └── economic_sector_analyzer.py # Setores da economia real
+│   │   ├── economic_sector_analyzer.py # Setores da economia real
+│   │   ├── currency_analyzer.py       # Cambio USD/BRL, DXY, carry trade
+│   │   ├── commodity_analyzer.py      # Petroleo, ouro, soja, ciclo 5y
+│   │   └── fiscal_analyzer.py         # Divida/PIB, resultado primario, trajetoria
 │   │
 │   ├── alerts/                        # Sistema de alertas
 │   │   ├── engine.py                  # AlertEngine, AlertRule, Alert
