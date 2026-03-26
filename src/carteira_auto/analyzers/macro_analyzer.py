@@ -152,7 +152,7 @@ class MacroAnalyzer(Node):
         # ---- Desocupação PNAD: valor mais recente (%) ----
         try:
             ibge = IBGEFetcher()
-            desoc_df = ibge.get_unemployment(months=4)
+            desoc_df = ibge.get_unemployment(quarters=4)
             if not desoc_df.empty:
                 desocupacao = float(desoc_df["valor"].iloc[-1])
         except Exception as e:
