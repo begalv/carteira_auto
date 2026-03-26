@@ -1203,6 +1203,9 @@ Mapeamento de nomes CLI para nodes terminais do DAG.
 | `ingest-macro` | `ingest_macro` | Ingere indicadores macro no DataLake (BCB, IBGE) |
 | `ingest-fundamentals` | `ingest_fundamentals` | Ingere dados fundamentalistas no DataLake (Yahoo Finance) |
 | `ingest-news` | `ingest_news` | Ingere noticias financeiras no DataLake (NewsAPI, RSS) |
+| `currency` | `analyze_currency` | Analisa cambio, DXY, carry trade e taxa real efetiva |
+| `commodities` | `analyze_commodities` | Analisa precos e ciclo de commodities (petroleo, ouro, agro) |
+| `fiscal` | `analyze_fiscal` | Analisa divida/PIB, resultado primario e trajetoria fiscal |
 
 ### Funcoes do Registry
 

@@ -1,6 +1,6 @@
 [project]
 name = "carteira_auto"
-version = "0.1.0"
+version = "0.2.1"
 description = "Sistema de automação e análise de carteiras de investimentos para emancipação financeira de pessoa física no Brasil"
 readme = "README.md"
 authors = [
