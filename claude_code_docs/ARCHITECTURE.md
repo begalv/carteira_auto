@@ -9,8 +9,8 @@
 |---------|---------|-------|
 | engine.py | DAGEngine(fail_fast), Node, PipelineContext, NodeExecutionError | Motor DAG com topological sort (Kahn), error handling per-node, Node.__init_subclass__() isola deps por subclass |
 | result.py | Ok[T], Err[T], Result (type alias) | Tipo Result funcional para operações falíveis |
-| models/portfolio.py | Asset, Portfolio, SoldAsset | Modelos da planilha Excel — validação Pydantic estrita (field_validator para ticker, preços, percentages) |
-| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext, MarketMetrics, RebalanceRecommendation, AllocationResult | Outputs dos analyzers — AllocationResult.action é Literal["comprar","vender","manter"], RiskMetrics.is_complete(), RebalanceRecommendation.action é Literal["comprar","vender"] |
+| models/portfolio.py | Asset (+ 17 campos fundamentalistas), Portfolio, SoldAsset | Modelos da planilha Excel — validação Pydantic estrita (field_validator para ticker, preços, percentages). Asset inclui campos fundamentalistas (P/L, P/VP, ROE, DY, beta, etc.) populados via Yahoo Finance. |
+| models/analysis.py | PortfolioMetrics, RiskMetrics, MacroContext (12 campos), MarketMetrics (8 campos), RebalanceRecommendation, AllocationResult | Outputs dos analyzers — AllocationResult.action é Literal["comprar","vender","manter"], RiskMetrics.is_complete(), RebalanceRecommendation.action é Literal["comprar","vender"] |
 | models/economic.py | MacroIndicator, MarketIndicator, SectorIndicator, EconomicSectorIndicator | Indicadores econômicos |
 | registry.py | create_engine(), PIPELINE_PRESETS | Mapeamento CLI → node terminal |
 | nodes/portfolio_nodes.py | LoadPortfolioNode, FetchPricesNode, FetchPortfolioPricesNode, ExportPortfolioPricesNode | Operações de carteira — FetchPortfolioPricesNode usa model_copy() (sem mutação in-place) |
@@ -84,8 +84,8 @@
 | analyze | analyze_portfolio | Métricas da carteira |
 | rebalance | rebalance | Recomendações de rebalanceamento |
 | risk | analyze_risk | VaR, Sharpe, beta |
-| macro | analyze_macro | Selic, IPCA, câmbio, PIB |
-| market | analyze_market | IBOV, IFIX, CDI |
+| macro | analyze_macro | 11 indicadores (Selic, CDI, IPCA, IGP-M, INPC, poupança, TR, PTAX, PIB, desocupação) |
+| market | analyze_market | 8 benchmarks (IBOV, IFIX, CDI, S&P500, USD/BRL, Ouro, Selic acum., PTAX) |
 | market-sectors | analyze_market_sectors | Performance setorial |
 | economic-sectors | analyze_economic_sectors | Setores da economia real |
 | ingest | ingest_fundamentals | Ingestão de dados no DataLake |
