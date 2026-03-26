@@ -134,7 +134,7 @@ class DataLakeConfig:
     PARQUET_SUBDIR: str = "parquet"
 
     # Backfill
-    DEFAULT_LOOKBACK_YEARS: int = 10  # Anos de histórico padrão para backfill
+    DEFAULT_LOOKBACK_YEARS: int = 5  # Anos de histórico padrão para backfill
 
 
 @dataclass
