@@ -1,7 +1,6 @@
 """Nodes do pipeline de portfolio (load, fetch prices, export)."""
 
 from pathlib import Path
-from typing import Optional
 
 from carteira_auto.config import settings
 from carteira_auto.core.engine import Node, PipelineContext
@@ -21,7 +20,7 @@ class LoadPortfolioNode(Node):
     name = "load_portfolio"
     dependencies: list[str] = []
 
-    def __init__(self, source_path: Optional[Path] = None):
+    def __init__(self, source_path: Path | None = None):
         self._source_path = source_path or settings.paths.PORTFOLIO_FILE
 
     def run(self, ctx: PipelineContext) -> PipelineContext:
@@ -94,15 +93,19 @@ class FetchPortfolioPricesNode(Node):
         # Busca em lote — filtragem e normalização são internas ao fetcher
         prices = fetcher.get_multiple_prices(tickers)
 
-        # Atualiza preços no portfolio
+        # Cria novos assets com preços atualizados (sem mutar originais)
         updated = 0
+        updated_assets = []
         for asset in portfolio.assets:
             price = prices.get(asset.ticker)
             if price is not None:
-                asset.preco_atual = price
+                updated_assets.append(asset.model_copy(update={"preco_atual": price}))
                 updated += 1
+            else:
+                updated_assets.append(asset)
 
-        ctx["portfolio"] = portfolio
+        # Recria portfolio com assets atualizados
+        ctx["portfolio"] = portfolio.model_copy(update={"assets": updated_assets})
         ctx["prices"] = prices
         logger.info(f"Preços atualizados: {updated}/{len(tickers)} ativos")
         return ctx
@@ -122,7 +125,7 @@ class ExportPortfolioPricesNode(Node):
     name = "export_portfolio_prices"
     dependencies = ["fetch_portfolio_prices"]
 
-    def __init__(self, output_path: Optional[Path] = None):
+    def __init__(self, output_path: Path | None = None):
         self._output_path = output_path or settings.paths.get_portfolio_output_path()
 
     def run(self, ctx: PipelineContext) -> PipelineContext:

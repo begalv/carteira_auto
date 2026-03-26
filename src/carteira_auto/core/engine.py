@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import traceback
 from abc import ABC, abstractmethod
 from collections import deque
 from typing import Any
@@ -29,6 +30,15 @@ class NodeNotFoundError(Exception):
     """Node não encontrado no engine."""
 
 
+class NodeExecutionError(Exception):
+    """Erro durante a execução de um node."""
+
+    def __init__(self, node_name: str, original_error: Exception):
+        self.node_name = node_name
+        self.original_error = original_error
+        super().__init__(f"Erro no node '{node_name}': {original_error}")
+
+
 # ============================================================================
 # CONTEXTO
 # ============================================================================
@@ -39,6 +49,8 @@ class PipelineContext(dict):
 
     É um dict com métodos tipados de conveniência.
     Cada node lê do contexto o que precisa e escreve o que produziu.
+
+    Erros de nodes são armazenados em ctx["_errors"] como dict[str, str].
     """
 
     def get_typed(self, key: str, expected_type: type) -> Any:
@@ -50,6 +62,16 @@ class PipelineContext(dict):
                 f"obteve {type(value).__name__}"
             )
         return value
+
+    @property
+    def errors(self) -> dict[str, str]:
+        """Retorna erros registrados durante a execução do pipeline."""
+        return self.get("_errors", {})
+
+    @property
+    def has_errors(self) -> bool:
+        """Verifica se houve erros durante a execução."""
+        return bool(self.get("_errors"))
 
 
 # ============================================================================
@@ -64,10 +86,20 @@ class Node(ABC):
         - name: identificador único
         - dependencies: lista de nomes dos nodes predecessores
         - run(ctx): executa a lógica e retorna o contexto atualizado
+
+    Subclasses devem definir `name` e opcionalmente `dependencies` como
+    atributos de classe. O __init_subclass__ garante que cada subclasse
+    tenha sua própria cópia de dependencies.
     """
 
     name: str
     dependencies: list[str] = []
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """Garante que cada subclasse tenha sua própria lista de dependencies."""
+        super().__init_subclass__(**kwargs)
+        if "dependencies" not in cls.__dict__:
+            cls.dependencies = list(cls.dependencies)
 
     @abstractmethod
     def run(self, ctx: PipelineContext) -> PipelineContext:
@@ -94,6 +126,10 @@ class Node(ABC):
 class DAGEngine:
     """Engine que registra nodes e resolve dependências via topological sort.
 
+    Args:
+        fail_fast: Se True, para o pipeline no primeiro erro.
+                   Se False (padrão), continua e registra erros em ctx["_errors"].
+
     Usage:
         dag_engine = DAGEngine()
         dag_engine.register(LoadPortfolioNode())
@@ -101,10 +137,13 @@ class DAGEngine:
         dag_engine.register(ExportPortfolioPricesNode())
 
         ctx = dag_engine.run("export_portfolio_prices")
+        if ctx.has_errors:
+            print(ctx.errors)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, fail_fast: bool = False) -> None:
         self._nodes: dict[str, Node] = {}
+        self.fail_fast = fail_fast
 
     def register(self, node: Node) -> None:
         """Registra um node no engine."""
@@ -220,6 +259,10 @@ class DAGEngine:
     def run(self, target: str, ctx: PipelineContext | None = None) -> PipelineContext:
         """Resolve dependências e executa o pipeline.
 
+        Em modo fail_fast=True, levanta NodeExecutionError no primeiro erro.
+        Em modo fail_fast=False (padrão), registra erros em ctx["_errors"]
+        e continua a execução dos nodes restantes.
+
         Args:
             target: Nome do node terminal.
             ctx: Contexto inicial (opcional).
@@ -230,6 +273,8 @@ class DAGEngine:
         if ctx is None:
             ctx = PipelineContext()
 
+        ctx.setdefault("_errors", {})
+
         order = self.resolve(target)
 
         logger.info(
@@ -238,7 +283,21 @@ class DAGEngine:
 
         for node in order:
             logger.info(f"▶ {node.name}")
-            ctx = node.run(ctx)
+            try:
+                ctx = node.run(ctx)
+            except Exception as e:
+                tb = traceback.format_exc()
+                ctx["_errors"][node.name] = f"{type(e).__name__}: {e}"
+                logger.error(f"Erro no node '{node.name}': {e}\n{tb}")
+                if self.fail_fast:
+                    raise NodeExecutionError(node.name, e) from e
 
-        logger.info(f"Pipeline '{target}' concluído com sucesso")
+        if ctx.has_errors:
+            failed = list(ctx.errors.keys())
+            logger.warning(
+                f"Pipeline '{target}' concluído com {len(failed)} erro(s): {failed}"
+            )
+        else:
+            logger.info(f"Pipeline '{target}' concluído com sucesso")
+
         return ctx
