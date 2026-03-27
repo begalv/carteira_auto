@@ -8,7 +8,7 @@ from carteira_auto.config import constants, settings
 
 utils.initialize_logging()
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Bernardo Galvão"
 __email__ = "bgalvaods@gmail.com"
 
