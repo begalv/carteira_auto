@@ -7,7 +7,7 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.1 — Fase 2 Sprint 1 concluído)
+## Estado atual do projeto (v0.2.1+ — Fetcher Maximization Sprint, Fase A concluída)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
@@ -16,10 +16,15 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 | Hardening | CONCLUÍDA | Result type, validação estrita, error handling, 350 testes |
 | 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
-| 2 Sprint 2+ | PRÓXIMA | 6 analyzers restantes (fundamental, yield curve, global macro...) |
+| **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
+| **Fetcher Sprint B** | EM ANDAMENTO | Expansão BCBFetcher, IBGEFetcher, FREDFetcher |
+| **Fetcher Sprint C** | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
+| **Fetcher Sprint D** | Pendente | IngestNodes com fallback, testes integração, docs finais |
+| 2 Sprint 2+ | Pendente | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 407 passando (unit + integration). 2 falhas pré-existentes (CVM 404, Excel fixture).
-**Cobertura:** models, analyzers (10), fetchers, CLI, decorators, E2E pipelines.
+**Testes:** 407+ passando (unit + integration). 2 falhas pré-existentes (CVM 404, Excel fixture).
+**Novos testes:** test_fetch_helpers.py (22), test_reference_lake.py (39).
+**Cobertura:** models, analyzers (10), fetchers, CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
 
 ## Documentos de referência
 
@@ -107,12 +112,15 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 
 ### Config (src/carteira_auto/config/)
 - `settings.py`: Settings dataclass com PathsConfig, YahooFetcherConfig,
-  BCBConfig, IBGEConfig, DDMConfig, FREDConfig, DataLakeConfig, PortfolioConfig,
-  LoggingConfig. PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE.
+  BCBConfig, IBGEConfig, DDMConfig, FREDConfig, TradingComDadosConfig,
+  DataLakeConfig, PortfolioConfig, LoggingConfig.
+  PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE.
   → ADICIONE novas configs aqui (AIConfig, etc.)
   → OptimizationConfig vai em config/optimization.py (novo arquivo)
-- `constants.py`: Constants class com colunas de planilha, field maps, séries BCB,
-  tabelas IBGE, padrões de ticker, horários de mercado, feriados B3.
+- `constants.py`: Constants class com colunas de planilha, field maps,
+  BCB_SERIES_CODES (31 séries SGS), IBGE_TABLE_IDS (16 tabelas SIDRA),
+  FRED_SERIES (30 séries com metadados), INDEX_CODES (6 índices B3),
+  padrões de ticker, horários de mercado, feriados B3.
   → ADICIONE novas constantes aqui.
 
 ### Utils (src/carteira_auto/utils/)
@@ -143,13 +151,20 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 - `nodes/`: LoadPortfolioNode, FetchPricesNode (usa model_copy, sem mutação),
   ExportPortfolioPricesNode, IngestPricesNode, IngestMacroNode, etc.
   → ADICIONE novos nodes aqui (strategy, optimizer, ai, publish).
+- `nodes/fetch_helpers.py`: FetchStrategy, FetchResult, fetch_with_fallback().
+  → Helper de fallback hierárquico entre fetchers diferentes.
+  → Usado nos IngestNodes para orquestrar fontes com rastreamento de proveniência.
+  → Veja Pattern 10 em PATTERNS.md.
 
 ### Data (src/carteira_auto/data/)
 - `fetchers/`: YahooFinanceFetcher, BCBFetcher, IBGEFetcher, FREDFetcher,
-  CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers completos).
-  → NÃO altere. ADICIONE novos fetchers no mesmo padrão (Pattern 1).
-- `lake/`: DataLake, PriceLake, MacroLake, FundamentalsLake, NewsLake.
+  CVMFetcher, TesouroDiretoFetcher, DDMFetcher, TradingComDadosFetcher (8 fetchers).
+  → EXPANDA os existentes conforme plano do sprint (python-bcb, sidrapy, CKAN).
+  → ADICIONE novos fetchers no mesmo padrão (Pattern 1).
+- `lake/`: DataLake (fachada), PriceLake, MacroLake, FundamentalsLake, NewsLake,
+  ReferenceLake (12 tabelas: composições, Focus, targets, holders, fundos, ativos).
   → DataLake é o single source of truth para dados históricos.
+  → ReferenceLake para dados de referência não-temporais.
 - `loaders/`: ExcelLoader, PortfolioLoader.
 - `exporters/`: ExcelExporter, PortfolioPriceExporter.
 - `storage/`: SnapshotStore (JSON).
@@ -198,7 +213,12 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | 0 | Infra: DataLake SQLite, IngestNodes, settings | CONCLUÍDA |
 | 1 | Fontes: FRED, CVM, Tesouro, DDM | CONCLUÍDA |
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
-| 2 | Analyzers: 9 novos — Sprint 1 concluído (currency, commodity, fiscal) | EM ANDAMENTO |
+| 2 Sprint 1 | Analyzers: currency, commodity, fiscal | CONCLUÍDA |
+| **Fetcher Max A** | **Fundação: deps, constants, FetchWithFallback, ReferenceLake (12 tab)** | **CONCLUÍDA** |
+| **Fetcher Max B** | **Expansão BCBFetcher (python-bcb), IBGEFetcher (sidrapy), FREDFetcher** | **EM ANDAMENTO** |
+| **Fetcher Max C** | **Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher** | Pendente |
+| **Fetcher Max D** | **IngestNodes com fallback, testes integração, docs** | Pendente |
+| 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
 | 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
 | 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |
 | 5 | NLP: sentimento, geopolítica, crisis hedge | Pendente |
@@ -219,6 +239,16 @@ antes de iniciar cada fase.
   de commitar.
 - **Códigos SGS fiscais validados**: Dívida bruta/PIB = 13762 (NÃO 13621, que
   retorna valor absoluto em R$). Juros nominais/PIB = 5727 (NÃO 4185, que não existe).
+- **Novas dependências (Fetcher Sprint)**: python-bcb>=0.6.0, sidrapy>=0.1.0,
+  tradingcomdados>=0.4.0 — todas gratuitas, sem API key.
+- **FetchWithFallback vs @fallback**: `fetch_with_fallback()` orquestra ENTRE fetchers
+  diferentes (usado nos IngestNodes). `@fallback` opera DENTRO de um mesmo fetcher
+  (ex: python-bcb → HTTP raw). Não confundir os dois mecanismos.
+- **ReferenceLake (12 tabelas)**: dados de referência não-temporais. Todas as tabelas
+  com `source` e `updated_at`. Auditoria de cobertura confirmou que TODOS os dados
+  dos fetchers expandidos têm destino no DataLake.
+- **Rodando testes no worktree**: usar `PYTHONPATH=src python3 -m pytest` para
+  garantir que o worktree `src/` tenha prioridade sobre o pacote instalado.
 
 ## Como iniciar
 

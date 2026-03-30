@@ -621,3 +621,75 @@ pre-commit run --all-files
 ```
 
 Se o `ruff` ou `black` fizer alteracoes automaticas, os arquivos serao modificados mas o commit sera rejeitado. Basta fazer `git add` novamente e commitar.
+
+---
+
+## FetchWithFallback — Fallback Hierárquico entre Fetchers
+
+O helper `FetchWithFallback` em `src/carteira_auto/core/nodes/fetch_helpers.py` orquestra tentativas entre fontes diferentes quando um dado pode vir de múltiplas APIs.
+
+### Quando usar
+
+Nos IngestNodes, quando um indicador pode ser obtido de mais de uma fonte:
+
+```python
+from carteira_auto.core.nodes.fetch_helpers import (
+    FetchStrategy, fetch_with_fallback,
+)
+
+# Selic: BCB (primário, gratuito) → DDM (fallback, pago)
+result = fetch_with_fallback(
+    strategies=[
+        FetchStrategy(name="bcb", callable=lambda: bcb.get_selic()),
+        FetchStrategy(name="ddm", callable=lambda: ddm.get_macro_series("selic")),
+    ],
+    label="selic",
+    critical=True,
+)
+
+if result.success:
+    lake.store_macro("selic", result.data, source=result.source)
+```
+
+### FetchWithFallback vs @fallback
+
+| Mecanismo | Escopo | Onde usar |
+|-----------|--------|----------|
+| `fetch_with_fallback()` | Entre fetchers diferentes | IngestNodes |
+| `@fallback` decorator | Dentro de um mesmo fetcher | Fetcher internals |
+
+O `@fallback` (de `utils/decorators.py`) opera dentro de um único fetcher para fallback interno (ex: python-bcb falha → HTTP raw). O `fetch_with_fallback` opera nos IngestNodes para orquestrar entre fetchers independentes.
+
+### Proveniência
+
+Todo dado persistido no DataLake deve incluir `source=result.source` para rastreabilidade. O campo `source` indica qual fetcher real forneceu o dado (ex: `"bcb"`, `"ddm"`, `"yahoo"`, `"tradingcomdados"`).
+
+---
+
+## ReferenceLake — Dados de Referência Não-Temporais
+
+O `ReferenceLake` (`src/carteira_auto/data/lake/reference_lake.py`) armazena dados estruturais que não são séries temporais:
+
+| Tabela | Dados | Fonte primária |
+|--------|-------|----------------|
+| `index_compositions` | Composição de IBOV, IFIX, IDIV, SMLL | TradingComDados, DDM |
+| `focus_expectations` | Projeções Focus (Selic, IPCA, PIB) | BCB (python-bcb) |
+| `analyst_targets` | Preço-alvo de analistas | Yahoo |
+| `upgrades_downgrades` | Revisões de rating | Yahoo |
+| `lending_rates` | Taxas de crédito por banco | BCB (TaxaJuros) |
+| `cnae_classifications` | Classificação setorial CNAE | IBGE |
+| `ticker_cnpj_map` | Mapeamento ticker → CNPJ | DDM, CVM |
+| `major_holders` | Participação acionária (% insiders/institutional) | Yahoo |
+| `fund_registry` | Cadastro de fundos e FIIs | CVM |
+| `fund_portfolios` | Composição de carteiras CDA | CVM |
+| `intermediaries` | Corretoras e distribuidoras | CVM |
+| `asset_registry` | Listas de ações, FIIs, BDRs, ETFs | TradingComDados |
+
+Acesso via fachada `DataLake`:
+
+```python
+lake = DataLake(Path("data/lake"))
+lake.store_index_composition("IBOV", df, source="tradingcomdados")
+lake.store_asset_registry(df, asset_type="fii", source="tradingcomdados")
+lake.store_fund_registry(funds, source="cvm")
+```
