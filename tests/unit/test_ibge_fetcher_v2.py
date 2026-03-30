@@ -144,15 +144,20 @@ def _make_country_list() -> list[dict]:
 
 
 def _make_country_indicators() -> list[dict]:
+    # Estrutura real da API Países: "indicador" (não "nome"), "pais" (não
+    # "localidade"), "serie" é lista de dicts de uma chave (não dict direto).
     return [
         {
             "id": 77827,
-            "nome": "Total do PIB",
+            "indicador": "Total do PIB",
             "unidade": {"id": "US$", "multiplicador": 1},
             "series": [
                 {
-                    "localidade": {"id": "BR", "nome": "Brasil"},
-                    "serie": {"2022": "1920095687805.73", "2023": "2173665655937.27"},
+                    "pais": {"id": "BR", "nome": "Brasil"},
+                    "serie": [
+                        {"2022": "1920095687805.73"},
+                        {"2023": "2173665655937.27"},
+                    ],
                 }
             ],
         }
@@ -160,23 +165,24 @@ def _make_country_indicators() -> list[dict]:
 
 
 def _make_country_rank_data() -> list[dict]:
+    # Estrutura real: "indicador", "pais", "serie" como lista de dicts.
     return [
         {
             "id": 77827,
-            "nome": "Total do PIB",
+            "indicador": "Total do PIB",
             "unidade": {"id": "US$"},
             "series": [
                 {
-                    "localidade": {"id": "US", "nome": "Estados Unidos"},
-                    "serie": {"2023": "25462700000000"},
+                    "pais": {"id": "US", "nome": "Estados Unidos"},
+                    "serie": [{"2023": "25462700000000"}],
                 },
                 {
-                    "localidade": {"id": "BR", "nome": "Brasil"},
-                    "serie": {"2023": "2173665655937.27"},
+                    "pais": {"id": "BR", "nome": "Brasil"},
+                    "serie": [{"2023": "2173665655937.27"}],
                 },
                 {
-                    "localidade": {"id": "AR", "nome": "Argentina"},
-                    "serie": {"2023": "641131000000"},
+                    "pais": {"id": "AR", "nome": "Argentina"},
+                    "serie": [{"2023": "641131000000"}],
                 },
             ],
         }
