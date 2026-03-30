@@ -1,4 +1,4 @@
-# Arquitetura — carteira_auto v0.2.1 (Fase 2 Sprint 1)
+# Arquitetura — carteira_auto v0.2.1+ (Fase A — Fetcher Maximization Sprint)
 
 > Referência compacta para Claude Code. Atualizar ao final de cada fase.
 
@@ -15,6 +15,7 @@
 | registry.py | create_engine(), PIPELINE_PRESETS | Mapeamento CLI → node terminal |
 | nodes/portfolio_nodes.py | LoadPortfolioNode, FetchPricesNode, FetchPortfolioPricesNode, ExportPortfolioPricesNode | Operações de carteira — FetchPortfolioPricesNode usa model_copy() (sem mutação in-place) |
 | nodes/ingest_nodes.py | IngestPricesNode, IngestMacroNode, IngestFundamentalsNode | Ingestão de dados no DataLake |
+| nodes/fetch_helpers.py | FetchStrategy, FetchResult, fetch_with_fallback() | Helper de fallback hierárquico entre fetchers — usado pelos IngestNodes para orquestrar tentativas entre fontes diferentes com logging de proveniência |
 | nodes/alert_nodes.py | EvaluateAlertsNode | Avaliação de regras de alerta |
 | nodes/storage_nodes.py | SaveSnapshotNode | Persistência de snapshots JSON |
 | pipelines/update_excel_prices.py | UpdateExcelPricesPipeline | Pipeline legado (backward compat) |
@@ -23,21 +24,23 @@
 | Arquivo | Classe | API | Rate limit | Cache TTL |
 |---------|--------|-----|------------|-----------|
 | yahoo_fetcher.py | YahooFinanceFetcher | yfinance | 30 req/min | 5min (preços), 24h (histórico) |
-| bcb_fetcher.py | BCBFetcher | SGS API | 30 req/min | 1h |
-| ibge_fetcher.py | IBGEFetcher | SIDRA API | 30 req/min | 2h |
+| bcb_fetcher.py | BCBFetcher | SGS API + python-bcb | 30 req/min | 1h |
+| ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy | 30 req/min | 2h |
 | fred_fetcher.py | FREDFetcher | FRED API | 120 req/min | 24h |
 | cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
-| tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API | 30 req/min | 1h |
+| tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API + CKAN | 30 req/min | 1h |
 | ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
+| tradingcomdados_fetcher.py | TradingComDadosFetcher | tradingcomdados (B3) | 30 req/min | 1h (preços), 24h (índices) |
 
 ### data/lake/ — DataLake (SQLite)
-| Arquivo | Classe | Papel |
-|---------|--------|-------|
-| base.py | DataLake | Classe agregadora — acesso unificado aos lakes |
-| price_lake.py | PriceLake | OHLCV em SQLite |
-| macro_lake.py | MacroLake | Indicadores macroeconômicos |
-| fundamentals_lake.py | FundamentalsLake | Dados fundamentalistas |
-| news_lake.py | NewsLake | Notícias e sentimento |
+| Arquivo | Classe | Papel | Tabelas |
+|---------|--------|-------|---------|
+| base.py | DataLake | Classe agregadora — acesso unificado aos 5 sub-lakes | — |
+| price_lake.py | PriceLake | OHLCV em SQLite | prices |
+| macro_lake.py | MacroLake | Séries temporais macroeconômicas genéricas | macro_indicators, macro_metadata |
+| fundamentals_lake.py | FundamentalsLake | Dados fundamentalistas por ticker | fundamentals, financial_statements |
+| news_lake.py | NewsLake | Notícias e sentimento | news |
+| reference_lake.py | ReferenceLake | Dados de referência estruturais (não-temporais) | index_compositions, focus_expectations, analyst_targets, upgrades_downgrades, lending_rates, cnae_classifications, ticker_cnpj_map, major_holders, fund_registry, fund_portfolios, intermediaries, asset_registry |
 
 ### data/ — Persistência e I/O
 | Arquivo | Classe | Papel |
@@ -70,8 +73,8 @@
 ### config/ — Configurações centralizadas
 | Arquivo | Exporta | Papel |
 |---------|---------|-------|
-| settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema — PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE |
-| constants.py | Constants | Colunas de planilha, field maps, séries BCB, tabelas IBGE, feriados B3 (sem ERROR_MESSAGES/SUCCESS_MESSAGES) |
+| settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, FREDConfig, TradingComDadosConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema — PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE |
+| constants.py | Constants (BCB_SERIES_CODES=31, IBGE_TABLE_IDS=16, FRED_SERIES=30, INDEX_CODES=6) | Colunas de planilha, field maps, séries BCB expandidas, tabelas IBGE expandidas, séries FRED com metadados, códigos de índices, feriados B3 |
 
 ### utils/ — Utilitários transversais
 | Arquivo | Exporta | Usar quando |
@@ -145,3 +148,5 @@
 | test_currency_analyzer.py | 9 | CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais) |
 | test_commodity_analyzer.py | 8 | CommodityAnalyzer (preços, ciclo, índice, falhas) |
 | test_fiscal_analyzer.py | 16 | FiscalAnalyzer (métricas, trajetória, variação 12m, falhas) |
+| test_fetch_helpers.py | 22 | FetchStrategy, FetchResult, fetch_with_fallback (fallback, transform, critical mode) |
+| test_reference_lake.py | 39 | ReferenceLake — todas as 12 tabelas (composições, Focus, targets, holders, fundos, ativos) |

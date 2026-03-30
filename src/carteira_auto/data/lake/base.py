@@ -6,7 +6,7 @@ fachada, simplificando o acesso aos dados para analyzers e estratégias.
 
 from datetime import date
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -14,6 +14,7 @@ from carteira_auto.data.lake.fundamentals_lake import FundamentalsLake
 from carteira_auto.data.lake.macro_lake import MacroLake
 from carteira_auto.data.lake.news_lake import NewsLake
 from carteira_auto.data.lake.price_lake import PriceLake
+from carteira_auto.data.lake.reference_lake import ReferenceLake
 from carteira_auto.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -43,6 +44,7 @@ class DataLake:
         self.macro = MacroLake(lake_dir / "macro.db")
         self.fundamentals = FundamentalsLake(lake_dir / "fundamentals.db")
         self.news = NewsLake(lake_dir / "news.db")
+        self.reference = ReferenceLake(lake_dir / "reference.db")
 
         logger.debug(f"DataLake inicializado em {lake_dir}")
 
@@ -57,10 +59,10 @@ class DataLake:
     def get_prices(
         self,
         tickers: list[str],
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        columns: Optional[list[str]] = None,
-        lookback: Optional[int] = None,
+        start: date | None = None,
+        end: date | None = None,
+        columns: list[str] | None = None,
+        lookback: int | None = None,
     ) -> pd.DataFrame:
         """Consulta preços do lake.
 
@@ -106,13 +108,13 @@ class DataLake:
     def get_macro(
         self,
         indicator: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
     ) -> pd.DataFrame:
         """Consulta série de indicador macro."""
         return self.macro.get_indicator(indicator, start, end)
 
-    def get_macro_latest(self, indicator: str) -> Optional[float]:
+    def get_macro_latest(self, indicator: str) -> float | None:
         """Retorna último valor de um indicador macro."""
         return self.macro.get_latest_value(indicator)
 
@@ -145,7 +147,7 @@ class DataLake:
         self,
         ticker: str,
         periods: int = 8,
-        indicators: Optional[list[str]] = None,
+        indicators: list[str] | None = None,
     ) -> pd.DataFrame:
         """Consulta indicadores fundamentalistas de um ticker."""
         return self.fundamentals.get_indicators(ticker, periods, indicators)
@@ -160,9 +162,9 @@ class DataLake:
 
     def get_news(
         self,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        category: Optional[str] = None,
+        start: date | None = None,
+        end: date | None = None,
+        category: str | None = None,
         limit: int = 100,
     ) -> pd.DataFrame:
         """Consulta notícias do lake."""
@@ -170,11 +172,103 @@ class DataLake:
 
     def get_sentiment(
         self,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
     ) -> pd.DataFrame:
         """Retorna série temporal de sentimento agregado."""
         return self.news.get_sentiment_series(start, end)
+
+    # ================================================================
+    # REFERÊNCIA (composição de índices, Focus, targets, etc.)
+    # ================================================================
+
+    def store_index_composition(
+        self,
+        index_code: str,
+        df: pd.DataFrame,
+        source: str,
+        ref_date: str | None = None,
+    ) -> int:
+        """Persiste composição de um índice."""
+        return self.reference.store_index_composition(index_code, df, source, ref_date)
+
+    def get_index_composition(
+        self,
+        index_code: str,
+        ref_date: str | None = None,
+    ) -> pd.DataFrame:
+        """Consulta composição de um índice."""
+        return self.reference.get_index_composition(index_code, ref_date)
+
+    def store_focus_expectations(
+        self,
+        indicator: str,
+        data: list[dict] | pd.DataFrame,
+        source: str = "bcb",
+    ) -> int:
+        """Persiste expectativas Focus do BCB."""
+        return self.reference.store_focus_expectations(indicator, data, source)
+
+    def store_analyst_targets(
+        self,
+        ticker: str,
+        targets: dict,
+        source: str = "yahoo",
+    ) -> int:
+        """Persiste targets de preço de analistas."""
+        return self.reference.store_analyst_targets(ticker, targets, source)
+
+    def store_ticker_cnpj(
+        self,
+        mapping: dict[str, dict],
+        source: str,
+    ) -> int:
+        """Persiste mapeamento ticker → CNPJ."""
+        return self.reference.store_ticker_cnpj(mapping, source)
+
+    def store_major_holders(
+        self,
+        ticker: str,
+        holders: dict,
+        source: str = "yahoo",
+    ) -> int:
+        """Persiste participação acionária (major holders) de um ticker."""
+        return self.reference.store_major_holders(ticker, holders, source)
+
+    def store_fund_registry(
+        self,
+        funds: list | pd.DataFrame,
+        source: str = "cvm",
+    ) -> int:
+        """Persiste cadastro de fundos e FIIs."""
+        return self.reference.store_fund_registry(funds, source)
+
+    def store_fund_portfolios(
+        self,
+        cnpj: str,
+        df: pd.DataFrame,
+        source: str = "cvm",
+        ref_date: str | None = None,
+    ) -> int:
+        """Persiste composição de carteira de um fundo (CDA)."""
+        return self.reference.store_fund_portfolios(cnpj, df, source, ref_date)
+
+    def store_intermediaries(
+        self,
+        intermediaries: list | pd.DataFrame,
+        source: str = "cvm",
+    ) -> int:
+        """Persiste cadastro de intermediários (corretoras/distribuidoras)."""
+        return self.reference.store_intermediaries(intermediaries, source)
+
+    def store_asset_registry(
+        self,
+        assets: list | pd.DataFrame,
+        asset_type: str,
+        source: str = "tradingcomdados",
+    ) -> int:
+        """Persiste lista de ativos por tipo (stock, fii, bdr, etf)."""
+        return self.reference.store_asset_registry(assets, asset_type, source)
 
     # ================================================================
     # EXPORTAÇÃO
@@ -200,6 +294,9 @@ class DataLake:
         )
         results["news"] = self.news.export_to_parquet(
             self._parquet_dir / "news.parquet"
+        )
+        results["reference"] = self.reference.export_to_parquet(
+            self._parquet_dir / "reference.parquet"
         )
 
         logger.info(f"DataLake: todos os dados exportados para {self._parquet_dir}")
@@ -231,5 +328,6 @@ class DataLake:
             "news": {
                 "records": self.news.count_records(),
             },
+            "reference": self.reference.count_records(),
             "lake_dir": str(self._lake_dir),
         }
