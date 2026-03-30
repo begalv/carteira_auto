@@ -733,20 +733,26 @@ class IBGEFetcher:
 
         rows = []
         for indicator in data:
-            nome = indicator.get("nome", "")
+            # API Países usa "indicador" (não "nome") como campo de nome
+            nome = indicator.get("indicador", "")
             unidade = indicator.get("unidade", {}).get("id", "")
             for series in indicator.get("series", []):
-                serie = series.get("serie", {})
-                for ano, valor in serie.items():
-                    if valor is not None and valor != "":
-                        rows.append(
-                            {
-                                "indicador": nome,
-                                "ano": int(ano),
-                                "valor": pd.to_numeric(valor, errors="coerce"),
-                                "unidade": unidade,
-                            }
-                        )
+                # "serie" é lista de dicts de uma chave: [{"1990": "val"}, ...]
+                # Inclui entradas nulas e períodos ("1990-1995") — filtrar.
+                serie_list = series.get("serie", [])
+                for item in serie_list:
+                    for ano, valor in item.items():
+                        if not ano.isdigit():  # pula "-", "1990-1995", etc.
+                            continue
+                        if valor is not None and valor != "":
+                            rows.append(
+                                {
+                                    "indicador": nome,
+                                    "ano": int(ano),
+                                    "valor": pd.to_numeric(valor, errors="coerce"),
+                                    "unidade": unidade,
+                                }
+                            )
         df = pd.DataFrame(rows)
         if not df.empty:
             df = df.sort_values(["indicador", "ano"]).reset_index(drop=True)
@@ -791,10 +797,18 @@ class IBGEFetcher:
         rows = []
         for indicator in data:
             for series in indicator.get("series", []):
-                loc = series.get("localidade", {})
-                codigo = loc.get("id", "")
-                nome = loc.get("nome", "")
-                serie = series.get("serie", {})
+                # API usa "pais" (não "localidade") para identificar o país
+                pais = series.get("pais", {})
+                codigo = pais.get("id", "")
+                nome = pais.get("nome", "")
+                # "serie" é lista de dicts de uma chave; converte para dict filtrado
+                serie_list = series.get("serie", [])
+                serie = {
+                    k: v
+                    for item in serie_list
+                    for k, v in item.items()
+                    if k.isdigit()  # apenas anos inteiros (não "-", "1990-1995")
+                }
 
                 valor = None
                 ano_usado = year
