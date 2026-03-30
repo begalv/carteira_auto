@@ -914,162 +914,68 @@ class BCBFetcher:
     def _fetch_ptax_currency(
         self, currency_code: str, start_date: date, end_date: date
     ) -> pd.DataFrame:
-        """Busca cotação PTAX de fechamento para uma moeda específica.
+        """Busca cotação PTAX de fechamento para uma moeda específica via BCB.
 
-        Estratégia (fallback hierárquico):
-          1. BCB PTAX OData (CotacaoMoedaPeriodo) — apenas para as 10 moedas suportadas
-             (AUD, CAD, CHF, DKK, EUR, GBP, JPY, NOK, SEK, USD)
-          2. Yahoo Finance ({CURRENCY}BRL=X ou {CURRENCY}USD=X) — para demais moedas
-             (CNY, ARS, MXN, etc.) e como fallback quando BCB falha
+        Fonte única: BCB PTAX OData (CotacaoMoedaPeriodo).
+        Moedas suportadas: AUD, CAD, CHF, DKK, EUR, GBP, JPY, NOK, SEK, USD.
+
+        Para moedas não suportadas (CNY, ARS, MXN, etc.), retorna DataFrame vazio.
+        O fallback para outras fontes (ex: Yahoo Finance) é responsabilidade
+        dos IngestNodes via fetch_with_fallback() — conforme arquitetura do projeto.
 
         Retorna DataFrame com colunas ['data', 'compra', 'venda', 'moeda', 'fonte'].
         """
-        # Moedas suportadas nativamente pelo BCB PTAX
+        empty = pd.DataFrame(columns=["data", "compra", "venda", "moeda", "fonte"])
         bcb_supported = constants.BCB_PTAX_SUPPORTED_CURRENCIES
 
-        df: pd.DataFrame | None = None
-
-        # --- Tentativa 1: BCB PTAX OData ---
-        if currency_code in bcb_supported:
-            try:
-                from bcb import PTAX
-
-                ptax = PTAX()
-                ep = ptax.get_endpoint("CotacaoMoedaPeriodo")
-                raw = (
-                    ep.query()
-                    .parameters(
-                        moeda=currency_code,
-                        dataInicial=start_date.strftime("%m-%d-%Y"),
-                        dataFinalCotacao=end_date.strftime("%m-%d-%Y"),
-                    )
-                    .filter(ep.tipoBoletim == "Fechamento")
-                    .select(ep.cotacaoCompra, ep.cotacaoVenda, ep.dataHoraCotacao)
-                    .collect()
-                )
-
-                if raw is not None and not raw.empty:
-                    raw = raw.rename(
-                        columns={
-                            "cotacaoCompra": "compra",
-                            "cotacaoVenda": "venda",
-                            "dataHoraCotacao": "data",
-                        }
-                    )
-                    raw["data"] = pd.to_datetime(raw["data"]).dt.normalize()
-                    raw["moeda"] = currency_code
-                    raw["fonte"] = "bcb_ptax"
-                    df = raw[["data", "compra", "venda", "moeda", "fonte"]].reset_index(
-                        drop=True
-                    )
-                    logger.debug(
-                        f"PTAX {currency_code}: {len(df)} cotações via BCB PTAX"
-                    )
-            except Exception as exc:
-                logger.warning(
-                    f"PTAX {currency_code}: falha no BCB PTAX ({exc}); "
-                    "tentando fallback Yahoo Finance"
-                )
-
-        # --- Tentativa 2: Yahoo Finance como fallback ---
-        if df is None or df.empty:
-            if currency_code not in bcb_supported:
-                logger.info(
-                    f"PTAX {currency_code}: moeda não suportada pelo BCB PTAX; "
-                    "buscando via Yahoo Finance"
-                )
-            df = self._fetch_ptax_yahoo_fallback(currency_code, start_date, end_date)
-
-        if df is None or df.empty:
-            logger.warning(
-                f"PTAX {currency_code}: sem dados em nenhuma fonte; retornando vazio"
+        if currency_code not in bcb_supported:
+            logger.info(
+                f"PTAX {currency_code}: moeda não suportada pelo BCB PTAX "
+                f"(suportadas: {', '.join(sorted(bcb_supported))}). "
+                "Fallback deve ser orquestrado pelo IngestNode."
             )
-            return pd.DataFrame(columns=["data", "compra", "venda", "moeda", "fonte"])
+            return empty
 
-        return df
+        try:
+            from bcb import PTAX
 
-    def _fetch_ptax_yahoo_fallback(
-        self, currency_code: str, start_date: date, end_date: date
-    ) -> pd.DataFrame:
-        """Busca cotação via Yahoo Finance para moedas não suportadas pelo BCB PTAX.
-
-        Estratégia de ticker Yahoo:
-          - Primário:  {CURRENCY}BRL=X  (cotação direta em reais, ex: CNYBRL=X)
-          - Fallback:  {CURRENCY}USD=X  convertido por USD/BRL (USDBRL=X)
-            Útil quando o par direto em BRL não existe no Yahoo Finance.
-
-        Retorna DataFrame com colunas ['data', 'compra', 'venda', 'moeda', 'fonte'].
-        O campo 'compra' == 'venda' == preço de fechamento (Yahoo não oferece spread).
-        """
-        import yfinance as yf
-
-        ticker_brl = f"{currency_code}BRL=X"
-        ticker_usd = f"{currency_code}USD=X"
-        ticker_usdbrl = "USDBRL=X"
-
-        start_str = start_date.strftime("%Y-%m-%d")
-        # yfinance end_date é exclusivo — avança 1 dia
-        end_str = (end_date + timedelta(days=1)).strftime("%Y-%m-%d")
-
-        def _download(ticker: str) -> pd.DataFrame | None:
-            try:
-                raw = yf.download(
-                    ticker,
-                    start=start_str,
-                    end=end_str,
-                    progress=False,
-                    auto_adjust=True,
+            ptax = PTAX()
+            ep = ptax.get_endpoint("CotacaoMoedaPeriodo")
+            raw = (
+                ep.query()
+                .parameters(
+                    moeda=currency_code,
+                    dataInicial=start_date.strftime("%m-%d-%Y"),
+                    dataFinalCotacao=end_date.strftime("%m-%d-%Y"),
                 )
-                if raw is None or raw.empty:
-                    return None
-                close = raw["Close"]
-                if hasattr(close, "squeeze"):
-                    close = close.squeeze()
-                close = close.dropna()
-                if close.empty:
-                    return None
-                return close
-            except Exception as exc:
-                logger.debug(f"Yahoo download {ticker}: {exc}")
-                return None
-
-        # --- Tentativa A: par direto em BRL ---
-        close = _download(ticker_brl)
-        fonte = f"yahoo_{ticker_brl}"
-
-        # --- Tentativa B: par em USD × USDBRL ---
-        if close is None:
-            logger.debug(
-                f"Yahoo {ticker_brl}: sem dados; tentando {ticker_usd} × USDBRL"
+                .filter(ep.tipoBoletim == "Fechamento")
+                .select(ep.cotacaoCompra, ep.cotacaoVenda, ep.dataHoraCotacao)
+                .collect()
             )
-            close_usd = _download(ticker_usd)
-            close_usdbrl = _download(ticker_usdbrl)
-            if close_usd is not None and close_usdbrl is not None:
-                # Alinha as duas séries pela data
-                merged = pd.DataFrame(
-                    {"usd": close_usd, "usdbrl": close_usdbrl}
-                ).dropna()
-                if not merged.empty:
-                    close = merged["usd"] * merged["usdbrl"]
-                    fonte = f"yahoo_{ticker_usd}_x_USDBRL"
 
-        if close is None or (hasattr(close, "empty") and close.empty):
-            return pd.DataFrame(columns=["data", "compra", "venda", "moeda", "fonte"])
+            if raw is None or raw.empty:
+                logger.warning(f"PTAX {currency_code}: BCB retornou vazio")
+                return empty
 
-        df = pd.DataFrame(
-            {
-                "data": pd.to_datetime(close.index).normalize(),
-                "compra": close.values,
-                "venda": close.values,
-                "moeda": currency_code,
-                "fonte": fonte,
-            }
-        ).reset_index(drop=True)
+            raw = raw.rename(
+                columns={
+                    "cotacaoCompra": "compra",
+                    "cotacaoVenda": "venda",
+                    "dataHoraCotacao": "data",
+                }
+            )
+            raw["data"] = pd.to_datetime(raw["data"]).dt.normalize()
+            raw["moeda"] = currency_code
+            raw["fonte"] = "bcb_ptax"
+            df = raw[["data", "compra", "venda", "moeda", "fonte"]].reset_index(
+                drop=True
+            )
+            logger.debug(f"PTAX {currency_code}: {len(df)} cotações via BCB PTAX")
+            return df
 
-        logger.debug(
-            f"PTAX {currency_code}: {len(df)} cotações via Yahoo Finance ({fonte})"
-        )
-        return df
+        except Exception as exc:
+            logger.warning(f"PTAX {currency_code}: falha no BCB PTAX ({exc})")
+            return empty
 
     def _fetch_ptax_all_currencies(self, reference_date: date) -> pd.DataFrame:
         """Busca PTAX de fechamento para todas as moedas disponíveis em uma data.
