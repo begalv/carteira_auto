@@ -9,7 +9,7 @@ decisoes de design e padroes de codigo do sistema.
 
 O **carteira_auto** e um sistema de automacao de carteira de investimentos
 voltado para pessoa fisica no Brasil. Seu objetivo e consolidar dados de
-multiplas fontes (Yahoo Finance, BCB, IBGE, FRED, CVM, Tesouro Direto),
+multiplas fontes (Yahoo Finance, BCB, IBGE, FRED, CVM, Tesouro Direto, DDM, TradingComDados),
 calcular metricas de risco e retorno, gerar recomendacoes de rebalanceamento
 e publicar resultados via Excel, dashboard e alertas.
 
@@ -21,15 +21,17 @@ O sistema e single-user, roda localmente e persiste dados em SQLite.
 graph LR
     subgraph Fontes Externas
         YF[Yahoo Finance]
-        BCB[BCB / SGS]
-        IBGE[IBGE / SIDRA]
+        BCB[BCB / SGS / python-bcb]
+        IBGE[IBGE / SIDRA / sidrapy]
         FRED[FRED]
         CVM[CVM]
-        TD[Tesouro Direto]
+        TD[Tesouro Direto / CKAN]
+        DDM[DDM API]
+        TC[TradingComDados]
     end
 
     subgraph carteira_auto
-        F[Fetchers] --> L[DataLake SQLite]
+        F[Fetchers] -->|via IngestNodes<br/>+ FetchWithFallback| L[DataLake SQLite<br/>5 sub-lakes]
         XL[Excel Loader] --> CTX[PipelineContext]
         L --> CTX
         CTX --> A[Analyzers]
@@ -45,6 +47,8 @@ graph LR
     FRED --> F
     CVM --> F
     TD --> F
+    DDM --> F
+    TC --> F
 
     subgraph Saidas
         XLSX[Excel]
@@ -92,8 +96,8 @@ de fetcher vive aqui.
 
 | Modulo | Responsabilidade |
 |--------|-----------------|
-| `settings.py` | Dataclasses de configuracao: `PathsConfig`, `YahooFetcherConfig`, `BCBConfig`, `IBGEConfig`, `DDMConfig`, `PortfolioConfig`, `LoggingConfig`, `BaseFetcherConfig` |
-| `constants.py` | Constantes do dominio: colunas da planilha, field maps, series BCB, tabelas IBGE, padroes de ticker, horarios B3, feriados |
+| `settings.py` | Dataclasses de configuracao: `PathsConfig`, `YahooFetcherConfig`, `BCBConfig`, `IBGEConfig`, `DDMConfig`, `FREDConfig`, `TradingComDadosConfig`, `PortfolioConfig`, `LoggingConfig`, `BaseFetcherConfig` |
+| `constants.py` | Constantes do dominio: colunas da planilha, field maps, BCB_SERIES_CODES (31), IBGE_TABLE_IDS (16), FRED_SERIES (30 com metadados), INDEX_CODES (6), padroes de ticker, horarios B3, feriados |
 
 **Regra**: toda nova configuracao e adicionada como dataclass em `settings.py`.
 Toda nova constante de dominio vai em `constants.py`.
@@ -121,7 +125,7 @@ Orquestracao de pipelines. O coracao do sistema.
 | `result.py` | `Result` type (`Ok[T]` / `Err[T]`) para propagacao explicita de erros |
 | `registry.py` | `PIPELINE_PRESETS` (mapa CLI -> node terminal), `create_engine()` (fabrica que registra todos os nodes) |
 | `models/` | Modelos Pydantic: `Asset`, `Portfolio`, `SoldAsset`, `PortfolioMetrics`, `RiskMetrics`, `MacroContext`, `MarketMetrics`, `CurrencyMetrics`, `CommodityMetrics`, `FiscalMetrics`, `RebalanceRecommendation`, modelos economicos |
-| `nodes/` | Implementacoes de `Node`: `portfolio_nodes.py`, `ingest_nodes.py`, `storage_nodes.py`, `alert_nodes.py` |
+| `nodes/` | Implementacoes de `Node`: `portfolio_nodes.py`, `ingest_nodes.py`, `storage_nodes.py`, `alert_nodes.py`, `fetch_helpers.py` (FetchWithFallback) |
 | `pipelines/` | Scripts de pipeline legados (ex: `update_excel_prices.py`) |
 
 **Regra**: `DAGEngine` e `Node` nao sao alterados. Novos componentes se plugam
@@ -135,12 +139,13 @@ Camada de dados: coleta, persistencia, carga e exportacao.
 graph TB
     subgraph Fetchers
         YFF[YahooFinanceFetcher]
-        BCBF[BCBFetcher]
-        IBGEF[IBGEFetcher]
+        BCBF[BCBFetcher<br/>python-bcb]
+        IBGEF[IBGEFetcher<br/>sidrapy]
         FREDF[FREDFetcher]
         CVMF[CVMFetcher]
-        TDF[TesouroDiretoFetcher]
+        TDF[TesouroDiretoFetcher<br/>+ CKAN]
         DDMF[DDMFetcher]
+        TCF[TradingComDadosFetcher]
     end
 
     subgraph DataLake
@@ -148,6 +153,7 @@ graph TB
         ML[MacroLake - macro.db]
         FL[FundamentalsLake - fundamentals.db]
         NL[NewsLake - news.db]
+        RL[ReferenceLake - reference.db<br/>12 tabelas]
     end
 
     subgraph Loaders
@@ -163,34 +169,49 @@ graph TB
 
     YFF --> PL
     YFF --> FL
+    YFF --> RL
     BCBF --> ML
+    BCBF --> RL
     IBGEF --> ML
+    IBGEF --> RL
     FREDF --> ML
     CVMF --> FL
+    CVMF --> RL
     TDF --> ML
     DDMF --> FL
+    DDMF --> ML
+    TCF --> PL
+    TCF --> RL
 ```
 
-**Fetchers** (7 implementados):
+**Fetchers** (8 implementados):
 
-| Fetcher | Fonte | Dados |
-|---------|-------|-------|
-| `YahooFinanceFetcher` | Yahoo Finance API | Precos OHLCV, dividendos, dados fundamentalistas |
-| `BCBFetcher` | BCB SGS API | Selic (432), CDI (12), IPCA (433), IGP-M (189), INPC (188), Poupanca (25), TR (226), PTAX compra (10813), PTAX venda (1) |
-| `IBGEFetcher` | IBGE SIDRA API | PIB, producao industrial, confianca consumidor |
-| `FREDFetcher` | Federal Reserve (FRED) | Fed Funds Rate, CPI US, Treasury yields |
-| `CVMFetcher` | CVM | Dados de fundos, demonstracoes financeiras |
-| `TesouroDiretoFetcher` | Tesouro Nacional | Titulos publicos, taxas, curva de juros |
-| `DDMFetcher` | Dados de Mercado API | Cotacoes, fundamentos, DRE, FIIs, macro |
+| Fetcher | Fonte | Motor interno | Dados |
+|---------|-------|---------------|-------|
+| `YahooFinanceFetcher` | Yahoo Finance | yfinance | Precos OHLCV, dividendos, fundamentalistas, analyst targets, upgrades, major holders, news |
+| `BCBFetcher` | BCB | python-bcb + SGS HTTP | 31 series SGS, Focus expectations, PTAX, câmbio, taxas de crédito |
+| `IBGEFetcher` | IBGE | sidrapy + HTTP | 16 tabelas SIDRA, CNAE, indicadores por país |
+| `FREDFetcher` | Federal Reserve | fredapi | 30 series macro US (yields, Fed Funds, CPI, M2, Payrolls, etc.) |
+| `CVMFetcher` | CVM | HTTP | DFP/ITR, cadastro de fundos, FIIs, intermediários, carteiras CDA |
+| `TesouroDiretoFetcher` | Tesouro Nacional | CSV + CKAN | Títulos públicos, taxas, curva de juros, vendas, resgates, estoque |
+| `DDMFetcher` | Dados de Mercado | HTTP (API key) | Cotações, fundamentos, DRE, FIIs, macro, yield curves, risco |
+| `TradingComDadosFetcher` | TradingComDados | tradingcomdados (gratuito) | Composição de índices (IBOV, IFIX, etc.), listas de ativos (ações, FIIs, BDRs, ETFs) |
 
-**DataLake** — fachada unificada (`DataLake`) sobre 4 sub-lakes SQLite:
+**FetchWithFallback** — helper de fallback hierárquico (`core/nodes/fetch_helpers.py`):
+- Tenta fontes na ordem de prioridade (gratuito antes de pago)
+- Loga warning em fallback, error se todas falharem
+- Rastreia proveniência via `result.source`
+- Usado pelos IngestNodes para orquestrar entre fetchers diferentes
+
+**DataLake** — fachada unificada (`DataLake`) sobre 5 sub-lakes SQLite:
 
 | Sub-lake | Arquivo | Conteudo |
 |----------|---------|----------|
 | `PriceLake` | `prices.db` | Series OHLCV por ticker |
-| `MacroLake` | `macro.db` | Series de indicadores macroeconomicos |
-| `FundamentalsLake` | `fundamentals.db` | Indicadores e demonstracoes financeiras |
+| `MacroLake` | `macro.db` | Series de indicadores macroeconomicos (BCB, IBGE, FRED, Tesouro, DDM) |
+| `FundamentalsLake` | `fundamentals.db` | Indicadores e demonstracoes financeiras por ticker |
 | `NewsLake` | `news.db` | Artigos e scores de sentimento |
+| `ReferenceLake` | `reference.db` | 12 tabelas: composição de índices, Focus expectations, analyst targets, upgrades/downgrades, taxas de crédito, CNAE, ticker→CNPJ, major holders, cadastro de fundos, carteiras CDA, intermediários, registro de ativos |
 
 ### 2.5 Analyzers (`analyzers/`)
 
@@ -578,26 +599,29 @@ carteira_auto/
 │   │   ├── nodes/                     # Implementacoes de Node
 │   │   │   ├── portfolio_nodes.py     # Load, Fetch, Export
 │   │   │   ├── ingest_nodes.py        # IngestPrices, IngestMacro, etc.
+│   │   │   ├── fetch_helpers.py       # FetchWithFallback (fallback hierárquico)
 │   │   │   ├── storage_nodes.py       # SaveSnapshot
 │   │   │   └── alert_nodes.py         # EvaluateAlerts
 │   │   └── pipelines/                 # Scripts de pipeline legados
 │   │       └── update_excel_prices.py
 │   │
 │   ├── data/                          # Camada de dados
-│   │   ├── fetchers/                  # Coleta de dados externos
-│   │   │   ├── yahoo_fetcher.py       # Yahoo Finance (precos, fundamentos)
-│   │   │   ├── bcb_fetcher.py         # BCB SGS (Selic, IPCA, cambio)
-│   │   │   ├── ibge_fetcher.py        # IBGE SIDRA (PIB, producao)
-│   │   │   ├── fred_fetcher.py        # FRED (Fed Funds, CPI US)
-│   │   │   ├── cvm_fetcher.py         # CVM (fundos, demonstracoes)
-│   │   │   ├── tesouro_fetcher.py     # Tesouro Direto (titulos, taxas)
-│   │   │   └── ddm_fetcher.py         # DDM (valuation)
-│   │   ├── lake/                      # DataLake (SQLite)
+│   │   ├── fetchers/                  # Coleta de dados externos (8 fetchers)
+│   │   │   ├── yahoo_fetcher.py       # Yahoo Finance (precos, fundamentos, targets, holders)
+│   │   │   ├── bcb_fetcher.py         # BCB (python-bcb: SGS, Focus, PTAX, câmbio, taxas)
+│   │   │   ├── ibge_fetcher.py        # IBGE (sidrapy: SIDRA, CNAE, países)
+│   │   │   ├── fred_fetcher.py        # FRED (30 séries macro US)
+│   │   │   ├── cvm_fetcher.py         # CVM (fundos, FIIs, DFP/ITR, intermediários)
+│   │   │   ├── tesouro_fetcher.py     # Tesouro Direto (CSV + CKAN)
+│   │   │   ├── ddm_fetcher.py         # DDM (cotações, fundamentos, yield curves)
+│   │   │   └── tradingcomdados_fetcher.py  # TradingComDados (índices, listas de ativos)
+│   │   ├── lake/                      # DataLake (SQLite — 5 sub-lakes)
 │   │   │   ├── base.py                # DataLake (fachada unificada)
 │   │   │   ├── price_lake.py          # PriceLake (OHLCV)
-│   │   │   ├── macro_lake.py          # MacroLake (indicadores)
-│   │   │   ├── fundamentals_lake.py   # FundamentalsLake (DRE, balanco)
-│   │   │   └── news_lake.py           # NewsLake (artigos, sentimento)
+│   │   │   ├── macro_lake.py          # MacroLake (indicadores temporais)
+│   │   │   ├── fundamentals_lake.py   # FundamentalsLake (DRE, balanço)
+│   │   │   ├── news_lake.py           # NewsLake (artigos, sentimento)
+│   │   │   └── reference_lake.py      # ReferenceLake (12 tabelas de referência)
 │   │   ├── loaders/                   # Carga de dados locais
 │   │   │   └── excel_loader.py        # ExcelLoader, PortfolioLoader
 │   │   ├── exporters/                 # Exportacao de resultados
@@ -633,6 +657,6 @@ carteira_auto/
 ├── notebooks/                         # Jupyter notebooks exploratórios
 └── data/                              # Dados (nao versionado)
     ├── raw/                           # Planilhas de entrada
-    ├── lake/                          # DataLake SQLite (4 arquivos .db)
+    ├── lake/                          # DataLake SQLite (5 arquivos .db)
     └── outputs/                       # Saidas (Excel, logs, snapshots)
 ```

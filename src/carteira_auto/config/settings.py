@@ -165,6 +165,20 @@ class TesouroConfig(BaseFetcherConfig):
 
 
 @dataclass
+class TradingComDadosConfig(BaseFetcherConfig):
+    """Configurações do TradingComDadosFetcher.
+
+    Fonte gratuita (sem API key) para composição de índices,
+    listas de ativos e dados de mercado B3.
+    """
+
+    CACHE_TTL: int = 3600  # 1h — dados de composição mudam raramente
+    INDEX_CACHE_TTL: int = 86400  # 24h — composição muda a cada quadrimestre
+    RATE_LIMIT: int = 30  # chamadas/minuto
+    TIMEOUT: int = 30
+
+
+@dataclass
 class NewsAPIConfig(BaseFetcherConfig):
     """Configurações do NewsAPI."""
 
@@ -250,6 +264,9 @@ class Settings:
     fred: FREDConfig = field(default_factory=FREDConfig)
     cvm: CVMConfig = field(default_factory=CVMConfig)
     tesouro: TesouroConfig = field(default_factory=TesouroConfig)
+    tradingcomdados: TradingComDadosConfig = field(
+        default_factory=TradingComDadosConfig
+    )
     newsapi: NewsAPIConfig = field(default_factory=NewsAPIConfig)
     coingecko: CoinGeckoConfig = field(default_factory=CoinGeckoConfig)
     lake: DataLakeConfig = field(default_factory=DataLakeConfig)

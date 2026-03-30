@@ -408,3 +408,76 @@ class NovoModel(BaseModel):
 - [ ] Percentuais: `0 <= x <= 1` (Optional com validator)
 - [ ] Actions: `Literal["comprar", "vender", "manter"]`
 - [ ] Listas: validar não-vazia quando obrigatório (`Portfolio.assets`)
+
+---
+
+## Pattern 10: FetchWithFallback em IngestNodes
+
+Reference: `src/carteira_auto/core/nodes/fetch_helpers.py`
+
+Orquestra fallback hierárquico entre **fetchers diferentes** (ex: BCB falha → DDM assume).
+Diferente do `@fallback` decorator (usado dentro de um único fetcher para fallback interno).
+
+```python
+from carteira_auto.core.nodes.fetch_helpers import (
+    FetchResult,
+    FetchStrategy,
+    fetch_with_fallback,
+)
+
+class IngestMacroNode(Node):
+    name = "ingest_macro"
+    dependencies: list[str] = []
+
+    @log_execution
+    def run(self, ctx: PipelineContext) -> PipelineContext:
+        lake = DataLake(settings.paths.DATA_DIR / "lake")
+        bcb = BCBFetcher()
+        ddm = DDMFetcher()
+
+        # Fallback hierárquico: BCB (primário) → DDM (secundário)
+        result = fetch_with_fallback(
+            strategies=[
+                FetchStrategy(name="bcb", callable=lambda: bcb.get_selic()),
+                FetchStrategy(name="ddm", callable=lambda: ddm.get_macro_series("selic")),
+            ],
+            label="selic",
+            critical=True,  # Loga error se TODAS falharem
+        )
+
+        if result.success:
+            lake.store_macro("selic", result.data, source=result.source)
+            # result.source = "bcb" ou "ddm" (proveniência rastreada)
+
+        # Transform: normalização pós-fetch (opcional)
+        result = fetch_with_fallback(
+            strategies=[
+                FetchStrategy(
+                    name="yahoo",
+                    callable=lambda: yahoo.get_ticker_news("PETR4.SA"),
+                    transform=lambda data: pd.DataFrame(data),  # lista → DataFrame
+                ),
+            ],
+        )
+
+        return ctx
+```
+
+**FetchResult — propriedades úteis:**
+```python
+result.success       # True se alguma fonte retornou dados não-vazios
+result.source        # Nome da fonte que retornou ("bcb", "ddm", etc.)
+result.used_fallback # True se a fonte primária falhou e outra assumiu
+result.attempts      # ["bcb", "ddm"] — fontes tentadas na ordem
+result.errors        # {"bcb": "ConnectionError: timeout"} — erros por fonte
+```
+
+**Regra:** `fetch_with_fallback` é usado nos IngestNodes para orquestrar ENTRE fetchers.
+O decorator `@fallback` é usado DENTRO de um fetcher para fallback interno (ex: python-bcb → HTTP raw).
+
+**Checklist IngestNode com fallback:**
+- [ ] `FetchStrategy` por fonte, na ordem de prioridade (gratuito antes de pago)
+- [ ] `label` descritivo para logs (`"selic"`, `"ipca"`, `"composicao_ibov"`)
+- [ ] `critical=True` para dados essenciais (errors em ctx["_errors"] se todas falharem)
+- [ ] `source=result.source` no `lake.store_*()` para rastrear proveniência
+- [ ] `transform` quando a fonte retorna formato diferente do esperado
