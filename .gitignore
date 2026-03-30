@@ -256,3 +256,6 @@ desktop.ini
 
 # Claude Code worktrees (copias temporárias)
 .claude/worktrees/
+
+# Dados pessoais sensíveis (salário, custos de vida) — apenas local
+docs/system/perfil_pessoal.md

@@ -7,10 +7,8 @@
 **Estado atual do repositório (v0.2.1+):** Arquitetura DAG funcional com topological sort, 7 fetchers (Yahoo, BCB, IBGE, FRED, CVM, TesouroDireto, DDM), 10 analyzers (incluindo Currency, Commodity, Fiscal), DataLake SQLite com 5 sub-lakes + ReferenceLake (12 tabelas), sistema de alertas, CLI com 14 pipelines, dashboard Streamlit, modelos Pydantic tipados, Result type (Ok/Err), validação estrita, FetchWithFallback helper, 407+ testes passando. Faltam: framework de estratégias, backtesting, otimização (PyPortfolioOpt), ML, NLP/sentimento, AI reasoning, publishers multi-canal.
 
 **Perfil financeiro atual (dados da planilha):**
-- Salário líquido: R$ 7.014,65/mês | Alocação: 55% custos / 45% investimentos (~R$ 3.157/mês)
-- Custos fixos: ~R$ 4.928/mês (moradia R$ 2.762, utilidades R$ 1.146, operações R$ 880, assinaturas R$ 476)
-- Carteira: 38 ativos (Renda Fixa 24%, FIIs 27%, Ações 31%, Internacional 18%)
-- Classes: Tesouro Selic, ETFs de RF, FIIs (infra, logística, shopping, CRI, agro), ações (15 tickers), BDRs/ETFs internacionais
+> Dados sensíveis (renda, custos de vida, detalhamento da carteira) removidos deste arquivo por segurança.
+> Ver `docs/system/perfil_pessoal.md` (arquivo local, listado no .gitignore — não rastreado pelo git).
 
 ---
 
