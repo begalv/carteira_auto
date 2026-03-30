@@ -24,14 +24,23 @@ graph TD
     subgraph data["data/"]
         subgraph fetchers["fetchers/"]
             yahoo["yahoo_fetcher.py<br/>YahooFinanceFetcher"]
-            bcb["bcb_fetcher.py<br/>BCBFetcher"]
-            ibge["ibge_fetcher.py<br/>IBGEFetcher"]
+            bcb["bcb_fetcher.py<br/>BCBFetcher (python-bcb)"]
+            ibge["ibge_fetcher.py<br/>IBGEFetcher (sidrapy)"]
             fred["fred_fetcher.py<br/>FREDFetcher"]
             cvm["cvm_fetcher.py<br/>CVMFetcher"]
             tesouro["tesouro_fetcher.py<br/>TesouroDiretoFetcher"]
             ddm["ddm_fetcher.py<br/>DDMFetcher"]
+            tradingcomdados["tradingcomdados_fetcher.py<br/>TradingComDadosFetcher"]
         end
-        lake["lake/<br/>DataLake, PriceLake, MacroLake,<br/>FundamentalsLake, NewsLake"]
+        subgraph lake_group["lake/"]
+            lake["base.py<br/>DataLake (fachada)"]
+            price_lake["price_lake.py<br/>PriceLake"]
+            macro_lake["macro_lake.py<br/>MacroLake"]
+            fund_lake["fundamentals_lake.py<br/>FundamentalsLake"]
+            news_lake["news_lake.py<br/>NewsLake"]
+            ref_lake["reference_lake.py<br/>ReferenceLake (12 tabelas)"]
+        end
+        fetch_helpers["nodes/fetch_helpers.py<br/>FetchWithFallback"]
         loaders["loaders/<br/>ExcelLoader, PortfolioLoader"]
         exporters["exporters/<br/>ExcelExporter, PriceExporter"]
         storage["storage/<br/>SnapshotStore"]
@@ -61,9 +70,12 @@ graph TD
     settings --> fred
     settings --> cvm
     settings --> tesouro
+    settings --> tradingcomdados
     settings --> loaders
     constants --> yahoo
     constants --> bcb
+    constants --> ibge
+    constants --> fred
     constants --> loaders
 
     %% Utils → componentes
@@ -73,6 +85,7 @@ graph TD
     decorators --> fred
     decorators --> cvm
     decorators --> tesouro
+    decorators --> tradingcomdados
     decorators --> portfolio_a
     decorators --> risk_a
     decorators --> macro_a
@@ -85,16 +98,28 @@ graph TD
     models --> nodes
     models --> analyzers
 
-    %% Fetchers → IngestNodes
+    %% Lake sub-lakes
+    lake --> price_lake
+    lake --> macro_lake
+    lake --> fund_lake
+    lake --> news_lake
+    lake --> ref_lake
+
+    %% FetchWithFallback → IngestNodes
+    fetch_helpers --> ingest_nodes
+
+    %% Fetchers → IngestNodes (via FetchWithFallback)
     yahoo --> ingest_nodes
     bcb --> ingest_nodes
     ibge --> ingest_nodes
     fred --> ingest_nodes
     cvm --> ingest_nodes
     tesouro --> ingest_nodes
+    ddm --> ingest_nodes
+    tradingcomdados --> ingest_nodes
 
-    %% Lake → IngestNodes
-    lake --> ingest_nodes
+    %% IngestNodes → Lake
+    ingest_nodes --> lake
 
     %% Data → core
     yahoo --> nodes
