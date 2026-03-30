@@ -30,7 +30,8 @@
 | cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
 | tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API + CKAN | 30 req/min | 1h |
 | ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
-| tradingcomdados_fetcher.py | TradingComDadosFetcher | tradingcomdados (B3) | 30 req/min | 1h (preços), 24h (índices) |
+
+> **Nota:** TradingComDadosFetcher está planejado para o Fetcher Sprint C. A config `TradingComDadosConfig` já existe em settings.py, mas o fetcher ainda não foi implementado.
 
 ### data/lake/ — DataLake (SQLite)
 | Arquivo | Classe | Papel | Tabelas |
