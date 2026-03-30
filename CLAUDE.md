@@ -158,7 +158,8 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 
 ### Data (src/carteira_auto/data/)
 - `fetchers/`: YahooFinanceFetcher, BCBFetcher, IBGEFetcher, FREDFetcher,
-  CVMFetcher, TesouroDiretoFetcher, DDMFetcher, TradingComDadosFetcher (8 fetchers).
+  CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
+  TradingComDadosFetcher planejado para Sprint C (config pronta em settings.py).
   → EXPANDA os existentes conforme plano do sprint (python-bcb, sidrapy, CKAN).
   → ADICIONE novos fetchers no mesmo padrão (Pattern 1).
 - `lake/`: DataLake (fachada), PriceLake, MacroLake, FundamentalsLake, NewsLake,

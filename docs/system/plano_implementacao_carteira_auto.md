@@ -1,10 +1,10 @@
-# Plano de Implementação — carteira_auto v1.0
+# Plano de Implementação — carteira_auto v0.2.1+
 
 ## Contexto Estratégico
 
 **Objetivo:** Sistema de automação de carteira de investimentos para emancipação financeira de investidor PF (29 anos, Brasil), com capacidade de testar múltiplas estratégias, analisar macro/microeconomia e geopolítica, e tomar decisões de alocação embasadas em dados — tudo sob a lente do materialismo histórico-dialético aplicado à análise das contradições do capitalismo financeirizado.
 
-**Estado atual do repositório (v0.1.0):** Arquitetura DAG funcional com topological sort, 3 fetchers (Yahoo, BCB, IBGE), 7 analyzers, sistema de alertas, CLI, dashboard Streamlit embrionário, modelos Pydantic tipados. Faltam: framework de estratégias, backtesting, data warehouse temporal, fontes de dados adicionais, ML, integração de gastos pessoais.
+**Estado atual do repositório (v0.2.1+):** Arquitetura DAG funcional com topological sort, 7 fetchers (Yahoo, BCB, IBGE, FRED, CVM, TesouroDireto, DDM), 10 analyzers (incluindo Currency, Commodity, Fiscal), DataLake SQLite com 5 sub-lakes + ReferenceLake (12 tabelas), sistema de alertas, CLI com 14 pipelines, dashboard Streamlit, modelos Pydantic tipados, Result type (Ok/Err), validação estrita, FetchWithFallback helper, 407+ testes passando. Faltam: framework de estratégias, backtesting, otimização (PyPortfolioOpt), ML, NLP/sentimento, AI reasoning, publishers multi-canal.
 
 **Perfil financeiro atual (dados da planilha):**
 - Salário líquido: R$ 7.014,65/mês | Alocação: 55% custos / 45% investimentos (~R$ 3.157/mês)
@@ -69,23 +69,39 @@ O sistema deve evoluir de "ferramenta de consulta" para "sistema de decisão":
 | **Fiscal BR** | Dívida/PIB, resultado primário, gastos juros | Tesouro Nacional API | BCB SGS | Mensal |
 | **Geopolítico** | Conflitos, tarifas, sanções, eleições | NewsAPI + NLP | GDELT Project | Contínua |
 
-### Fetchers a implementar (prioridade)
+### Fetchers — status e prioridade
 
-**Fase 1 — Críticos:**
-- `FREDFetcher` — Federal Reserve Economic Data (gratuito, API key)
-- `CVMFetcher` — Dados abertos CVM (fundamentos BR, sem autenticação)
-- `TesouroDiretoFetcher` — Taxas de títulos públicos
-- `ANBIMAFetcher` — Curva DI e taxas de referência
+**Fase 1 — Críticos (CONCLUÍDA):**
+- `FREDFetcher` — Federal Reserve Economic Data (gratuito, API key) **(CONCLUÍDO)**
+- `CVMFetcher` — Dados abertos CVM (fundamentos BR, sem autenticação) **(CONCLUÍDO)**
+- `TesouroDiretoFetcher` — Taxas de títulos públicos **(CONCLUÍDO)**
+- `DDMFetcher` — Dividend Discount Model / stock screening **(CONCLUÍDO)**
+- `ANBIMAFetcher` — Curva DI e taxas de referência **(DEPRIORITIZADO — dados de curva via BCB SGS)**
 
-**Fase 2 — Importantes:**
+**Fetcher Maximization Sprint (entre Fases 1 e 2):**
+
+Sprint dedicado a expandir os fetchers existentes para cobrir todas as séries definidas em constants.py e integrar mecanismos de fallback hierárquico.
+
+| Sub-fase | Escopo | Status |
+|----------|--------|--------|
+| Sprint A | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig | **CONCLUÍDA** |
+| Sprint B | Expansão BCBFetcher (python-bcb fallback), IBGEFetcher (sidrapy), FREDFetcher | **EM ANDAMENTO** |
+| Sprint C | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher (novo) | Pendente |
+| Sprint D | IngestNodes com fallback chains, testes de integração, docs finais | Pendente |
+
+**Mecanismos de fallback (decididos no Sprint A):**
+- `fetch_with_fallback()` (core/nodes/fetch_helpers.py) — orquestra ENTRE fetchers diferentes nos IngestNodes, com logging de proveniência
+- `@fallback` decorator (utils/decorators.py) — opera DENTRO de um mesmo fetcher (ex: python-bcb → HTTP raw SGS)
+
+**Fase 2 — Importantes (Pendente — NLP/Sentimento):**
 - `NewsApiFetcher` — Headlines financeiras para NLP
 - `RSSFetcher` — Reuters, Bloomberg, Valor Econômico
 - `CoinGeckoFetcher` — Crypto (BTC/ETH como hedge)
 - `GDELTFetcher` — Eventos geopolíticos quantificados
 
-**Fase 3 — Complementares:**
+**Fase 3 — Complementares (Pendente):**
 - `WorldBankFetcher` — Dados macro globais
-- `B3DataFetcher` — Dados setoriais e FIIs direto da B3
+- `TradingComDadosFetcher` — Dados B3 via tradingcomdados **(Sprint C — config pronta, fetcher pendente)**
 - `AlphaVantageFetcher` — Fallback para Yahoo Finance
 
 ---
@@ -93,6 +109,8 @@ O sistema deve evoluir de "ferramenta de consulta" para "sistema de decisão":
 ## Arquitetura do Sistema — Camadas
 
 ### Camada 1: Data Lake (Persistência Temporal)
+
+> **STATUS: IMPLEMENTADO (Fase 0 + Fetcher Sprint A).** DataLake SQLite com 5 sub-lakes (PriceLake, MacroLake, FundamentalsLake, NewsLake) + ReferenceLake (12 tabelas de dados estruturais não-temporais: index_compositions, focus_expectations, analyst_targets, upgrades_downgrades, lending_rates, cnae_classifications, ticker_cnpj_map, major_holders, fund_registry, fund_portfolios, intermediaries, asset_registry). FetchWithFallback helper para orquestração de fallback entre fontes.
 
 **Problema:** Atualmente os dados são efêmeros (buscados, usados e descartados). Estratégias de múltiplos prazos exigem séries temporais persistidas.
 
@@ -134,32 +152,33 @@ class DataLake:
     def export_to_parquet(self, table: str, path: Path) -> None: ...
 ```
 
-**Nodes de ingestão (novos):**
-- `IngestPricesNode` — Busca e persiste preços históricos de todos os ativos
-- `IngestMacroNode` — Busca e persiste todos indicadores macro
-- `IngestFundamentalsNode` — Busca e persiste dados fundamentalistas CVM
-- `IngestNewsNode` — Busca e persiste headlines com timestamp
+**Nodes de ingestão (existentes):**
+- `IngestPricesNode` — Busca e persiste preços históricos de todos os ativos **(existente)**
+- `IngestMacroNode` — Busca e persiste todos indicadores macro **(existente)**
+- `IngestFundamentalsNode` — Busca e persiste dados fundamentalistas CVM **(existente)**
+- `IngestNewsNode` — Busca e persiste headlines com timestamp **(existente)**
+- `fetch_helpers.py` — FetchStrategy, FetchResult, fetch_with_fallback() para fallback hierárquico entre fontes **(existente — Fetcher Sprint A)**
 
 ### Camada 2: Analyzers (Refatoração + Novos)
 
 **Refatoração dos existentes:**
 Os analyzers atuais (PortfolioAnalyzer, RiskAnalyzer, MacroAnalyzer, MarketAnalyzer, Rebalancer, MarketSectorAnalyzer, EconomicSectorAnalyzer) devem passar a ler do DataLake quando dados históricos são necessários, em vez de buscar via fetcher a cada execução.
 
-**Novos analyzers:**
+**Analyzers — status (3/11 concluídos, 8 pendentes):**
 
-| Analyzer | Input | Output | Propósito |
-|----------|-------|--------|-----------|
-| `CurrencyAnalyzer` | DataLake (câmbio) | `CurrencyMetrics` | Análise de moedas e carry trade |
-| `CommodityAnalyzer` | DataLake (commodities) | `CommodityMetrics` | Ciclo de commodities, termos de troca |
-| `YieldCurveAnalyzer` | ANBIMA/Tesouro | `YieldCurveMetrics` | Curva DI, spreads, inversão |
-| `FundamentalAnalyzer` | DataLake (CVM) | `FundamentalMetrics` | Múltiplos, qualidade, scoring |
-| `SentimentAnalyzer` | DataLake (news) | `SentimentMetrics` | NLP em headlines, Fear & Greed |
-| `GeopoliticalAnalyzer` | GDELT + News | `GeopoliticalMetrics` | Risco geopolítico quantificado |
-| `FiscalAnalyzer` | BCB/Tesouro | `FiscalMetrics` | Trajetória fiscal, dívida/PIB |
-| `GlobalMacroAnalyzer` | FRED + WorldBank | `GlobalMacroMetrics` | Ciclo global, diferencial de juros |
-| `PersonalFinanceAnalyzer` | Planilha gastos | `PersonalFinanceMetrics` | Capacidade de aporte, projeção FI |
-| `CorrelationAnalyzer` | DataLake (prices) | `CorrelationMatrix` | Correlação entre ativos e classes |
-| `DividendAnalyzer` | Yahoo/CVM | `DividendMetrics` | DY, payout, crescimento de proventos |
+| Analyzer | Input | Output | Propósito | Status |
+|----------|-------|--------|-----------|--------|
+| `CurrencyAnalyzer` | DataLake (câmbio) | `CurrencyMetrics` | Análise de moedas e carry trade | **CONCLUÍDO** |
+| `CommodityAnalyzer` | DataLake (commodities) | `CommodityMetrics` | Ciclo de commodities, termos de troca | **CONCLUÍDO** |
+| `FiscalAnalyzer` | BCB/Tesouro | `FiscalMetrics` | Trajetória fiscal, dívida/PIB | **CONCLUÍDO** |
+| `YieldCurveAnalyzer` | ANBIMA/Tesouro | `YieldCurveMetrics` | Curva DI, spreads, inversão | Pendente |
+| `FundamentalAnalyzer` | DataLake (CVM) | `FundamentalMetrics` | Múltiplos, qualidade, scoring | Pendente |
+| `GlobalMacroAnalyzer` | FRED + WorldBank | `GlobalMacroMetrics` | Ciclo global, diferencial de juros | Pendente |
+| `CorrelationAnalyzer` | DataLake (prices) | `CorrelationMatrix` | Correlação entre ativos e classes | Pendente |
+| `DividendAnalyzer` | Yahoo/CVM | `DividendMetrics` | DY, payout, crescimento de proventos | Pendente |
+| `SentimentAnalyzer` | DataLake (news) | `SentimentMetrics` | NLP em headlines, Fear & Greed | Pendente (Fase 5) |
+| `GeopoliticalAnalyzer` | GDELT + News | `GeopoliticalMetrics` | Risco geopolítico quantificado | Pendente (Fase 5) |
+| `PersonalFinanceAnalyzer` | Planilha gastos | `PersonalFinanceMetrics` | Capacidade de aporte, projeção FI | Pendente |
 
 ### Camada 3: Framework de Estratégias
 
@@ -1505,15 +1524,21 @@ class ContentRouter:
 
 ## Fases de Implementação
 
-### Progresso Atual (atualizado 2026-03-25)
+### Progresso Atual (atualizado 2026-03-30)
 
 | Fase | Status | PR | Notas |
 |------|--------|----|-------|
 | 0 | CONCLUÍDA | #18 | DataLake SQLite (4 sub-lakes), IngestNodes, settings expandido |
 | 1 | CONCLUÍDA | #19 | FRED, CVM, Tesouro, DDM fetchers + testes |
 | Hardening | CONCLUÍDA | #20 | Result type, validação estrita, error handling, 350 testes |
-| 2 | PRÓXIMA | — | 9 analyzers novos |
-| 3-7 | Pendente | — | — |
+| 2 Sprint 0 | CONCLUÍDA | — | Validação infraestrutura, correção códigos BCB SGS |
+| 2 Sprint 1 | CONCLUÍDA | — | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
+| Fetcher Max A | CONCLUÍDA | #34 | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos, FetchWithFallback, ReferenceLake (12 tab), TradingComDadosConfig |
+| Fetcher Max B | EM ANDAMENTO | — | Expansão BCBFetcher (python-bcb), IBGEFetcher (sidrapy), FREDFetcher |
+| Fetcher Max C | Pendente | — | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
+| Fetcher Max D | Pendente | — | IngestNodes com fallback, testes integração, docs |
+| 2 Sprint 2+ | Pendente | — | 6 analyzers restantes (fundamental, yield curve, global macro...) |
+| 3-7 | Pendente | — | Estratégias, optimizer, backtesting, ML, NLP, AI, publishers |
 
 **Decisões estratégicas tomadas no hardening (PR #20):**
 - Result type `Ok[T] | Err[T]` para error handling explícito
@@ -1522,17 +1547,29 @@ class ContentRouter:
 - Erros parciais em analyzers via `ctx["_errors"]` (sem silenciar exceções)
 - Imutabilidade: `model_copy()` em vez de mutação in-place
 - `RISK_FREE_DAILY` e `MIN_TRADE_VALUE` extraídos para settings
-- `ERROR_MESSAGES`/`SUCCESS_MESSAGES` removidos (dead code)
 - Node.__init_subclass__() para isolar dependencies entre subclasses
 
-**Cobertura de testes (350 passando):**
+**Decisões tomadas no Fetcher Maximization Sprint A (PR #34):**
+- python-bcb>=0.6.0, sidrapy>=0.1.0, tradingcomdados>=0.4.0 como dependências
+- Constants expandidos: BCB_SERIES_CODES (31 séries), IBGE_TABLE_IDS (16 tabelas), FRED_SERIES (30 séries com metadados), INDEX_CODES (6 índices)
+- FetchWithFallback vs @fallback: mecanismos distintos (entre fetchers vs dentro de um fetcher)
+- ReferenceLake com 12 tabelas para dados estruturais não-temporais
+- TradingComDadosConfig em settings.py (fetcher será implementado no Sprint C)
+
+**Cobertura de testes (407+ passando):**
 - test_models.py (54) — Result type, validação Asset/Portfolio, todos os models
 - test_analyzers.py (19) — DAGEngine error handling, 7 analyzers com mocks
 - test_fetchers.py (17) — Yahoo normalize, preços, histórico
 - test_cli.py (15) — parser, comandos, main
 - test_decorators.py (20) — todos os decorators
 - test_integrations.py (8) — E2E pipeline, dry_run, presets
-- test_lake.py, test_cvm_fetcher.py, test_fred_fetcher.py, etc. (pré-existentes)
+- test_currency_analyzer.py (9) — CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais)
+- test_commodity_analyzer.py (8) — CommodityAnalyzer (preços, ciclo, índice, falhas)
+- test_fiscal_analyzer.py (16) — FiscalAnalyzer (métricas, trajetória, variação 12m, falhas)
+- test_fetch_helpers.py (22) — FetchWithFallback, FetchStrategy, FetchResult
+- test_reference_lake.py (39) — ReferenceLake (12 tabelas, CRUD, auditoria)
+- test_lake.py, test_cvm_fetcher.py, test_fred_fetcher.py, test_ddm_fetcher.py, test_tesouro_fetcher.py, test_ingest_nodes.py, test_rate_helpers.py (pré-existentes)
+- **2 falhas pré-existentes:** CVM 404 (endpoint removido), Excel fixture
 
 ---
 
@@ -1580,7 +1617,11 @@ class ContentRouter:
    - Histórico de taxas NTN-B, LFT, NTN-F, LTN
    - Curva de juros implícita
 
-4. **Enrichment dos preços**
+4. **DDMFetcher** (DDM Stock Screening)
+   - Dividend Discount Model para valuations
+   - Screening de ações por métricas fundamentalistas
+
+5. **Enrichment dos preços**
    - Commodities via Yahoo: `CL=F` (petróleo), `GC=F` (ouro), `SI=F` (prata), `ZS=F` (soja)
    - Índices globais: `^GSPC`, `^IXIC`, `^FTSE`, `^N225`, `^HSI`
    - Cripto: `BTC-USD`, `ETH-USD`
@@ -1590,15 +1631,15 @@ class ContentRouter:
    - `carteira run ingest --daily` (atualização incremental)
    - Cron/scheduler básico (systemd timer ou crontab)
 
-### Fase 2: Analyzers Avançados — ~2 semanas
+### Fase 2: Analyzers Avançados — EM ANDAMENTO (3 de 9 concluídos)
 
 **Objetivo:** Transformar dados brutos em métricas acionáveis.
 
 1. **FundamentalAnalyzer** — Múltiplos, qualidade, scoring
-2. **CurrencyAnalyzer** — Carry trade, PTAX, DXY, real efetivo
-3. **CommodityAnalyzer** — Ciclo de commodities, termos de troca Brasil
+2. **CurrencyAnalyzer** — Carry trade, PTAX, DXY, real efetivo **(CONCLUÍDO — Sprint 1)**
+3. **CommodityAnalyzer** — Ciclo de commodities, termos de troca Brasil **(CONCLUÍDO — Sprint 1)**
 4. **YieldCurveAnalyzer** — Curva DI, spreads, sinalização de ciclo
-5. **FiscalAnalyzer** — Trajetória de dívida/PIB, resultado primário
+5. **FiscalAnalyzer** — Trajetória de dívida/PIB, resultado primário **(CONCLUÍDO — Sprint 1)**
 6. **GlobalMacroAnalyzer** — Diferencial de juros, ciclo global, PMI
 7. **CorrelationAnalyzer** — Matriz de correlação rolling, regime shifts
 8. **DividendAnalyzer** — DY, payout, sustentabilidade, crescimento
@@ -1747,16 +1788,16 @@ carteira_auto/
 │   │   ├── market_sector_analyzer.py   # (existente)
 │   │   ├── economic_sector_analyzer.py # (existente)
 │   │   ├── rebalancer.py           # (existente)
+│   │   ├── currency_analyzer.py    # (existente — Sprint 1)
+│   │   ├── commodity_analyzer.py   # (existente — Sprint 1)
+│   │   ├── fiscal_analyzer.py      # (existente — Sprint 1)
 │   │   ├── fundamental_analyzer.py # NOVO
-│   │   ├── currency_analyzer.py    # NOVO
-│   │   ├── commodity_analyzer.py   # NOVO
 │   │   ├── yield_curve_analyzer.py # NOVO
-│   │   ├── fiscal_analyzer.py      # NOVO
 │   │   ├── global_macro_analyzer.py # NOVO
 │   │   ├── correlation_analyzer.py # NOVO
 │   │   ├── dividend_analyzer.py    # NOVO
-│   │   ├── sentiment_analyzer.py   # NOVO
-│   │   ├── geopolitical_analyzer.py # NOVO
+│   │   ├── sentiment_analyzer.py   # NOVO (Fase 5)
+│   │   ├── geopolitical_analyzer.py # NOVO (Fase 5)
 │   │   └── personal_finance_analyzer.py # NOVO
 │   ├── alerts/                     # (existente, manter)
 │   ├── cli/                        # (expandir comandos)
@@ -1773,7 +1814,8 @@ carteira_auto/
 │   │   │   ├── portfolio_nodes.py  # (existente)
 │   │   │   ├── alert_nodes.py      # (existente)
 │   │   │   ├── storage_nodes.py    # (existente)
-│   │   │   ├── ingest_nodes.py     # NOVO — IngestPricesNode, IngestMacroNode
+│   │   │   ├── ingest_nodes.py     # (existente) — IngestPricesNode, IngestMacroNode, IngestFundamentalsNode
+│   │   │   ├── fetch_helpers.py    # (existente) — FetchWithFallback, FetchStrategy, FetchResult
 │   │   │   ├── strategy_nodes.py   # NOVO — StrategyNode (ponte Strategy↔DAG)
 │   │   │   ├── optimizer_nodes.py  # NOVO — OptimizePortfolioNode
 │   │   │   ├── ai_nodes.py         # NOVO — AIAnalysisNode
@@ -1786,20 +1828,22 @@ carteira_auto/
 │   │   │   ├── yahoo_fetcher.py    # (existente)
 │   │   │   ├── bcb_fetcher.py      # (existente)
 │   │   │   ├── ibge_fetcher.py     # (existente)
-│   │   │   ├── fred_fetcher.py     # NOVO
-│   │   │   ├── cvm_fetcher.py      # NOVO
-│   │   │   ├── tesouro_fetcher.py  # NOVO
-│   │   │   ├── anbima_fetcher.py   # NOVO
-│   │   │   ├── news_fetcher.py     # NOVO
-│   │   │   ├── rss_fetcher.py      # NOVO
+│   │   │   ├── fred_fetcher.py     # (existente — Fase 1)
+│   │   │   ├── cvm_fetcher.py      # (existente — Fase 1)
+│   │   │   ├── tesouro_fetcher.py  # (existente — Fase 1)
+│   │   │   ├── ddm_fetcher.py      # (existente — Fase 1)
+│   │   │   ├── tradingcomdados_fetcher.py # NOVO (Sprint C)
+│   │   │   ├── news_fetcher.py     # NOVO (Fase 5)
+│   │   │   ├── rss_fetcher.py      # NOVO (Fase 5)
 │   │   │   └── coingecko_fetcher.py # NOVO
-│   │   ├── lake/                   # NOVO — Data Lake
+│   │   ├── lake/                   # (existente — Fase 0 + Fetcher Sprint A)
 │   │   │   ├── __init__.py
-│   │   │   ├── base.py             # Interface DataLake
-│   │   │   ├── price_lake.py       # Preços OHLCV
-│   │   │   ├── macro_lake.py       # Indicadores macro
-│   │   │   ├── fundamentals_lake.py # Dados fundamentalistas
-│   │   │   └── news_lake.py        # Headlines + sentimento
+│   │   │   ├── base.py             # (existente) DataLake facade
+│   │   │   ├── price_lake.py       # (existente) Preços OHLCV
+│   │   │   ├── macro_lake.py       # (existente) Indicadores macro
+│   │   │   ├── fundamentals_lake.py # (existente) Dados fundamentalistas
+│   │   │   ├── news_lake.py        # (existente) Headlines + sentimento
+│   │   │   └── reference_lake.py   # (existente) ReferenceLake — 12 tabelas de referência
 │   │   ├── loaders/                # (existente)
 │   │   ├── exporters/              # (existente)
 │   │   └── storage/                # (existente — snapshots)
@@ -2358,16 +2402,20 @@ disto — estenda, integre, importe:
 
 ## Fases de implementação — referência rápida
 
-| Fase | Escopo | Duração estimada |
-|------|--------|-----------------|
-| 0 | Infra: DataLake SQLite, IngestNodes, settings | 1 sem |
-| 1 | Fontes: FRED, CVM, Tesouro, commodities, crypto | 2 sem |
-| 2 | Analyzers: 11 novos (fundamental, currency, commodity...) | 2 sem |
-| 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | 4 sem |
-| 4 | ML: scoring fundamentalista, integração ML↔optimizer | 3 sem |
-| 5 | NLP: sentimento, geopolítica, crisis hedge | 2 sem |
-| 6 | AI Reasoning: Claude/Deepseek, prompts, AIAnalysis | 2 sem |
-| 7 | Publishers: Telegram bot, PDF, email, Excel, web, scheduler | 3 sem |
+| Fase | Escopo | Status |
+|------|--------|--------|
+| 0 | Infra: DataLake SQLite, IngestNodes, settings | CONCLUÍDA |
+| 1 | Fontes: FRED, CVM, Tesouro, DDM | CONCLUÍDA |
+| H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
+| 2 Sprint 0-1 | Analyzers: currency, commodity, fiscal (3/9) | CONCLUÍDA |
+| Fetcher Max A | Fundação: deps, constants, FetchWithFallback, ReferenceLake | CONCLUÍDA |
+| Fetcher Max B-D | Expansão de todos os fetchers + IngestNodes com fallback | EM ANDAMENTO |
+| 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
+| 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
+| 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |
+| 5 | NLP: sentimento, geopolítica, crisis hedge | Pendente |
+| 6 | AI Reasoning: Claude/Deepseek, prompts, AIAnalysis | Pendente |
+| 7 | Publishers: Telegram bot, PDF, email, Excel, web, scheduler | Pendente |
 
 Detalhes de cada fase estão no plano. Leia a seção correspondente
 antes de iniciar cada fase.
