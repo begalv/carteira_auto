@@ -135,7 +135,7 @@ class Constants:
     # ============================================================================
 
     # Moedas suportadas nativamente pelo BCB PTAX OData
-    # (confirmado empiricamente — demais moedas usam fallback Yahoo Finance)
+    # (confirmado empiricamente — demais moedas retornam vazio; fallback é dos IngestNodes)
     BCB_PTAX_SUPPORTED_CURRENCIES: set[str] = {
         "AUD",
         "CAD",

@@ -15,7 +15,8 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-from carteira_auto.data.fetchers.bcb_fetcher import FOCUS_INDICATORS_ANUAIS, BCBFetcher
+from carteira_auto.config.constants import constants
+from carteira_auto.data.fetchers.bcb_fetcher import BCBFetcher
 
 # ============================================================================
 # FIXTURES
@@ -420,7 +421,7 @@ class TestFocus:
             result = fetcher.get_focus_all()
 
         assert isinstance(result, dict)
-        for indicator in FOCUS_INDICATORS_ANUAIS:
+        for indicator in constants.BCB_FOCUS_INDICATORS_ANUAIS:
             assert indicator in result
 
     def test_get_focus_all_falha_individual_nao_propaga(
@@ -463,7 +464,7 @@ class TestFocus:
             result = fetcher.get_focus_all()
 
         # Todos os indicadores devem estar no resultado (com DataFrame vazio nos que falharam)
-        assert set(result.keys()) == set(FOCUS_INDICATORS_ANUAIS)
+        assert set(result.keys()) == set(constants.BCB_FOCUS_INDICATORS_ANUAIS)
 
 
 # ============================================================================
