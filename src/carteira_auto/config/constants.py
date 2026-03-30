@@ -216,25 +216,48 @@ class Constants:
 
     IBGE_TABLE_IDS: dict[str, int] = {
         # ---- Inflação ----
-        "ipca": 1737,  # IPCA — variação mensal (série histórica)
-        "ipca_nova": 7060,  # IPCA — série 2020+ por grupos
-        "ipca_subitens": 1419,  # IPCA — por subitens
-        "ipca15": 7062,  # IPCA-15 (prévia) — variação mensal
-        "ipca_grupos": 7113,  # IPCA — variação e peso por grupos
+        "ipca": 1737,  # IPCA — variação mensal (série histórica, todas as épocas)
+        "ipca_nova": 7060,  # IPCA — série 2020+ por grupos/subitens (c315)
+        "ipca_subitens": 1419,  # IPCA — por subitens (jan/2012 a dez/2019)
+        "ipca15": 7062,  # IPCA-15 (prévia) — variação mensal (a partir fev/2020)
         # ---- PIB ----
-        "pib_trimestral": 5932,  # PIB trimestral — taxa de variação (%)
-        "pib_dessazonalizado": 1621,  # PIB dessazonalizado — índice
-        "pib_nominal": 5938,  # PIB preços correntes — R$ milhões
-        # ---- Emprego ----
-        "pnad_desocupacao": 6381,  # PNAD — taxa de desocupação (%)
-        "pnad_rendimento": 6022,  # PNAD — rendimento médio real (R$)
-        "pnad_subutilizacao": 4093,  # PNAD — taxa de subutilização (%)
+        "pib_trimestral": 5932,  # PIB trimestral — taxa variação % (vs mesmo tri ano ant.)
+        "pib_dessazonalizado": 1621,  # PIB série encadeada com ajuste sazonal (base 1995=100)
+        "pib_nominal": 5938,  # PIB municipal preços correntes — R$ milhares (anual)
+        # ---- Emprego e renda ----
+        "pnad_desocupacao": 6381,  # PNAD — taxa de desocupação % (tri. móvel)
+        "pnad_rendimento": 6387,  # PNAD — rendimento médio real efetivo (tri. móvel)
+        "pnad_subutilizacao": 4093,  # PNAD — mercado de trabalho completo (trimestral)
+        "pnad_populacao": 6022,  # PNAD — população total (tri. móvel, mil pessoas)
+        "pnad_gini": 7453,  # PNAD — Índice de Gini rendimento habitual (anual)
         # ---- Atividade econômica setorial ----
-        "pim_pf": 8888,  # PIM-PF — produção industrial mensal (índice)
-        "pmc": 8881,  # PMC — comércio varejista mensal (índice)
-        "pms": 8162,  # PMS — serviços mensal (índice)
+        "pim_pf": 8888,  # PIM-PF — produção industrial mensal (base 2022=100)
+        "pmc": 8881,  # PMC — comércio varejista ampliado mensal (base 2022=100)
+        "pms": 8688,  # PMS — serviços mensal (base 2022=100, substitui 8162)
         # ---- Construção ----
-        "sinapi": 2296,  # SINAPI — custo da construção civil (índice)
+        "sinapi": 2296,  # SINAPI — custo construção civil (R$/m² + variação %)
+        # ---- Educação ----
+        "analfabetismo": 7113,  # PNAD — taxa de analfabetismo 15+ (anual)
+    }
+
+    # ============================================================================
+    # IBGE — INDICADORES DE PAÍSES (API servicodados)
+    # ============================================================================
+
+    # IDs de indicadores disponíveis em /api/v1/paises/{code}/indicadores/{ids}
+    # Dados anuais (séries ~1990-2023), valores como strings em US$
+    IBGE_COUNTRY_INDICATORS: dict[str, int] = {
+        "pib": 77827,  # Total do PIB — US$
+        "pib_per_capita": 77823,  # PIB per capita — US$
+        "idh": 77831,  # Índice de Desenvolvimento Humano
+        "exportacoes": 77825,  # Total de exportações — US$
+        "importacoes": 77826,  # Total de importações — US$
+        "esperanca_vida": 77830,  # Esperança de vida ao nascer — anos
+        "gastos_educacao": 77819,  # Gastos públicos com educação — % do PIB
+        "gastos_saude": 77820,  # Gastos públicos com saúde — % do PIB
+        "pesquisa_desenvolvimento": 77821,  # Investimentos em P&D — % do PIB
+        "populacao_total": 77852,  # População total
+        "turistas": 77818,  # Chegada de turistas
     }
 
     # ============================================================================
