@@ -19,6 +19,7 @@ Endpoints OData disponíveis:
     TaxaJuros: TaxasJurosMensalPorMes, ParametrosConsulta, ConsultaUnificada
 """
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 import pandas as pd
@@ -35,11 +36,6 @@ from carteira_auto.utils.decorators import (
 )
 
 logger = get_logger(__name__)
-
-# Re-exportados para compatibilidade com código que importe diretamente deste módulo.
-# Fonte canônica: constants.BCB_FOCUS_INDICATORS_ANUAIS / BCB_PTAX_MAIN_CURRENCIES
-FOCUS_INDICATORS_ANUAIS: list[str] = constants.BCB_FOCUS_INDICATORS_ANUAIS
-PTAX_MAIN_CURRENCIES: list[str] = constants.BCB_PTAX_MAIN_CURRENCIES
 
 
 class BCBFetcher:
@@ -493,15 +489,24 @@ class BCBFetcher:
         Returns:
             Dict {indicador: DataFrame} com todas as estatísticas disponíveis.
         """
+        indicators = constants.BCB_FOCUS_INDICATORS_ANUAIS
         results: dict[str, pd.DataFrame] = {}
-        for indicator in FOCUS_INDICATORS_ANUAIS:
+
+        def _fetch_one(indicator: str) -> tuple[str, pd.DataFrame]:
             try:
                 df = self._fetch_focus_anuais(indicator, period_months)
-                results[indicator] = df
                 logger.debug(f"Focus {indicator}: {len(df)} registros")
+                return indicator, df
             except Exception as e:
                 logger.warning(f"Focus {indicator}: falha — {e}")
-                results[indicator] = pd.DataFrame()
+                return indicator, pd.DataFrame()
+
+        with ThreadPoolExecutor(max_workers=min(len(indicators), 5)) as executor:
+            futures = {executor.submit(_fetch_one, ind): ind for ind in indicators}
+            for future in as_completed(futures):
+                indicator, df = future.result()
+                results[indicator] = df
+
         return results
 
     # =========================================================================
@@ -517,21 +522,24 @@ class BCBFetcher:
         end_date: date | None = None,
         period_days: int = 30,
     ) -> pd.DataFrame:
-        """PTAX de fechamento para qualquer moeda com cotação no BCB.
+        """PTAX de fechamento para moedas suportadas pelo BCB.
 
-        Suporta todas as moedas disponíveis: USD, EUR, GBP, CHF, JPY, AUD, CAD,
-        CNY, ARS, MXN, DKK, NOK, SEK e outras. Ver get_available_currencies().
+        Suporta as 10 moedas do BCB PTAX OData: AUD, CAD, CHF, DKK, EUR, GBP,
+        JPY, NOK, SEK, USD. Para demais moedas (CNY, ARS, MXN, etc.), retorna
+        DataFrame vazio — o fallback para outras fontes (Yahoo Finance, DDM)
+        deve ser orquestrado pelo IngestNode via fetch_with_fallback().
 
         Args:
-            currency_code: Código ISO 4217 da moeda (ex: 'USD', 'EUR', 'CNY').
+            currency_code: Código ISO 4217 da moeda (ex: 'USD', 'EUR').
                            Case-insensitive — convertido para maiúsculas.
             start_date: Data inicial. Se None, usa period_days atrás.
             end_date: Data final. Se None, usa hoje.
             period_days: Usado apenas se start_date não for informado (default: 30).
 
         Returns:
-            DataFrame com colunas: ['data', 'compra', 'venda', 'moeda'].
+            DataFrame com colunas: ['data', 'compra', 'venda', 'moeda', 'fonte'].
             'data' é datetime normalizado (sem hora), 'compra'/'venda' são float em R$.
+            'fonte' é sempre 'bcb_ptax'. DataFrame vazio se moeda não suportada.
         """
         if end_date is None:
             end_date = date.today()
@@ -724,10 +732,15 @@ class BCBFetcher:
             )
             return self._fetch_raw(series_code, start_date, end_date)
 
+    @retry(max_attempts=2, delay=0.5)
     def _fetch_via_bcb_sgs(
         self, series_code: int, start_date: date, end_date: date
     ) -> pd.DataFrame:
         """Busca série via bcb.sgs (motor primário).
+
+        Tenta 2x com backoff de 0.5s antes de propagar a exceção para o
+        fallback HTTP em _fetch_sgs_raw(). Erros transientes (timeout, 503)
+        são recuperados sem acionar o HTTP.
 
         O formato do dict {name: code} determina o nome da coluna retornada.
         bcb.sgs retorna DataFrame com DatetimeIndex nomeado 'Date'.
@@ -803,7 +816,7 @@ class BCBFetcher:
         em = Expectativas()
         ep = em.get_endpoint("ExpectativasMercadoAnuais")
 
-        start_date = date.today() - timedelta(days=period_months * 30)
+        start_date = date.today() - timedelta(days=period_months * 30)  # ~aproximado
 
         df = (
             ep.query()
@@ -863,7 +876,7 @@ class BCBFetcher:
         em = Expectativas()
         ep = em.get_endpoint("ExpectativasMercadoInflacao12Meses")
 
-        start_date = date.today() - timedelta(days=period_months * 30)
+        start_date = date.today() - timedelta(days=period_months * 30)  # ~aproximado
 
         df = (
             ep.query()
@@ -981,7 +994,12 @@ class BCBFetcher:
         """Busca PTAX de fechamento para todas as moedas disponíveis em uma data.
 
         Estratégia: lista moedas via endpoint Moedas, depois busca cada uma
-        individualmente via CotacaoMoedaDia. Falhas individuais são ignoradas.
+        via CotacaoMoedaDia em paralelo (ThreadPoolExecutor, max 10 workers).
+        Falhas individuais são ignoradas — a moeda simplesmente não aparece
+        no resultado.
+
+        O BCB possui ~60 moedas; o paralelismo reduz o tempo de ~60s (serial)
+        para ~8-12s dependendo da latência da API.
         """
         from bcb import PTAX
 
@@ -995,13 +1013,17 @@ class BCBFetcher:
             logger.warning("PTAX Moedas: lista indisponível")
             return pd.DataFrame(columns=["simbolo", "nome", "compra", "venda", "data"])
 
-        ep_dia = ptax.get_endpoint("CotacaoMoedaDia")
         date_str = reference_date.strftime("%m-%d-%Y")
+        moedas_list = df_moedas.to_dict("records")
 
-        results = []
-        for _, row in df_moedas.iterrows():
+        def _fetch_one_currency(row: dict) -> dict | None:
+            """Busca cotação de uma moeda; retorna None se indisponível."""
             simbolo = row["simbolo"]
             try:
+                # Cada thread instancia seu próprio endpoint para evitar
+                # condições de corrida no estado interno do OData client.
+                ptax_t = PTAX()
+                ep_dia = ptax_t.get_endpoint("CotacaoMoedaDia")
                 df_cot = (
                     ep_dia.query()
                     .parameters(moeda=simbolo, dataCotacao=date_str)
@@ -1010,17 +1032,24 @@ class BCBFetcher:
                     .collect()
                 )
                 if df_cot is not None and not df_cot.empty:
-                    results.append(
-                        {
-                            "simbolo": simbolo,
-                            "nome": row.get("nomeFormatado", ""),
-                            "compra": df_cot["cotacaoCompra"].iloc[-1],
-                            "venda": df_cot["cotacaoVenda"].iloc[-1],
-                            "data": pd.Timestamp(reference_date),
-                        }
-                    )
+                    return {
+                        "simbolo": simbolo,
+                        "nome": row.get("nomeFormatado", ""),
+                        "compra": df_cot["cotacaoCompra"].iloc[-1],
+                        "venda": df_cot["cotacaoVenda"].iloc[-1],
+                        "data": pd.Timestamp(reference_date),
+                    }
             except Exception as e:
                 logger.debug(f"PTAX {simbolo} em {reference_date}: sem cotação — {e}")
+            return None
+
+        results = []
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(_fetch_one_currency, row) for row in moedas_list]
+            for future in as_completed(futures):
+                entry = future.result()
+                if entry is not None:
+                    results.append(entry)
 
         if not results:
             return pd.DataFrame(columns=["simbolo", "nome", "compra", "venda", "data"])
@@ -1045,10 +1074,11 @@ class BCBFetcher:
 
         if df is None or df.empty:
             logger.warning("PTAX Moedas: indisponível, retornando lista padrão")
-            n = len(PTAX_MAIN_CURRENCIES)
+            fallback = constants.BCB_PTAX_MAIN_CURRENCIES
+            n = len(fallback)
             return pd.DataFrame(
                 {
-                    "simbolo": PTAX_MAIN_CURRENCIES,
+                    "simbolo": fallback,
                     "nome": [""] * n,
                     "tipo_moeda": [""] * n,
                 }
@@ -1082,7 +1112,7 @@ class BCBFetcher:
         tj = TaxaJuros()
         ep = tj.get_endpoint("TaxasJurosMensalPorMes")
 
-        start_date = date.today() - timedelta(days=period_months * 30)
+        start_date = date.today() - timedelta(days=period_months * 30)  # ~aproximado
 
         query = ep.query().filter(ep.Mes >= start_date.strftime("%Y-%m-%d"))
         if modality is not None:
@@ -1104,7 +1134,7 @@ class BCBFetcher:
         tj = TaxaJuros()
         ep = tj.get_endpoint("TaxasJurosMensalPorMes")
 
-        start_date = date.today() - timedelta(days=period_months * 30)
+        start_date = date.today() - timedelta(days=period_months * 30)  # ~aproximado
         df_all = ep.query().filter(ep.Mes >= start_date.strftime("%Y-%m-%d")).collect()
 
         if df_all is None or df_all.empty:
