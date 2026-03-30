@@ -114,6 +114,59 @@ class Constants:
     NON_YAHOO_TICKERS: set[str] = {"LFT", "NTNB", "NTNF", "LTN"}
 
     # ============================================================================
+    # BCB — FOCUS (ExpectativasMercadoAnuais)
+    # ============================================================================
+
+    # Indicadores disponíveis via bcb.Expectativas → ExpectativasMercadoAnuais
+    BCB_FOCUS_INDICATORS_ANUAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "PIB Total",
+        "Câmbio",
+        "IGP-M",
+        "IGP-DI",
+        "IPC-Fipe",
+        "Produção industrial",
+        "Balança Comercial",
+    ]
+
+    # ============================================================================
+    # BCB — PTAX (Cotações de Câmbio)
+    # ============================================================================
+
+    # Moedas suportadas nativamente pelo BCB PTAX OData
+    # (confirmado empiricamente — demais moedas usam fallback Yahoo Finance)
+    BCB_PTAX_SUPPORTED_CURRENCIES: set[str] = {
+        "AUD",
+        "CAD",
+        "CHF",
+        "DKK",
+        "EUR",
+        "GBP",
+        "JPY",
+        "NOK",
+        "SEK",
+        "USD",
+    }
+
+    # Moedas de interesse — inclui as 10 do BCB + extras via Yahoo Finance
+    BCB_PTAX_MAIN_CURRENCIES: list[str] = [
+        "USD",
+        "EUR",
+        "GBP",
+        "CHF",
+        "JPY",
+        "AUD",
+        "CAD",
+        "CNY",
+        "ARS",
+        "MXN",
+        "DKK",
+        "NOK",
+        "SEK",
+    ]
+
+    # ============================================================================
     # BCB — SÉRIES DO SGS (Sistema Gerenciador de Séries Temporais)
     # ============================================================================
 

@@ -540,8 +540,9 @@ class TestPTAX:
         with patch("bcb.PTAX", return_value=mock_ptax):
             result = fetcher.get_ptax_currency("USD")
 
-        assert list(result.columns) == ["data", "compra", "venda", "moeda"]
+        assert list(result.columns) == ["data", "compra", "venda", "moeda", "fonte"]
         assert (result["moeda"] == "USD").all()
+        assert (result["fonte"] == "bcb_ptax").all()
         assert len(result) == 3
 
     def test_get_ptax_currency_normaliza_para_maiusculo(
@@ -554,6 +555,7 @@ class TestPTAX:
             result = fetcher.get_ptax_currency("eur")
 
         assert (result["moeda"] == "EUR").all()
+        assert "fonte" in result.columns
 
     def test_get_ptax_currency_date_e_datetime_normalizado(
         self, fetcher: BCBFetcher
@@ -569,12 +571,16 @@ class TestPTAX:
     def test_get_ptax_currency_vazio_retorna_dataframe_vazio(
         self, fetcher: BCBFetcher
     ) -> None:
-        """Quando API retorna vazio, deve retornar DataFrame com colunas esperadas."""
+        """Quando BCB e Yahoo retornam vazio, deve retornar DataFrame com colunas esperadas."""
         mock_ptax = self._setup_ptax_mock(periodo_df=pd.DataFrame())
-        with patch("bcb.PTAX", return_value=mock_ptax):
+        empty_df = pd.DataFrame({"Close": pd.Series(dtype=float)})
+        with (
+            patch("bcb.PTAX", return_value=mock_ptax),
+            patch("yfinance.download", return_value=empty_df),
+        ):
             result = fetcher.get_ptax_currency("USD")
         assert result.empty
-        assert list(result.columns) == ["data", "compra", "venda", "moeda"]
+        assert list(result.columns) == ["data", "compra", "venda", "moeda", "fonte"]
 
     def test_get_ptax_all_currencies_retorna_todas_moedas(
         self, fetcher: BCBFetcher
@@ -609,6 +615,99 @@ class TestPTAX:
 
         assert not result.empty
         assert "USD" in result["simbolo"].values
+
+    def test_get_ptax_currency_moeda_suportada_usa_bcb(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """Moedas suportadas pelo BCB (USD, EUR…) devem usar fonte 'bcb_ptax'."""
+        mock_ptax = self._setup_ptax_mock()
+        with patch("bcb.PTAX", return_value=mock_ptax):
+            result = fetcher.get_ptax_currency("USD")
+        assert (result["fonte"] == "bcb_ptax").all()
+
+    def test_get_ptax_currency_cny_usa_yahoo_fallback(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """CNY não é suportado pelo BCB — deve usar Yahoo Finance como fallback."""
+        mock_close = pd.Series(
+            [0.75, 0.76, 0.77],
+            index=pd.date_range("2024-01-03", periods=3, freq="D"),
+        )
+        mock_yf_download = MagicMock(return_value=pd.DataFrame({"Close": mock_close}))
+
+        with patch("yfinance.download", mock_yf_download):
+            result = fetcher.get_ptax_currency("CNY")
+
+        assert not result.empty
+        assert list(result.columns) == ["data", "compra", "venda", "moeda", "fonte"]
+        assert (result["moeda"] == "CNY").all()
+        assert "yahoo" in result["fonte"].iloc[0]
+
+    def test_get_ptax_currency_bcb_falha_usa_yahoo(self, fetcher: BCBFetcher) -> None:
+        """Quando BCB PTAX lança exceção, deve recorrer ao Yahoo Finance."""
+        mock_close = pd.Series(
+            [4.95, 4.97],
+            index=pd.date_range("2024-01-03", periods=2, freq="D"),
+        )
+        mock_yf_download = MagicMock(return_value=pd.DataFrame({"Close": mock_close}))
+
+        with (
+            patch("bcb.PTAX", side_effect=Exception("BCB offline")),
+            patch("yfinance.download", mock_yf_download),
+        ):
+            result = fetcher.get_ptax_currency("EUR")
+
+        assert not result.empty
+        assert "yahoo" in result["fonte"].iloc[0]
+
+    def test_get_ptax_currency_todas_fontes_falham_retorna_vazio(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """Quando BCB e Yahoo falham, deve retornar DataFrame vazio com colunas corretas."""
+        empty_df = pd.DataFrame({"Close": pd.Series(dtype=float)})
+        with (
+            patch("bcb.PTAX", side_effect=Exception("BCB offline")),
+            patch("yfinance.download", return_value=empty_df),
+        ):
+            result = fetcher.get_ptax_currency("EUR")
+
+        assert result.empty
+        assert list(result.columns) == ["data", "compra", "venda", "moeda", "fonte"]
+
+    def test_fetch_ptax_yahoo_fallback_par_usd_quando_brl_indisponivel(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """Quando CNYBRL=X indisponível, deve tentar CNYUSD=X × USDBRL=X."""
+        cny_usd = pd.Series(
+            [0.14, 0.14],
+            index=pd.date_range("2024-01-03", periods=2, freq="D"),
+        )
+        usdbrl = pd.Series(
+            [4.95, 4.97],
+            index=pd.date_range("2024-01-03", periods=2, freq="D"),
+        )
+
+        call_count = {"n": 0}
+
+        def fake_download(ticker, **kwargs):
+            call_count["n"] += 1
+            if ticker == "CNYBRL=X":
+                return pd.DataFrame({"Close": pd.Series(dtype=float)})
+            elif ticker == "CNYUSD=X":
+                return pd.DataFrame({"Close": cny_usd})
+            elif ticker == "USDBRL=X":
+                return pd.DataFrame({"Close": usdbrl})
+            return pd.DataFrame()
+
+        with patch("yfinance.download", side_effect=fake_download):
+            result = fetcher._fetch_ptax_yahoo_fallback(
+                "CNY", date(2024, 1, 3), date(2024, 1, 4)
+            )
+
+        assert not result.empty
+        assert "USDBRL" in result["fonte"].iloc[0]
+        # Preço deve ser CNY/USD × USD/BRL ≈ 0.14 × 4.95 = 0.693
+        assert abs(result["compra"].iloc[0] - 0.14 * 4.95) < 0.01
 
 
 # ============================================================================
