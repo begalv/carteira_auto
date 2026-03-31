@@ -1,6 +1,6 @@
 """Módulo de fetchers para coleta de dados."""
 
-from .bcb_fetcher import BCBFetcher
+from .bcb import BCBFetcher
 from .cvm_fetcher import CVMFetcher
 from .ddm_fetcher import DDMFetcher
 from .fred_fetcher import FREDFetcher
