@@ -114,10 +114,10 @@ class Constants:
     NON_YAHOO_TICKERS: set[str] = {"LFT", "NTNB", "NTNF", "LTN"}
 
     # ============================================================================
-    # BCB — FOCUS (ExpectativasMercadoAnuais)
+    # BCB — FOCUS (Expectativas de Mercado — 13 endpoints OData)
     # ============================================================================
 
-    # Indicadores disponíveis via bcb.Expectativas → ExpectativasMercadoAnuais
+    # Indicadores via bcb.Expectativas → ExpectativasMercadoAnuais
     BCB_FOCUS_INDICATORS_ANUAIS: list[str] = [
         "Selic",
         "IPCA",
@@ -129,6 +129,76 @@ class Constants:
         "Produção industrial",
         "Balança Comercial",
     ]
+
+    # Indicadores via ExpectativaMercadoMensais
+    BCB_FOCUS_INDICATORS_MENSAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "IGP-M",
+        "Câmbio",
+    ]
+
+    # Indicadores via ExpectativasMercadoTop5Anuais
+    BCB_FOCUS_INDICATORS_TOP5_ANUAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "PIB Total",
+        "Câmbio",
+        "IGP-M",
+    ]
+
+    # Indicadores via ExpectativasMercadoTrimestrais
+    BCB_FOCUS_INDICATORS_TRIMESTRAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "PIB Total",
+        "Câmbio",
+        "IGP-M",
+    ]
+
+    # Indicadores via ExpectativasMercadoTop5Mensais
+    BCB_FOCUS_INDICATORS_TOP5_MENSAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "IGP-M",
+        "Câmbio",
+    ]
+
+    # Indicadores via ExpectativaMercadoTop5Trimestral
+    BCB_FOCUS_INDICATORS_TOP5_TRIMESTRAIS: list[str] = [
+        "Selic",
+        "IPCA",
+        "PIB Total",
+        "Câmbio",
+        "IGP-M",
+    ]
+
+    # ============================================================================
+    # BCB — MERCADO IMOBILIÁRIO (indicadores curados de 2134 disponíveis)
+    # ============================================================================
+
+    BCB_MERCADO_IMOBILIARIO_INDICATORS: dict[str, str] = {
+        # Índices macro (proxy mercado imobiliário)
+        "ivg": "indices_ivg",
+        "mvg": "indices_mvg",
+        # Crédito PF — estoque (endividamento imobiliário)
+        "credito_pf_sfh_total": "credito_estoque_carteira_credito_pf_sfh_to",
+        "credito_pf_livre_total": "credito_estoque_carteira_credito_pf_livre_to",
+        "credito_pf_fgts_total": "credito_estoque_carteira_credito_pf_fgts_to",
+        # Inadimplência imobiliária PF
+        "inadimplencia_pf_sfh_total": "credito_estoque_inadimplencia_pf_sfh_to",
+        "inadimplencia_pf_livre_total": "credito_estoque_inadimplencia_pf_livre_to",
+        # Taxa média de crédito imobiliário PF
+        "taxa_credito_pf_sfh_total": "credito_contratacao_taxa_pf_sfh_to",
+        "taxa_credito_pf_livre_total": "credito_contratacao_taxa_pf_livre_to",
+        # Contratações PF (fluxo de crédito novo)
+        "contratacao_pf_sfh_total": "credito_contratacao_contratado_pf_sfh_to",
+        "contratacao_pf_livre_total": "credito_contratacao_contratado_pf_livre_to",
+        # Imóveis por tipo (estoque garantido)
+        "imoveis_tipo_apartamento_total": "imoveis_tipo_apartamento_to",
+        "imoveis_tipo_casa_total": "imoveis_tipo_casa_to",
+        "imoveis_valor_medio_total": "imoveis_valor_medio_to",
+    }
 
     # ============================================================================
     # BCB — PTAX (Cotações de Câmbio)
@@ -198,16 +268,49 @@ class Constants:
         "ibovespa_bcb": 7,  # Índice Bovespa (fechamento) — pontos
         "ouro_bmf": 4,  # Cotação ouro BM&F — R$/g
         "embi_brasil": 40940,  # EMBI+ Brasil (risco-país) — pontos base
-        # ---- Crédito ----
+        # ---- Crédito e inadimplência ----
         "credito_pib": 20539,  # Crédito total ao setor privado / PIB — %
         "inadimplencia_pf": 21085,  # Taxa de inadimplência PF — %
+        "inadimplencia_pj": 21082,  # Taxa de inadimplência PJ — %
+        "inadimplencia_total": 21084,  # Taxa de inadimplência total — %
+        "inadimplencia_pf_atraso_15_90": 27663,  # PF atraso 15-90 dias — %
+        "inadimplencia_pf_atraso_acima_90": 27664,  # PF atraso >90 dias — %
+        "inadimplencia_cartao": 22036,  # Inadimplência cartão de crédito — R$ milhões
         # ---- Agregados monetários ----
         "m1": 27789,  # Base monetária M1 — R$ milhões
         "m2": 27810,  # Base monetária M2 — R$ milhões
         "m4": 27815,  # Base monetária M4 — R$ milhões
+        "base_monetaria": 1788,  # Base monetária — saldo fim de período — R$ milhões
+        "compulsorios": 1849,  # Recolhimento compulsório total — R$ milhões
         # ---- Setor externo ----
         "balanca_comercial": 22707,  # Saldo balança comercial mensal — US$ milhões
         "reservas_internacionais": 3546,  # Reservas internacionais (liquidez) — US$ milhões
+        "conta_corrente": 22701,  # Transações correntes — saldo mensal — US$ milhões
+        "ied_liquido": 22704,  # Investimento direto no país — líquido — US$ milhões
+        "divida_externa_total": 3547,  # Dívida externa total registrada — US$ milhões
+        "fluxo_cambial": 22706,  # Fluxo cambial total — mensal — US$ milhões
+        "termos_troca": 27574,  # Índice de termos de troca — export/import — índice
+        # ---- Trabalho e renda (contradição capital-trabalho) ----
+        "massa_salarial_real": 11777,  # Massa salarial real PNAD — R$ milhões
+        "rendimento_medio_real": 24382,  # Rendimento médio real habitual PNAD — R$
+        "taxa_desocupacao": 24369,  # Taxa de desocupação PNAD trimestral — %
+        "salario_minimo": 1619,  # Salário mínimo vigente — R$
+        "caged_saldo": 28763,  # CAGED — saldo de empregos formais — unidades
+        "horas_trabalhadas": 28544,  # Horas habitualmente trabalhadas PNAD — horas/semana
+        # ---- Expropriação financeira (contradição capital financeiro vs. PF) ----
+        "spread_bancario_pf": 20786,  # Spread bancário médio PF total — p.p.
+        "custo_credito_pf": 20749,  # Taxa média de juros PF total — % a.a.
+        "endividamento_familias": 29037,  # Endividamento famílias/renda 12m — %
+        "comprometimento_renda": 29038,  # Comprometimento renda famílias SFN — %
+        "icc_fecomercio": 4393,  # Índice de Confiança do Consumidor — índice
+        # ---- Preços relativos (contradição valor vs. preço) ----
+        "ipca15": 7478,  # IPCA-15 (prévia) — variação mensal %
+        "igpdi": 190,  # IGP-DI — variação mensal %
+        "nucleo_ipca_ex0": 11427,  # Núcleo IPCA-EX0 (excl. alim+energia) — %
+        "expectativa_ipca_12m": 13522,  # Expectativa IPCA 12m Focus mediana — %
+        # ---- Concentração e dominância financeira ----
+        "selic_real": 4390,  # Selic real ex-ante — % a.a.
+        "utilizacao_capacidade": 24352,  # Utilização capacidade instalada FGV/CNI — %
     }
 
     # ============================================================================
