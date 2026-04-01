@@ -257,17 +257,16 @@ class TestSoldAsset:
     """Testes de criação e validação de SoldAsset."""
 
     def test_sold_asset_minimo(self):
-        sa = SoldAsset(categoria="Ação", ticker="MGLU3", nome="Magazine Luiza")
+        sa = SoldAsset(ticker="MGLU3", nome="Magazine Luiza")
         assert sa.ticker == "MGLU3"
 
     def test_sold_asset_ticker_vazio_falha(self):
         with pytest.raises(ValidationError, match="ticker não pode ser vazio"):
-            SoldAsset(categoria="Ação", ticker="", nome="Teste")
+            SoldAsset(ticker="", nome="Teste")
 
     def test_sold_asset_preco_negativo_falha(self):
         with pytest.raises(ValidationError, match="preco_na_venda.*negativo"):
             SoldAsset(
-                categoria="Ação",
                 ticker="MGLU3",
                 nome="Magazine Luiza",
                 preco_na_venda=-10.0,
@@ -276,7 +275,6 @@ class TestSoldAsset:
     def test_sold_asset_cotas_negativas_falha(self):
         with pytest.raises(ValidationError, match="n_cotas_vendidas.*negativo"):
             SoldAsset(
-                categoria="Ação",
                 ticker="MGLU3",
                 nome="Magazine Luiza",
                 n_cotas_vendidas=-5.0,
@@ -284,7 +282,6 @@ class TestSoldAsset:
 
     def test_sold_asset_completo(self):
         sa = SoldAsset(
-            categoria="Ação",
             ticker="MGLU3",
             nome="Magazine Luiza",
             classe="Ação BR",
@@ -292,12 +289,14 @@ class TestSoldAsset:
             valor_venda=5000.0,
             preco_posicao=4000.0,
             valorizacao=1000.0,
+            valorizacao_pct=0.25,
             proventos_recebidos=50.0,
             diferenca=1050.0,
-            rentabilidade_individual=0.2625,
+            rentabilidade=0.2625,
             preco_na_venda=25.0,
             preco_medio_compra=20.0,
             n_cotas_vendidas=200.0,
+            posicao_ativa=False,
             mes="2026-01",
         )
         assert sa.valor_venda == 5000.0
@@ -323,7 +322,7 @@ class TestPortfolio:
 
     def test_portfolio_com_vendas(self):
         assets = [Asset(ticker="PETR4", nome="Petrobras")]
-        sold = [SoldAsset(categoria="Ação", ticker="MGLU3", nome="Magazine Luiza")]
+        sold = [SoldAsset(ticker="MGLU3", nome="Magazine Luiza")]
         portfolio = Portfolio(assets=assets, sold_assets=sold)
         assert len(portfolio.sold_assets) == 1
 
