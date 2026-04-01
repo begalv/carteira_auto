@@ -251,6 +251,63 @@ antes de iniciar cada fase.
 - **Rodando testes no worktree**: usar `PYTHONPATH=src python3 -m pytest` para
   garantir que o worktree `src/` tenha prioridade sobre o pacote instalado.
 
+## Workflow de CI/CD
+
+### Convenção de branches: `<tipo>/<escopo>-<descricao>`
+
+| Tipo | Uso | Exemplo |
+|------|-----|---------|
+| `feat/` | Features de sprint | `feat/sprintC1-yahoo-ddm-expansion` |
+| `fix/` | Bug fixes | `fix/cvm-404-endpoint` |
+| `refactor/` | Reestruturação | `refactor/lake-schema-v2` |
+| `test/` | Só testes | `test/analyzers-coverage` |
+| `docs/` | Só documentação | `docs/api-reference` |
+| `chore/` | CI, tooling, config | `chore/ci-setup` |
+| `claude/` | Auto-gerado pelo Claude Code | `claude/<nome-aleatorio>` |
+
+### Convenção de commits: `<tipo>(<escopo>): <descrição>`
+
+Escopos: `bcb`, `ibge`, `fred`, `yahoo`, `cvm`, `tesouro`, `ddm`, `lake`,
+`analyzers`, `models`, `config`, `cli`, `core`, `ci`, `deps`.
+Descrição em português. Max 72 caracteres.
+
+### Makefile (atalhos de desenvolvimento)
+
+```bash
+make test          # testes rápidos (unit, sem slow/integration)
+make test-all      # todos os testes
+make test-cov      # testes + cobertura HTML
+make lint          # ruff check
+make format        # auto-format (black + ruff fix)
+make check         # CI local completo (lint + format-check + test)
+make install-dev   # setup de desenvolvimento
+make clean         # limpa artefatos
+make clean-worktrees  # limpa worktrees órfãos
+```
+
+### GitHub Actions (CI automático)
+
+- **PR para main**: lint, format, typecheck, testes em Python 3.10/3.11/3.12
+- **Merge no main**: suite completa de testes + cobertura
+- **Tag v\***: release automático no GitHub
+- **Dependabot**: alertas semanais de vulnerabilidades em deps
+
+### Fluxo de sprint padronizado
+
+1. Criar branch: `git checkout -b feat/sprintX-descricao` (ou Claude cria worktree)
+2. Implementar incrementalmente com `make test` após cada módulo
+3. Antes do push: `make check` (equivale ao CI local)
+4. Push + criar PR → CI roda automaticamente
+5. Review → squash merge no main → branch auto-deletada
+6. Cleanup: `git checkout main && git pull && make clean-worktrees`
+
+### Configurações do GitHub (manuais)
+
+- Branch protection em `main`: require status checks (`lint`, `format`, `test`)
+- Auto-delete head branches: ativado
+- Squash merge como default
+- Require branches to be up to date antes de merge
+
 ## Como iniciar
 
 Quando o humano disser "vamos começar" ou indicar que quer iniciar uma fase:

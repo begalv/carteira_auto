@@ -3,6 +3,7 @@
 from unittest.mock import patch
 
 import pandas as pd
+
 from carteira_auto.analyzers.commodity_analyzer import (
     CommodityAnalyzer,
 )

@@ -8,7 +8,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import pandas as pd
 
@@ -160,7 +160,7 @@ class FundamentalsLake:
         self,
         ticker: str,
         periods: int = 8,
-        indicator_names: Optional[list[str]] = None,
+        indicator_names: list[str] | None = None,
     ) -> pd.DataFrame:
         """Consulta indicadores fundamentalistas de um ticker.
 
@@ -231,7 +231,7 @@ class FundamentalsLake:
         ticker: str,
         period: str,
         statement_type: str,
-    ) -> Optional[dict]:
+    ) -> dict | None:
         """Recupera demonstração financeira completa."""
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -249,7 +249,7 @@ class FundamentalsLake:
             )
             return [row[0] for row in cursor.fetchall()]
 
-    def count_records(self, ticker: Optional[str] = None) -> int:
+    def count_records(self, ticker: str | None = None) -> int:
         """Conta registros no lake."""
         query = "SELECT COUNT(*) FROM fundamentals"
         params: list = []
@@ -261,7 +261,7 @@ class FundamentalsLake:
             return conn.execute(query, params).fetchone()[0]
 
     def export_to_parquet(
-        self, output_path: Path, tickers: Optional[list[str]] = None
+        self, output_path: Path, tickers: list[str] | None = None
     ) -> Path:
         """Exporta dados para Parquet."""
         query = "SELECT * FROM fundamentals"

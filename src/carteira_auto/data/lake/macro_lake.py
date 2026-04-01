@@ -8,7 +8,6 @@ período, além de exportação para Parquet.
 import sqlite3
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -134,8 +133,8 @@ class MacroLake:
     def get_indicator(
         self,
         indicator: str,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
     ) -> pd.DataFrame:
         """Consulta série de um indicador.
 
@@ -172,8 +171,8 @@ class MacroLake:
     def get_multiple_indicators(
         self,
         indicators: list[str],
-        start: Optional[date] = None,
-        end: Optional[date] = None,
+        start: date | None = None,
+        end: date | None = None,
     ) -> pd.DataFrame:
         """Consulta múltiplos indicadores em formato wide.
 
@@ -206,7 +205,7 @@ class MacroLake:
         result = df.pivot(index="date", columns="indicator", values="value")
         return result
 
-    def get_latest_value(self, indicator: str) -> Optional[float]:
+    def get_latest_value(self, indicator: str) -> float | None:
         """Retorna o último valor de um indicador."""
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -234,7 +233,7 @@ class MacroLake:
                 for row in cursor.fetchall()
             ]
 
-    def count_records(self, indicator: Optional[str] = None) -> int:
+    def count_records(self, indicator: str | None = None) -> int:
         """Conta registros no lake."""
         query = "SELECT COUNT(*) FROM macro_indicators"
         params: list = []
@@ -246,7 +245,7 @@ class MacroLake:
             return conn.execute(query, params).fetchone()[0]
 
     def export_to_parquet(
-        self, output_path: Path, indicators: Optional[list[str]] = None
+        self, output_path: Path, indicators: list[str] | None = None
     ) -> Path:
         """Exporta dados para Parquet."""
         query = "SELECT * FROM macro_indicators"
@@ -311,7 +310,7 @@ class MacroLake:
         """Converte valor para string de data ISO."""
         if isinstance(value, str):
             return value[:10]
-        if isinstance(value, (datetime, pd.Timestamp)):
+        if isinstance(value, datetime | pd.Timestamp):
             return value.date().isoformat()
         if isinstance(value, date):
             return value.isoformat()

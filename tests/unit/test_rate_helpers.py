@@ -2,6 +2,7 @@
 
 import numpy as np
 import pytest
+
 from carteira_auto.utils.helpers import (
     accumulate_and_annualize,
     accumulate_rates,

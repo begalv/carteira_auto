@@ -1,7 +1,6 @@
 """Pipeline de atualização de preços da carteira."""
 
 from pathlib import Path
-from typing import Optional
 
 from carteira_auto.config import settings
 from carteira_auto.core.models import Portfolio
@@ -32,8 +31,8 @@ class UpdateExcelPricesPipeline:
 
     def __init__(
         self,
-        source_path: Optional[Path] = None,
-        output_path: Optional[Path] = None,
+        source_path: Path | None = None,
+        output_path: Path | None = None,
     ):
         self.source_path = source_path or settings.paths.PORTFOLIO_FILE
         self.output_path = output_path or settings.paths.get_portfolio_output_path()

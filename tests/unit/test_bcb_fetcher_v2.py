@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
 from carteira_auto.config.constants import constants
 from carteira_auto.data.fetchers.bcb_fetcher import BCBFetcher
 

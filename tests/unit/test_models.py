@@ -1,6 +1,8 @@
 """Testes dos modelos de dados — portfolio, analysis, economic e Result type."""
 
 import pytest
+from pydantic import ValidationError
+
 from carteira_auto.core.models.analysis import (
     AllocationResult,
     MacroContext,
@@ -18,7 +20,6 @@ from carteira_auto.core.models.economic import (
 )
 from carteira_auto.core.models.portfolio import Asset, Portfolio, SoldAsset
 from carteira_auto.core.result import Err, Ok
-from pydantic import ValidationError
 
 # ============================================================================
 # RESULT TYPE

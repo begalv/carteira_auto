@@ -1,6 +1,5 @@
 """Modelos de dados da carteira de investimentos."""
 
-
 from pydantic import BaseModel, field_validator
 
 
