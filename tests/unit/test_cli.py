@@ -151,9 +151,9 @@ class TestRunPipeline:
         mock_engine = MagicMock()
 
         with (
-            patch(
-                "carteira_auto.core.registry.get_terminal_node",
-                return_value="Export",
+            patch.dict(
+                "carteira_auto.core.registry.PIPELINE_PRESETS",
+                {"test_pipeline": "Export"},
             ),
             patch(
                 "carteira_auto.core.registry.create_engine",
