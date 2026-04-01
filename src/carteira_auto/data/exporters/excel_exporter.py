@@ -2,7 +2,6 @@
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from openpyxl import load_workbook
 from openpyxl.workbook import Workbook
@@ -38,7 +37,7 @@ class ExcelExporter:
     def __init__(self, source_path: Path, output_path: Path):
         self.source_path = source_path
         self.output_path = output_path
-        self._wb: Optional[Workbook] = None
+        self._wb: Workbook | None = None
 
     def open(self) -> "ExcelExporter":
         """Copia a planilha original e abre a cópia para edição."""
@@ -124,8 +123,8 @@ class PortfolioPriceExporter(ExcelExporter):
 
     def __init__(
         self,
-        source_path: Optional[Path] = None,
-        output_path: Optional[Path] = None,
+        source_path: Path | None = None,
+        output_path: Path | None = None,
     ):
         src = source_path or settings.paths.PORTFOLIO_FILE
         out = output_path or settings.paths.get_portfolio_output_path()

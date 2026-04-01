@@ -119,12 +119,15 @@ class TestRunPipeline:
                 "sys.modules",
                 {},
             ):
-                with patch(
-                    "carteira_auto.core.registry.get_terminal_node",
-                    return_value="Export",
-                ), patch(
-                    "carteira_auto.core.registry.create_engine",
-                    return_value=mock_engine,
+                with (
+                    patch(
+                        "carteira_auto.core.registry.get_terminal_node",
+                        return_value="Export",
+                    ),
+                    patch(
+                        "carteira_auto.core.registry.create_engine",
+                        return_value=mock_engine,
+                    ),
                 ):
                     args = argparse.Namespace(
                         pipeline="test_pipeline",
@@ -147,12 +150,15 @@ class TestRunPipeline:
 
         mock_engine = MagicMock()
 
-        with patch(
-            "carteira_auto.core.registry.get_terminal_node",
-            return_value="Export",
-        ), patch(
-            "carteira_auto.core.registry.create_engine",
-            return_value=mock_engine,
+        with (
+            patch(
+                "carteira_auto.core.registry.get_terminal_node",
+                return_value="Export",
+            ),
+            patch(
+                "carteira_auto.core.registry.create_engine",
+                return_value=mock_engine,
+            ),
         ):
             args = argparse.Namespace(
                 pipeline="test_pipeline",
@@ -169,10 +175,13 @@ class TestRunPipeline:
         """run_pipeline sai com sys.exit(1) quando pipeline não existe."""
         from carteira_auto.cli.commands import run_pipeline
 
-        with patch(
-            "carteira_auto.core.registry.get_terminal_node",
-            side_effect=KeyError("Pipeline não encontrado"),
-        ), pytest.raises(SystemExit) as exc_info:
+        with (
+            patch(
+                "carteira_auto.core.registry.get_terminal_node",
+                side_effect=KeyError("Pipeline não encontrado"),
+            ),
+            pytest.raises(SystemExit) as exc_info,
+        ):
             args = argparse.Namespace(
                 pipeline="inexistente",
                 dry_run=False,
@@ -227,8 +236,11 @@ class TestMain:
 
         mock_pipelines = {"test": "Pipeline de teste"}
 
-        with patch("sys.argv", ["carteira", "list"]), patch(
-            "carteira_auto.core.registry.list_pipelines",
-            return_value=mock_pipelines,
+        with (
+            patch("sys.argv", ["carteira", "list"]),
+            patch(
+                "carteira_auto.core.registry.list_pipelines",
+                return_value=mock_pipelines,
+            ),
         ):
             main()
