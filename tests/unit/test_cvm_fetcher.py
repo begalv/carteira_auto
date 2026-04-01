@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
 from carteira_auto.data.fetchers.cvm_fetcher import CVMFetcher
 
 # =============================================================================
