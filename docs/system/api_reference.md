@@ -184,7 +184,6 @@ Ativo vendido — mapeia uma linha da aba "Vendas".
 
 | Campo | Tipo | Descricao | Validacao |
 |---|---|---|---|
-| `categoria` | `str` | Categoria da venda | Obrigatorio |
 | `ticker` | `str` | Codigo do ativo | Nao vazio |
 | `nome` | `str` | Nome do ativo | Obrigatorio |
 | `classe` | `str \| None` | Classe | — |
@@ -192,12 +191,14 @@ Ativo vendido — mapeia uma linha da aba "Vendas".
 | `valor_venda` | `float \| None` | Valor total da venda R$ | — |
 | `preco_posicao` | `float \| None` | Preco de aquisicao R$ | >= 0 |
 | `valorizacao` | `float \| None` | Valorizacao R$ | — |
+| `valorizacao_pct` | `float \| None` | Valorizacao percentual | — |
 | `proventos_recebidos` | `float \| None` | Proventos recebidos R$ | — |
 | `diferenca` | `float \| None` | Diferenca R$ | — |
-| `rentabilidade_individual` | `float \| None` | Rentabilidade do ativo | — |
+| `rentabilidade` | `float \| None` | Rentabilidade do ativo | — |
 | `preco_na_venda` | `float \| None` | Preco no momento da venda R$ | >= 0 |
 | `preco_medio_compra` | `float \| None` | Preco medio de compra R$ | >= 0 |
 | `n_cotas_vendidas` | `float \| None` | Cotas vendidas | >= 0 |
+| `posicao_ativa` | `bool \| None` | Se o ativo ainda esta em carteira | — |
 | `mes` | `str \| None` | Mes da venda | — |
 
 ### Portfolio

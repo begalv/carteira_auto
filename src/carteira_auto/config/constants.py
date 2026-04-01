@@ -18,7 +18,7 @@ class Constants:
 
     CARTEIRA_SHEET_NAMES: dict[str, str] = {
         "carteira": "Carteira",
-        "resumo": "Rentabilidade Carteira",
+        "resumo": "Resumo da Carteira",
         "vendas": "Vendas",
     }
 
@@ -75,7 +75,6 @@ class Constants:
     }
 
     VENDAS_COLUMNS: list[str] = [
-        "Categoria",
         "Ticker",
         "Nome do Ativo / Gestora",
         "Classe",
@@ -83,17 +82,18 @@ class Constants:
         "Valor da Venda",
         "Preço Posição",
         "Valorização",
+        "Valorização (%)",
         "Proventos Recebidos",
         "Diferença",
-        "Rentabilidade individual",
+        "Rentabilidade",
         "Preço na Venda",
         "Preço Médio de Compra",
         "N Cotas Vendidas",
+        "Posição Ativa",
         "Mês",
     ]
 
     VENDAS_FIELD_MAP: dict[str, str] = {
-        "Categoria": "categoria",
         "Ticker": "ticker",
         "Nome do Ativo / Gestora": "nome",
         "Classe": "classe",
@@ -101,12 +101,14 @@ class Constants:
         "Valor da Venda": "valor_venda",
         "Preço Posição": "preco_posicao",
         "Valorização": "valorizacao",
+        "Valorização (%)": "valorizacao_pct",
         "Proventos Recebidos": "proventos_recebidos",
         "Diferença": "diferenca",
-        "Rentabilidade individual": "rentabilidade_individual",
+        "Rentabilidade": "rentabilidade",
         "Preço na Venda": "preco_na_venda",
         "Preço Médio de Compra": "preco_medio_compra",
         "N Cotas Vendidas": "n_cotas_vendidas",
+        "Posição Ativa": "posicao_ativa",
         "Mês": "mes",
     }
 
