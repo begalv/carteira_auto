@@ -33,7 +33,7 @@ class PathsConfig:
     LAKE_DIR = DATA_DIR / "lake"
 
     # Planilha principal da carteira
-    PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira 2026.xlsx"
+    PORTFOLIO_FILE: Path = RAW_DATA_DIR / "Carteira_2026.xlsx"
 
     def ensure_directories(self) -> None:
         """Garante que todos os diretórios necessários existam."""
