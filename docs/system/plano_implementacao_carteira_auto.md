@@ -83,7 +83,7 @@ Sprint dedicado a expandir os fetchers existentes para cobrir todas as séries d
 | Sub-fase | Escopo | Status |
 |----------|--------|--------|
 | Sprint A | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig | **CONCLUÍDA** |
-| Sprint B | Expansão BCBFetcher (python-bcb fallback), IBGEFetcher (sidrapy), FREDFetcher | **EM ANDAMENTO** |
+| Sprint B | BCBFetcher (módulo bcb/ com 6 mixins incl. MercadoImobiliário, 104+ métodos), IBGEFetcher (+analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+11 convenience methods, FRED_SERIES unificada PT), auditoria (bcb_fetcher.py legado deletado, 646 testes) | **CONCLUÍDA** |
 | Sprint C | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher (novo) | Pendente |
 | Sprint D | IngestNodes com fallback chains, testes de integração, docs finais | Pendente |
 
@@ -1532,7 +1532,7 @@ class ContentRouter:
 | 2 Sprint 0 | CONCLUÍDA | — | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | — | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
 | Fetcher Max A | CONCLUÍDA | #34 | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos, FetchWithFallback, ReferenceLake (12 tab), TradingComDadosConfig |
-| Fetcher Max B | EM ANDAMENTO | — | Expansão BCBFetcher (python-bcb), IBGEFetcher (sidrapy), FREDFetcher |
+| Fetcher Max B | CONCLUÍDA | — | BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+11 methods), auditoria e 646 testes |
 | Fetcher Max C | Pendente | — | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
 | Fetcher Max D | Pendente | — | IngestNodes com fallback, testes integração, docs |
 | 2 Sprint 2+ | Pendente | — | 6 analyzers restantes (fundamental, yield curve, global macro...) |
@@ -1824,7 +1824,7 @@ carteira_auto/
 │   │   ├── fetchers/               # (expandido)
 │   │   │   ├── __init__.py
 │   │   │   ├── yahoo_fetcher.py    # (existente)
-│   │   │   ├── bcb_fetcher.py      # (existente)
+│   │   │   ├── bcb/                # (módulo com 6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário, Base)
 │   │   │   ├── ibge_fetcher.py     # (existente)
 │   │   │   ├── fred_fetcher.py     # (existente — Fase 1)
 │   │   │   ├── cvm_fetcher.py      # (existente — Fase 1)
@@ -2407,7 +2407,8 @@ disto — estenda, integre, importe:
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
 | 2 Sprint 0-1 | Analyzers: currency, commodity, fiscal (3/9) | CONCLUÍDA |
 | Fetcher Max A | Fundação: deps, constants, FetchWithFallback, ReferenceLake | CONCLUÍDA |
-| Fetcher Max B-D | Expansão de todos os fetchers + IngestNodes com fallback | EM ANDAMENTO |
+| Fetcher Max B | BCB (6 mixins), IBGE (+analfabetismo), FRED (+11 methods), auditoria | CONCLUÍDA |
+| Fetcher Max C-D | Expansão Yahoo/DDM/Tesouro/CVM + TradingComDadosFetcher + IngestNodes | Pendente |
 | 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
 | 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
 | 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |

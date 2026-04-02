@@ -24,9 +24,9 @@
 | Arquivo | Classe | API | Rate limit | Cache TTL |
 |---------|--------|-----|------------|-----------|
 | yahoo_fetcher.py | YahooFinanceFetcher | yfinance | 30 req/min | 5min (preços), 24h (histórico) |
-| bcb_fetcher.py | BCBFetcher | SGS API + python-bcb | 30 req/min | 1h |
-| ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy | 30 req/min | 2h |
-| fred_fetcher.py | FREDFetcher | FRED API | 120 req/min | 24h |
+| bcb/ (módulo, 6 mixins) | BCBFetcher | SGS + python-bcb + OData (Focus, PTAX, TaxaJuros, MercadoImobiliário) | 30 req/min | 1h |
+| ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy + CNAE + Países | 30 req/min | 2h |
+| fred_fetcher.py | FREDFetcher (23 convenience methods) | FRED API (30 séries, FRED_SERIES em constants.py) | 120 req/min | 24h |
 | cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
 | tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API + CKAN | 30 req/min | 1h |
 | ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
@@ -134,18 +134,20 @@
 | snapshot_path | Path | SaveSnapshotNode | — |
 | _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
 
-## Testes — cobertura atual
+## Testes — cobertura atual (646 testes, 1 falha pré-existente CVM 404)
 | Arquivo | Qtd | Escopo |
 |---------|-----|--------|
 | test_models.py | 54 | Result type (Ok/Err), validação Asset/Portfolio, todos os model types |
 | test_analyzers.py | 19 | DAGEngine error handling, todos os 7 analyzers |
 | test_fetchers.py | 17 | Yahoo normalize, prices, historical |
+| test_bcb_fetcher_v2.py | 129 | BCBFetcher: SGS (29 métodos), Focus (14), PTAX, TaxaJuros (3), MercadoImobiliário (18), agregadores |
+| test_ibge_fetcher_v2.py | 40 | IBGEFetcher: SIDRA (13 tabelas), CNAE (4 níveis), Países, normalização |
+| test_fred_fetcher.py | 55 | FREDFetcher: get_series, get_series_info, 23 convenience methods, constantes |
 | test_cli.py | 15 | Parser, commands, main |
 | test_decorators.py | 20 | Todos os decorators |
 | test_integrations.py | 8 | E2E pipeline, dry_run, presets |
 | test_lake.py | — | PriceLake, MacroLake, FundamentalsLake, NewsLake |
-| test_cvm_fetcher.py | — | CVMFetcher |
-| test_fred_fetcher.py | — | FREDFetcher |
+| test_cvm_fetcher.py | — | CVMFetcher (1 falha pré-existente: CVM 404) |
 | test_currency_analyzer.py | 9 | CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais) |
 | test_commodity_analyzer.py | 8 | CommodityAnalyzer (preços, ciclo, índice, falhas) |
 | test_fiscal_analyzer.py | 16 | FiscalAnalyzer (métricas, trajetória, variação 12m, falhas) |

@@ -370,78 +370,183 @@ class Constants:
     # ============================================================================
 
     FRED_SERIES: dict[str, dict[str, str]] = {
-        # ---- Taxas de juros (existentes) ----
-        "DFF": {"name": "Federal Funds Rate", "unit": "%", "freq": "daily"},
-        "DGS2": {"name": "Treasury 2Y Yield", "unit": "%", "freq": "daily"},
-        "DGS10": {"name": "Treasury 10Y Yield", "unit": "%", "freq": "daily"},
-        "DGS30": {"name": "Treasury 30Y Yield", "unit": "%", "freq": "daily"},
-        "T10Y2Y": {"name": "10Y-2Y Yield Spread", "unit": "%", "freq": "daily"},
-        "VIXCLS": {"name": "VIX Volatility Index", "unit": "index", "freq": "daily"},
-        "CPIAUCSL": {
-            "name": "CPI All Urban Consumers",
-            "unit": "index",
-            "freq": "monthly",
+        # ---- Juros e política monetária ----
+        # Taxa básica de juros dos EUA — referência global para custo de capital
+        "DFF": {"nome": "Fed Funds Rate", "unidade": "%", "frequencia": "daily"},
+        # Taxa efetiva (agregada) — redundante com DFF, mas útil para validação
+        "FEDFUNDS": {
+            "nome": "Effective Fed Funds Rate",
+            "unidade": "%",
+            "frequencia": "daily",
         },
-        "DEXBZUS": {"name": "BRL/USD Exchange Rate", "unit": "R$/US$", "freq": "daily"},
-        "UNRATE": {"name": "US Unemployment Rate", "unit": "%", "freq": "monthly"},
-        "A191RL1Q225SBEA": {
-            "name": "US Real GDP Growth",
-            "unit": "%",
-            "freq": "quarterly",
+        # Taxa prime — base para crédito corporativo nos EUA
+        "DPRIME": {"nome": "Prime Rate", "unidade": "%", "frequencia": "daily"},
+        # ---- Curva de Treasuries ----
+        # Yields dos títulos do Tesouro americano por vencimento
+        "DGS3MO": {"nome": "Treasury 3M", "unidade": "%", "frequencia": "daily"},
+        "DGS1": {"nome": "Treasury 1Y", "unidade": "%", "frequencia": "daily"},
+        "DGS2": {"nome": "Treasury 2Y", "unidade": "%", "frequencia": "daily"},
+        "DGS5": {"nome": "Treasury 5Y", "unidade": "%", "frequencia": "daily"},
+        "DGS7": {"nome": "Treasury 7Y", "unidade": "%", "frequencia": "daily"},
+        "DGS10": {"nome": "Treasury 10Y", "unidade": "%", "frequencia": "daily"},
+        "DGS20": {"nome": "Treasury 20Y", "unidade": "%", "frequencia": "daily"},
+        "DGS30": {"nome": "Treasury 30Y", "unidade": "%", "frequencia": "daily"},
+        # Spread 10Y-2Y — sinal clássico de recessão quando negativo
+        "T10Y2Y": {"nome": "Spread 10Y-2Y", "unidade": "%", "frequencia": "daily"},
+        # TIPS 10Y — juros real dos EUA, referência para retorno real global
+        "DFII10": {
+            "nome": "TIPS 10Y Real Yield",
+            "unidade": "%",
+            "frequencia": "daily",
         },
-        "BAMLH0A0HYM2": {"name": "High Yield Spread", "unit": "%", "freq": "daily"},
-        "T10YIE": {"name": "10Y Breakeven Inflation", "unit": "%", "freq": "daily"},
-        # ---- Novas séries ----
-        "FEDFUNDS": {"name": "Effective Fed Funds Rate", "unit": "%", "freq": "daily"},
-        "DGS1": {"name": "Treasury 1Y Yield", "unit": "%", "freq": "daily"},
-        "DGS5": {"name": "Treasury 5Y Yield", "unit": "%", "freq": "daily"},
-        "DGS7": {"name": "Treasury 7Y Yield", "unit": "%", "freq": "daily"},
-        "DGS20": {"name": "Treasury 20Y Yield", "unit": "%", "freq": "daily"},
-        "DTWEXBGS": {
-            "name": "Trade Weighted Dollar Index",
-            "unit": "index",
-            "freq": "daily",
+        # Breakeven inflação 10Y — expectativa de inflação implícita no mercado
+        "T10YIE": {
+            "nome": "Breakeven Inflação 10Y",
+            "unidade": "%",
+            "frequencia": "daily",
         },
-        "TEDRATE": {"name": "TED Spread", "unit": "%", "freq": "daily"},
+        # TED Spread — risco interbancário (Libor-Treasury)
+        "TEDRATE": {"nome": "TED Spread", "unidade": "%", "frequencia": "daily"},
+        # Hipoteca 30 anos — proxy do mercado imobiliário americano
         "MORTGAGE30US": {
-            "name": "30-Year Mortgage Rate",
-            "unit": "%",
-            "freq": "weekly",
+            "nome": "Hipoteca 30 Anos EUA",
+            "unidade": "%",
+            "frequencia": "weekly",
         },
+        # ---- Inflação ----
+        # CPI — índice de preços ao consumidor dos EUA (base análise inflação)
+        "CPIAUCSL": {
+            "nome": "CPI EUA",
+            "unidade": "index",
+            "frequencia": "monthly",
+        },
+        # Core PCE — inflação preferida pelo Fed (exclui alimentos e energia)
+        "PCEPILFE": {
+            "nome": "Core PCE",
+            "unidade": "%",
+            "frequencia": "monthly",
+        },
+        # ---- Atividade econômica ----
+        # PIB real EUA — crescimento econômico ajustado pela inflação
+        "GDPC1": {
+            "nome": "PIB EUA Real",
+            "unidade": "USD bi",
+            "frequencia": "quarterly",
+        },
+        # PIB nominal EUA — valor corrente da produção
+        "GDP": {
+            "nome": "PIB EUA Nominal",
+            "unidade": "USD bi",
+            "frequencia": "quarterly",
+        },
+        # Desemprego — saúde do mercado de trabalho
+        "UNRATE": {
+            "nome": "Desemprego EUA",
+            "unidade": "%",
+            "frequencia": "monthly",
+        },
+        # Nonfarm Payrolls — criação líquida de empregos (exceto agrícola)
+        "PAYEMS": {
+            "nome": "Nonfarm Payrolls",
+            "unidade": "milhares",
+            "frequencia": "monthly",
+        },
+        # Produção industrial — proxy de atividade manufatureira
+        "INDPRO": {
+            "nome": "Produção Industrial EUA",
+            "unidade": "index",
+            "frequencia": "monthly",
+        },
+        # Sentimento do consumidor Michigan — confiança do consumidor
         "UMCSENT": {
-            "name": "Michigan Consumer Sentiment",
-            "unit": "index",
-            "freq": "monthly",
+            "nome": "Sentimento Consumidor Michigan",
+            "unidade": "index",
+            "frequencia": "monthly",
         },
-        "PERMIT": {"name": "Building Permits", "unit": "thousands", "freq": "monthly"},
-        "M2SL": {"name": "M2 Money Supply", "unit": "USD billions", "freq": "monthly"},
-        "WALCL": {"name": "Fed Total Assets", "unit": "USD millions", "freq": "weekly"},
-        "GFDEBTN": {
-            "name": "US Federal Debt Total",
-            "unit": "USD millions",
-            "freq": "quarterly",
+        # Alvarás de construção — indicador antecedente do setor imobiliário
+        "PERMIT": {
+            "nome": "Alvarás de Construção",
+            "unidade": "milhares",
+            "frequencia": "monthly",
         },
+        # ---- Mercados e risco ----
+        # VIX — índice de volatilidade implícita do S&P 500 ("índice do medo")
+        "VIXCLS": {"nome": "VIX", "unidade": "index", "frequencia": "daily"},
+        # High Yield Spread — apetite a risco (crédito high yield vs Treasury)
+        "BAMLH0A0HYM2": {
+            "nome": "High Yield Spread",
+            "unidade": "bps",
+            "frequencia": "daily",
+        },
+        # ---- Câmbio ----
+        # BRL/USD — câmbio crítico para carteira brasileira
+        "DEXBZUS": {
+            "nome": "BRL/USD",
+            "unidade": "R$/USD",
+            "frequencia": "daily",
+        },
+        # EUR/USD — par mais negociado do mundo
+        "DEXUSEU": {
+            "nome": "EUR/USD",
+            "unidade": "EUR/USD",
+            "frequencia": "daily",
+        },
+        # CNY/USD — câmbio China (segunda maior economia)
+        "DEXCHUS": {
+            "nome": "CNY/USD",
+            "unidade": "CNY/USD",
+            "frequencia": "daily",
+        },
+        # Índice do dólar ponderado por comércio — força global do dólar
+        "DTWEXBGS": {
+            "nome": "Índice do Dólar",
+            "unidade": "index",
+            "frequencia": "daily",
+        },
+        # ---- Commodities ----
+        # WTI — preço do petróleo (referência global, impacta Petrobras e inflação)
         "DCOILWTICO": {
-            "name": "WTI Crude Oil Price",
-            "unit": "USD/barrel",
-            "freq": "daily",
+            "nome": "Petróleo WTI",
+            "unidade": "USD/barril",
+            "frequencia": "daily",
         },
+        # Ouro — ativo de refúgio, hedge contra inflação e risco sistêmico
         "GOLDAMGBD228NLBM": {
-            "name": "Gold London Fix",
-            "unit": "USD/oz",
-            "freq": "daily",
+            "nome": "Ouro London Fix",
+            "unidade": "USD/oz",
+            "frequencia": "daily",
         },
-        "DPRIME": {"name": "Prime Rate", "unit": "%", "freq": "daily"},
+        # ---- Monetário e fiscal ----
+        # M2 — oferta monetária ampla (liquidez na economia)
+        "M2SL": {
+            "nome": "M2 Oferta Monetária",
+            "unidade": "USD bi",
+            "frequencia": "monthly",
+        },
+        # Balanço do Fed — total de ativos (proxy de QE/QT)
+        "WALCL": {
+            "nome": "Ativos Totais do Fed",
+            "unidade": "USD mi",
+            "frequencia": "weekly",
+        },
+        # Dívida federal — sustentabilidade fiscal dos EUA
+        "GFDEBTN": {
+            "nome": "Dívida Federal EUA",
+            "unidade": "USD mi",
+            "frequencia": "quarterly",
+        },
+        # Balança comercial — saldo de exportações menos importações
         "BOPGSTB": {
-            "name": "US Trade Balance",
-            "unit": "USD millions",
-            "freq": "monthly",
+            "nome": "Balança Comercial EUA",
+            "unidade": "USD mi",
+            "frequencia": "monthly",
         },
-        "PAYEMS": {"name": "Nonfarm Payrolls", "unit": "thousands", "freq": "monthly"},
+        # ---- Imobiliário ----
+        # Case-Shiller — índice de preços de imóveis nas 20 maiores cidades
         "CSUSHPISA": {
-            "name": "Case-Shiller Home Price Index",
-            "unit": "index",
-            "freq": "monthly",
+            "nome": "Case-Shiller Preços Imóveis",
+            "unidade": "index",
+            "frequencia": "monthly",
         },
     }
 

@@ -5,7 +5,7 @@
 
 ## Pattern 1: Novo fetcher
 
-Referência real: `src/carteira_auto/data/fetchers/bcb_fetcher.py`
+Referência real: `src/carteira_auto/data/fetchers/bcb/` (módulo modular com mixins)
 
 ```python
 """Fetcher de [FONTE] — [descrição curta].

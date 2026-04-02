@@ -189,9 +189,9 @@ graph TB
 | Fetcher | Fonte | Motor interno | Dados |
 |---------|-------|---------------|-------|
 | `YahooFinanceFetcher` | Yahoo Finance | yfinance | Precos OHLCV, dividendos, fundamentalistas, analyst targets, upgrades, major holders, news |
-| `BCBFetcher` | BCB | python-bcb + SGS HTTP | 31 series SGS, Focus expectations, PTAX, câmbio, taxas de crédito |
-| `IBGEFetcher` | IBGE | sidrapy + HTTP | 16 tabelas SIDRA, CNAE, indicadores por país |
-| `FREDFetcher` | Federal Reserve | fredapi | 30 series macro US (yields, Fed Funds, CPI, M2, Payrolls, etc.) |
+| `BCBFetcher` | BCB | python-bcb (6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário, Base) | 31 séries SGS, Focus expectations, PTAX, câmbio, taxas de crédito, 14 indicadores imobiliários |
+| `IBGEFetcher` | IBGE | sidrapy + HTTP | 16 tabelas SIDRA (incl. analfabetismo), CNAE, indicadores por país |
+| `FREDFetcher` | Federal Reserve | requests (FRED API) | 30 séries macro US com 23 convenience methods (yields, Fed Funds, CPI, commodities, câmbio) |
 | `CVMFetcher` | CVM | HTTP | DFP/ITR, cadastro de fundos, FIIs, intermediários, carteiras CDA |
 | `TesouroDiretoFetcher` | Tesouro Nacional | CSV + CKAN | Títulos públicos, taxas, curva de juros, vendas, resgates, estoque |
 | `DDMFetcher` | Dados de Mercado | HTTP (API key) | Cotações, fundamentos, DRE, FIIs, macro, yield curves, risco |
@@ -608,7 +608,7 @@ carteira_auto/
 │   ├── data/                          # Camada de dados
 │   │   ├── fetchers/                  # Coleta de dados externos (8 fetchers)
 │   │   │   ├── yahoo_fetcher.py       # Yahoo Finance (precos, fundamentos, targets, holders)
-│   │   │   ├── bcb_fetcher.py         # BCB (python-bcb: SGS, Focus, PTAX, câmbio, taxas)
+│   │   │   ├── bcb/                    # BCB (módulo com 6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário)
 │   │   │   ├── ibge_fetcher.py        # IBGE (sidrapy: SIDRA, CNAE, países)
 │   │   │   ├── fred_fetcher.py        # FRED (30 séries macro US)
 │   │   │   ├── cvm_fetcher.py         # CVM (fundos, FIIs, DFP/ITR, intermediários)

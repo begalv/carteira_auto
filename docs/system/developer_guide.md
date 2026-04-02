@@ -517,7 +517,7 @@ tests/
 ├── conftest.py           # Fixtures compartilhadas
 ├── fixtures/             # Dados de teste (JSON, CSV)
 ├── unit/                 # Testes unitarios com mocks
-│   ├── test_bcb_fetcher.py
+│   ├── test_bcb_fetcher_v2.py   # BCBFetcher (129 testes: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário)
 │   ├── test_novo_fetcher.py
 │   └── ...
 └── integration/          # Testes E2E com dados mockados

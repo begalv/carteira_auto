@@ -5,7 +5,7 @@ Pacote modular com cobertura máxima das APIs do BCB:
     - Focus: 13 endpoints de expectativas de mercado (bcb.Expectativas OData)
     - PTAX: 3 endpoints de câmbio oficial (bcb.PTAX OData)
     - TaxaJuros: 5 endpoints de taxas de crédito (bcb.TaxaJuros OData)
-    - OData extras: IFDATA, MercadoImobiliário, SPI, DinheiroCirculação
+    - MercadoImobiliário: 13 indicadores curados (bcb.MercadoImobiliario OData)
 
 Arquitetura: BCBFetcher compõe submódulos via herança múltipla.
 Cada submódulo é um arquivo com métodos agrupados por fonte OData.
@@ -17,17 +17,26 @@ Uso:
     df_selic = fetcher.get_selic()
     df_focus = fetcher.get_focus_ipca()
     df_ptax = fetcher.get_ptax_currency('USD')
+    df_ivg = fetcher.get_ivg()
 """
 
 from carteira_auto.data.fetchers.bcb._base import BCBBaseMixin
 from carteira_auto.data.fetchers.bcb._focus import BCBFocusMixin
+from carteira_auto.data.fetchers.bcb._mercado_imobiliario import (
+    BCBMercadoImobiliarioMixin,
+)
 from carteira_auto.data.fetchers.bcb._ptax import BCBPTAXMixin
 from carteira_auto.data.fetchers.bcb._sgs import BCBSGSMixin
 from carteira_auto.data.fetchers.bcb._taxajuros import BCBTaxaJurosMixin
 
 
 class BCBFetcher(
-    BCBBaseMixin, BCBSGSMixin, BCBFocusMixin, BCBPTAXMixin, BCBTaxaJurosMixin
+    BCBBaseMixin,
+    BCBSGSMixin,
+    BCBFocusMixin,
+    BCBPTAXMixin,
+    BCBTaxaJurosMixin,
+    BCBMercadoImobiliarioMixin,
 ):
     """Fetcher para dados do Banco Central do Brasil.
 
@@ -37,9 +46,10 @@ class BCBFetcher(
         - BCBFocusMixin: 13 endpoints Focus (expectativas de mercado)
         - BCBPTAXMixin: PTAX câmbio oficial (3 endpoints OData)
         - BCBTaxaJurosMixin: taxas de crédito bancário (5 endpoints OData)
+        - BCBMercadoImobiliarioMixin: 13 indicadores imobiliários (OData)
 
     Módulos pendentes:
-        - BCBODataExtrasMixin: IFDATA, MercadoImobiliário, SPI, DinheiroCirculação
+        - IFDATA, SPI, DinheiroCirculação
     """
 
     def __init__(self) -> None:

@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 
 from carteira_auto.config.constants import constants
-from carteira_auto.data.fetchers.bcb_fetcher import BCBFetcher
+from carteira_auto.data.fetchers.bcb import BCBFetcher
 
 # ============================================================================
 # FIXTURES
@@ -846,11 +846,412 @@ class TestGenericos:
         self, fetcher: BCBFetcher
     ) -> None:
         """Quando série retorna DataFrame vazio, latest_values deve ser None."""
-        empty_df = pd.DataFrame(columns=["valor"])
-        empty_df.index.name = "Date"
+        empty_df = pd.DataFrame(columns=["data", "valor"])
 
-        with patch("bcb.sgs.get", return_value=empty_df):
+        with patch.object(fetcher, "_fetch_sgs_last", return_value=empty_df):
             result = fetcher.get_latest_values()
 
         for v in result.values():
             assert v is None
+
+
+# ============================================================================
+# TESTES SGS — MÉTODOS ADICIONAIS DO MÓDULO bcb/ (Sprint B.4)
+# ============================================================================
+
+
+class TestBCBSGSNovosMetodos:
+    """Testes parametrizados para métodos SGS sem cobertura anterior.
+
+    Todos os métodos SGS seguem o mesmo padrão: chamam _fetch_sgs_series()
+    que por sua vez usa bcb.sgs.get() → DataFrame com index Date e coluna valor.
+    """
+
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            # Inflação complementar
+            "get_igpdi",
+            "get_ipca15",
+            "get_core_ipca_ex0",
+            # Atividade econômica
+            "get_capacity_utilization",
+            "get_consumer_confidence",
+            "get_formal_employment_balance",
+            "get_hours_worked",
+            "get_minimum_wage",
+            "get_real_average_income",
+            "get_real_wage_bill",
+            "get_unemployment_rate",
+            # Fiscal e externo
+            "get_current_account",
+            "get_external_debt",
+            "get_fdi_net",
+            "get_fx_flow",
+            "get_terms_of_trade",
+            # Crédito e monetário
+            "get_banking_spread_pf",
+            "get_credit_cost_pf",
+            "get_default_rate_total",
+            "get_default_rate_corporate",
+            "get_default_rate_pf_15_90",
+            "get_default_rate_pf_90_plus",
+            "get_default_rate_credit_card",
+            "get_household_debt_ratio",
+            "get_household_debt_service",
+            "get_monetary_base",
+            "get_reserve_requirements",
+            # Juros derivados
+            "get_real_interest_rate",
+        ],
+    )
+    def test_metodo_sgs_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str
+    ) -> None:
+        """Cada método SGS retorna DataFrame com coluna 'valor' ao receber dados."""
+        mock_df = _make_sgs_df([10.5, 11.0, 10.8])
+        with patch("bcb.sgs.get", return_value=mock_df):
+            result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, pd.DataFrame)
+        assert "valor" in result.columns
+        assert len(result) > 0
+
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "get_igpdi",
+            "get_ipca15",
+            "get_unemployment_rate",
+            "get_monetary_base",
+        ],
+    )
+    def test_metodo_sgs_dataframe_vazio_retorna_vazio(
+        self, fetcher: BCBFetcher, method_name: str
+    ) -> None:
+        """SGS com DataFrame vazio retorna DataFrame vazio (sem exceção)."""
+        empty_df = pd.DataFrame(columns=["valor"])
+        empty_df.index.name = "Date"
+        with patch("bcb.sgs.get", return_value=empty_df):
+            result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, pd.DataFrame)
+
+    def test_get_ipca_expectation_12m_retorna_dataframe(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_ipca_expectation_12m usa SGS 13522 (expectativa IPCA 12m)."""
+        mock_df = _make_sgs_df([4.5, 4.4, 4.3])
+        with patch("bcb.sgs.get", return_value=mock_df):
+            result = fetcher.get_ipca_expectation_12m()
+
+        assert isinstance(result, pd.DataFrame)
+        assert "valor" in result.columns
+
+
+# ============================================================================
+# TESTES FOCUS — MÉTODOS ADICIONAIS (Sprint B.4)
+# ============================================================================
+
+
+class TestBCBFocusNovosMetodos:
+    """Testes para métodos Focus sem cobertura anterior."""
+
+    # -- Métodos Focus sem argumento obrigatório --
+
+    @pytest.mark.parametrize(
+        "method_name,mock_method",
+        [
+            ("get_focus_selic_copom", "_fetch_focus_selic_copom"),
+        ],
+    )
+    def test_focus_sem_args_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str, mock_method: str
+    ) -> None:
+        """Métodos Focus sem argumento obrigatório retornam DataFrame."""
+        mock_df = _make_focus_df()
+        with patch.object(fetcher, mock_method, return_value=mock_df):
+            result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, pd.DataFrame)
+
+    def test_focus_ipca24m_retorna_dataframe(self, fetcher: BCBFetcher) -> None:
+        """get_focus_ipca24m usa _fetch_focus_inflacao com suavizada='N'."""
+        mock_df = _make_focus_ipca12m_df()
+        with patch.object(fetcher, "_fetch_focus_inflacao", return_value=mock_df):
+            result = fetcher.get_focus_ipca24m()
+
+        assert isinstance(result, pd.DataFrame)
+
+    # -- Métodos Focus com indicator obrigatório --
+
+    @pytest.mark.parametrize(
+        "method_name,mock_method",
+        [
+            ("get_focus_monthly", "_fetch_focus_mensais"),
+            ("get_focus_quarterly", "_fetch_focus_trimestrais"),
+        ],
+    )
+    def test_focus_com_indicator_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str, mock_method: str
+    ) -> None:
+        """Métodos Focus com indicator obrigatório retornam DataFrame."""
+        mock_df = _make_focus_df()
+        with patch.object(fetcher, mock_method, return_value=mock_df):
+            result = getattr(fetcher, method_name)("IPCA")
+
+        assert isinstance(result, pd.DataFrame)
+
+    # -- Métodos Focus Top5 --
+
+    @pytest.mark.parametrize(
+        "method_name,mock_method",
+        [
+            ("get_focus_top5", "_fetch_focus_top5_anuais"),
+            ("get_focus_top5_selic", "_fetch_focus_top5_selic"),
+            ("get_focus_top5_ipca12m", "_fetch_focus_top5_inflacao"),
+            ("get_focus_top5_ipca24m", "_fetch_focus_top5_inflacao"),
+        ],
+    )
+    def test_focus_top5_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str, mock_method: str
+    ) -> None:
+        """Métodos Focus Top5 retornam DataFrame."""
+        mock_df = _make_focus_df()
+        with patch.object(fetcher, mock_method, return_value=mock_df):
+            # get_focus_top5 requer indicator, os demais não
+            if method_name == "get_focus_top5":
+                result = getattr(fetcher, method_name)("IPCA")
+            else:
+                result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, pd.DataFrame)
+
+    # -- Métodos Focus Top5 com indicator obrigatório --
+
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "get_focus_top5_monthly",
+            "get_focus_top5_quarterly",
+        ],
+    )
+    def test_focus_top5_com_indicator_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str
+    ) -> None:
+        """Focus Top5 com indicator obrigatório retorna DataFrame."""
+        mock_df = _make_focus_df()
+        with patch.object(fetcher, "_fetch_focus_generic_top5", return_value=mock_df):
+            result = getattr(fetcher, method_name)("IPCA")
+
+        assert isinstance(result, pd.DataFrame)
+
+    # -- Métodos Focus batch (all) --
+
+    @pytest.mark.parametrize(
+        "method_name",
+        [
+            "get_focus_monthly_all",
+            "get_focus_quarterly_all",
+            "get_focus_top5_all",
+        ],
+    )
+    def test_focus_batch_retorna_dict(
+        self, fetcher: BCBFetcher, method_name: str
+    ) -> None:
+        """Métodos Focus batch (all) retornam dict {indicador: DataFrame}."""
+        mock_df = _make_focus_df()
+        with patch.object(
+            fetcher, "_fetch_focus_batch", return_value={"IPCA": mock_df}
+        ):
+            result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, dict)
+
+    def test_get_focus_reference_dates_retorna_dataframe(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_focus_reference_dates retorna DataFrame com datas de referência."""
+        mock_df = pd.DataFrame(
+            {
+                "DataReferencia": ["2024-01-01", "2024-04-01"],
+                "Tipo": ["Anual", "Anual"],
+            }
+        )
+        with patch.object(
+            fetcher, "_fetch_focus_reference_dates", return_value=mock_df
+        ):
+            result = fetcher.get_focus_reference_dates()
+
+        assert isinstance(result, pd.DataFrame)
+
+
+# ============================================================================
+# TESTES TAXAJUROS — MÉTODOS ADICIONAIS (Sprint B.4)
+# ============================================================================
+
+
+class TestBCBTaxaJurosNovosMetodos:
+    """Testes para métodos TaxaJuros sem cobertura anterior."""
+
+    def test_get_lending_rates_daily_retorna_dataframe(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_lending_rates_daily retorna DataFrame com taxas diárias."""
+        mock_df = pd.DataFrame(
+            {
+                "InicioPeriodo": ["2024-01-01"],
+                "FimPeriodo": ["2024-01-31"],
+                "Modalidade": ["Cheque especial"],
+                "Posicao": [1],
+                "InstituicaoFinanceira": ["Banco X"],
+                "TaxaJurosAoMes": [8.5],
+                "TaxaJurosAoAno": [167.0],
+            }
+        )
+        with patch.object(fetcher, "_fetch_lending_rates_odata", return_value=mock_df):
+            result = fetcher.get_lending_rates_daily()
+
+        assert isinstance(result, pd.DataFrame)
+
+    def test_get_lending_rates_unified_retorna_dataframe(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_lending_rates_unified retorna DataFrame consolidado."""
+        mock_df = _make_taxa_juros_df()
+        with patch.object(fetcher, "_fetch_lending_rates_odata", return_value=mock_df):
+            result = fetcher.get_lending_rates_unified()
+
+        assert isinstance(result, pd.DataFrame)
+
+    def test_get_lending_rate_dates_retorna_dataframe(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_lending_rate_dates retorna DataFrame com datas disponíveis."""
+        mock_df = pd.DataFrame(
+            {
+                "InicioPeriodo": ["2024-01-01", "2024-02-01"],
+                "FimPeriodo": ["2024-01-31", "2024-02-29"],
+            }
+        )
+        with patch.object(fetcher, "_fetch_lending_rates_odata", return_value=mock_df):
+            result = fetcher.get_lending_rate_dates()
+
+        assert isinstance(result, pd.DataFrame)
+
+
+# ============================================================================
+# TESTES MERCADO IMOBILIÁRIO (Sprint B.4 — novo mixin)
+# ============================================================================
+
+
+def _make_mercado_imobiliario_df(indicator_info: str = "indices_ivg") -> pd.DataFrame:
+    """Cria DataFrame no formato retornado por bcb.MercadoImobiliario OData."""
+    return pd.DataFrame(
+        {
+            "Data": pd.to_datetime(["2024-01-31", "2024-02-29", "2024-03-31"]),
+            "Info": [indicator_info] * 3,
+            "Valor": [150.5, 151.2, 152.0],
+        }
+    )
+
+
+class TestBCBMercadoImobiliario:
+    """Testes para BCBMercadoImobiliarioMixin — indicadores imobiliários OData."""
+
+    @pytest.mark.parametrize(
+        "method_name,indicator_key",
+        [
+            # Índices
+            ("get_ivg", "ivg"),
+            ("get_mvg", "mvg"),
+            # Crédito PF — estoque
+            ("get_credito_imobiliario_sfh", "credito_pf_sfh_total"),
+            ("get_credito_imobiliario_fgts", "credito_pf_fgts_total"),
+            ("get_credito_imobiliario_livre", "credito_pf_livre_total"),
+            # Inadimplência
+            ("get_inadimplencia_imobiliaria_sfh", "inadimplencia_pf_sfh_total"),
+            ("get_inadimplencia_imobiliaria_livre", "inadimplencia_pf_livre_total"),
+            # Taxas
+            ("get_taxa_credito_imobiliario_sfh", "taxa_credito_pf_sfh_total"),
+            ("get_taxa_credito_imobiliario_livre", "taxa_credito_pf_livre_total"),
+            # Contratações
+            ("get_contratacao_imobiliaria_sfh", "contratacao_pf_sfh_total"),
+            ("get_contratacao_imobiliaria_livre", "contratacao_pf_livre_total"),
+            # Imóveis
+            ("get_imoveis_apartamento", "imoveis_tipo_apartamento_total"),
+            ("get_imoveis_casa", "imoveis_tipo_casa_total"),
+            ("get_imoveis_valor_medio", "imoveis_valor_medio_total"),
+        ],
+    )
+    def test_metodo_imobiliario_retorna_dataframe(
+        self, fetcher: BCBFetcher, method_name: str, indicator_key: str
+    ) -> None:
+        """Cada método imobiliário retorna DataFrame com colunas padrão."""
+        # Mock no método interno — evita complexidade do OData mock
+        mock_result = pd.DataFrame(
+            {
+                "data": pd.to_datetime(["2024-01-31", "2024-02-29"]),
+                "valor": [150.5, 151.2],
+                "indicador": [indicator_key, indicator_key],
+            }
+        )
+        with patch.object(
+            fetcher, "_fetch_mercado_imobiliario", return_value=mock_result
+        ):
+            result = getattr(fetcher, method_name)()
+
+        assert isinstance(result, pd.DataFrame)
+        assert "data" in result.columns
+        assert "valor" in result.columns
+        assert "indicador" in result.columns
+        assert len(result) > 0
+
+    def test_indicador_inexistente_retorna_vazio(self, fetcher: BCBFetcher) -> None:
+        """_fetch_mercado_imobiliario com chave inválida retorna DataFrame vazio."""
+        result = fetcher._fetch_mercado_imobiliario("chave_inexistente", 12)
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    def test_api_vazia_retorna_dataframe_vazio(self, fetcher: BCBFetcher) -> None:
+        """Quando _fetch retorna DataFrame vazio, método retorna vazio."""
+        empty = pd.DataFrame(columns=["data", "valor", "indicador"])
+        with patch.object(fetcher, "_fetch_mercado_imobiliario", return_value=empty):
+            result = fetcher.get_ivg()
+
+        assert isinstance(result, pd.DataFrame)
+        assert len(result) == 0
+
+    def test_get_mercado_imobiliario_all_retorna_dict(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_mercado_imobiliario_all retorna dict com indicadores."""
+        mock_df = _make_mercado_imobiliario_df("indices_ivg")
+        with patch.object(fetcher, "_fetch_mercado_imobiliario", return_value=mock_df):
+            result = fetcher.get_mercado_imobiliario_all()
+
+        assert isinstance(result, dict)
+        assert len(result) > 0
+
+    def test_get_mercado_imobiliario_all_tolera_erros_parciais(
+        self, fetcher: BCBFetcher
+    ) -> None:
+        """get_mercado_imobiliario_all continua mesmo se alguns indicadores falham."""
+        call_count = 0
+
+        def mock_fetch(indicator_key: str, period: int) -> pd.DataFrame:
+            nonlocal call_count
+            call_count += 1
+            if call_count % 3 == 0:
+                raise ConnectionError("Erro simulado")
+            return _make_mercado_imobiliario_df()
+
+        with patch.object(
+            fetcher, "_fetch_mercado_imobiliario", side_effect=mock_fetch
+        ):
+            result = fetcher.get_mercado_imobiliario_all()
+
+        assert isinstance(result, dict)
+        # Pelo menos alguns indicadores devem ter sido obtidos
+        assert len(result) > 0
