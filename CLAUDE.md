@@ -55,6 +55,14 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 - **Grafo de dependências**: `docs/dev/DEPENDENCY_GRAPH.mermaid`
   Quem importa quem. Consulte antes de adicionar imports para evitar ciclos.
 
+- **DevOps e CI/CD**: `docs/dev/DEVOPS.md`
+  Guia completo de como contribuir: branches, commits, PRs, Makefile,
+  GitHub Actions, Dependabot, troubleshooting. Leia ao iniciar um sprint.
+
+- **Próximo sprint**: `docs/dev/NEXT_SPRINT.md`
+  Prompt de continuação para novas sessões Claude Code. Contém o estado
+  atual dos Fetcher Sprints e decisões técnicas pendentes.
+
 - **Código existente**: `src/carteira_auto/`
   O repositório tem código funcional (v0.2.1). Respeite e reaproveite tudo
   que já existe — nunca reescreva o que funciona.
