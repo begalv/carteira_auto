@@ -7,7 +7,7 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.1+ — Fetcher Maximization Sprint, Fase A concluída)
+## Estado atual do projeto (v0.2.2+ — Fetcher Maximization Sprint, Fases A-B concluídas)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
@@ -17,14 +17,14 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 | 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
 | **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
-| **Fetcher Sprint B** | EM ANDAMENTO | Expansão BCBFetcher, IBGEFetcher, FREDFetcher |
+| **Fetcher Sprint B** | **CONCLUÍDA** | BCBFetcher (módulo bcb/ com 6 mixins, 104+ métodos, incl. MercadoImobiliário), IBGEFetcher (+get_analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+11 convenience methods, FRED_SERIES unificada em constants.py) |
 | **Fetcher Sprint C** | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
 | **Fetcher Sprint D** | Pendente | IngestNodes com fallback, testes integração, docs finais |
 | 2 Sprint 2+ | Pendente | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 407+ passando (unit + integration). 2 falhas pré-existentes (CVM 404, Excel fixture).
-**Novos testes:** test_fetch_helpers.py (22), test_reference_lake.py (39).
-**Cobertura:** models, analyzers (10), fetchers, CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
+**Testes:** 646 passando (unit + integration). 1 falha pré-existente (CVM 404).
+**Novos testes Sprint B:** test_bcb_fetcher_v2.py (129), test_fred_fetcher.py (55), test_ibge_fetcher_v2.py (40).
+**Cobertura:** models, analyzers (10), fetchers (BCB 129, FRED 55, IBGE 40), CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
 
 ## Documentos de referência
 
@@ -127,7 +127,7 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
   → OptimizationConfig vai em config/optimization.py (novo arquivo)
 - `constants.py`: Constants class com colunas de planilha, field maps,
   BCB_SERIES_CODES (31 séries SGS), IBGE_TABLE_IDS (16 tabelas SIDRA),
-  FRED_SERIES (30 séries com metadados), INDEX_CODES (6 índices B3),
+  FRED_SERIES (30 séries, chaves PT: nome/unidade/frequencia), INDEX_CODES (6 índices B3),
   padrões de ticker, horários de mercado, feriados B3.
   → ADICIONE novas constantes aqui.
 
@@ -165,10 +165,12 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
   → Veja Pattern 10 em PATTERNS.md.
 
 ### Data (src/carteira_auto/data/)
-- `fetchers/`: YahooFinanceFetcher, BCBFetcher, IBGEFetcher, FREDFetcher,
-  CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
+- `fetchers/`: YahooFinanceFetcher, BCBFetcher (módulo bcb/ com 6 mixins),
+  IBGEFetcher, FREDFetcher, CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
+  BCBFetcher inclui: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário (104+ métodos).
+  FREDFetcher com 23 convenience methods + get_series() genérico para 30 séries.
   TradingComDadosFetcher planejado para Sprint C (config pronta em settings.py).
-  → EXPANDA os existentes conforme plano do sprint (python-bcb, sidrapy, CKAN).
+  → EXPANDA os existentes conforme plano do sprint.
   → ADICIONE novos fetchers no mesmo padrão (Pattern 1).
 - `lake/`: DataLake (fachada), PriceLake, MacroLake, FundamentalsLake, NewsLake,
   ReferenceLake (12 tabelas: composições, Focus, targets, holders, fundos, ativos).
@@ -224,7 +226,7 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
 | 2 Sprint 1 | Analyzers: currency, commodity, fiscal | CONCLUÍDA |
 | **Fetcher Max A** | **Fundação: deps, constants, FetchWithFallback, ReferenceLake (12 tab)** | **CONCLUÍDA** |
-| **Fetcher Max B** | **Expansão BCBFetcher (python-bcb), IBGEFetcher (sidrapy), FREDFetcher** | **EM ANDAMENTO** |
+| **Fetcher Max B** | **BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+11 methods), auditoria e testes** | **CONCLUÍDA** |
 | **Fetcher Max C** | **Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher** | Pendente |
 | **Fetcher Max D** | **IngestNodes com fallback, testes integração, docs** | Pendente |
 | 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
@@ -256,6 +258,11 @@ antes de iniciar cada fase.
 - **ReferenceLake (12 tabelas)**: dados de referência não-temporais. Todas as tabelas
   com `source` e `updated_at`. Auditoria de cobertura confirmou que TODOS os dados
   dos fetchers expandidos têm destino no DataLake.
+- **BCBFetcher é módulo** (Sprint B.4): `bcb_fetcher.py` foi deletado. O BCBFetcher
+  agora vive em `data/fetchers/bcb/` como módulo com 6 mixins. Importar sempre
+  via `from carteira_auto.data.fetchers.bcb import BCBFetcher`.
+- **FRED_SERIES fonte canônica**: `Constants.FRED_SERIES` em `config/constants.py`
+  com chaves PT (`nome`, `unidade`, `frequencia`). Não duplicar no fetcher.
 - **Rodando testes no worktree**: usar `PYTHONPATH=src python3 -m pytest` para
   garantir que o worktree `src/` tenha prioridade sobre o pacote instalado.
 
