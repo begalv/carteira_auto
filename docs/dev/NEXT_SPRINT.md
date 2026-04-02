@@ -21,7 +21,7 @@ Estado atual:
 - Fetcher Sprint C: Pendente (Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher)
 - Fetcher Sprint D: Pendente (IngestNodes com fallback, testes integração, docs)
 - CI/CD: GitHub Actions configurado (lint, format, test). Makefile disponível.
-- Testes: 646 passando (unit), 1 falha pré-existente (CVM 404). mypy com continue-on-error.
+- Testes: 697 passando (unit), 1 falha pré-existente (CVM 404). mypy com continue-on-error.
 - pandas pinado em <3.0 por incompatibilidade com testes.
 
 Retome o desenvolvimento a partir do Fetcher Sprint C.
@@ -43,18 +43,18 @@ Comunique-se em português brasileiro.
 
 **Sprint A (CONCLUÍDA):**
 - Dependências: python-bcb, sidrapy, tradingcomdados
-- Constants expandidos: BCB 31 séries SGS, IBGE 16 tabelas SIDRA, FRED 30 séries, 6 índices B3
+- Constants expandidos: BCB 57 séries SGS, IBGE 17 tabelas SIDRA, FRED 38 séries, 6 índices B3
 - `fetch_with_fallback()` helper para fallback entre fetchers
 - ReferenceLake com 12 tabelas de referência
 
 **Sprint B (CONCLUÍDA):**
 - B.1: BCBFetcher expandido (python-bcb SGS, Expectativas Focus, PTAX, TaxaJuros)
 - B.2: IBGEFetcher expandido (sidrapy, CNAE, Países)
-- B.3: FREDFetcher expandido (11 convenience methods, FRED_SERIES unificada em constants.py)
+- B.3: FREDFetcher expandido (23 convenience methods, FRED_SERIES unificada em constants.py)
 - B.4: Auditoria e fechamento — bcb_fetcher.py deletado (módulo bcb/ é definitivo),
   BCBMercadoImobiliarioMixin (14 métodos imobiliários), fix D3N/D4N IBGE,
   get_analfabetismo(), @cache_result em get_sidra_table/get_cnae_search,
-  129 testes BCB + 55 testes FRED (total: 646)
+  129 testes BCB + 55 testes FRED (total: 697)
 
 **Sprint C (PENDENTE):**
 - Yahoo: histórico de dividendos, splits, financials

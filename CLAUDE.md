@@ -7,7 +7,7 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.2+ — Fetcher Maximization Sprint, Fases A-B concluídas)
+## Estado atual do projeto (v0.2.1 — Fetcher Maximization Sprint, Fases A-B concluídas)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
@@ -16,13 +16,13 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 | Hardening | CONCLUÍDA | Result type, validação estrita, error handling, 350 testes |
 | 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
-| **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
-| **Fetcher Sprint B** | **CONCLUÍDA** | BCBFetcher (módulo bcb/ com 6 mixins, 104+ métodos, incl. MercadoImobiliário), IBGEFetcher (+get_analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+11 convenience methods, FRED_SERIES unificada em constants.py) |
+| **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 57 séries, IBGE 17 tabelas, FRED 38 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
+| **Fetcher Sprint B** | **CONCLUÍDA** | BCBFetcher (módulo bcb/ com 6 mixins, 105 métodos, incl. MercadoImobiliário), IBGEFetcher (+get_analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+23 convenience methods, FRED_SERIES unificada em constants.py) |
 | **Fetcher Sprint C** | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
 | **Fetcher Sprint D** | Pendente | IngestNodes com fallback, testes integração, docs finais |
 | 2 Sprint 2+ | Pendente | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 646 passando (unit + integration). 1 falha pré-existente (CVM 404).
+**Testes:** 697 passando (unit + integration). 1 falha pré-existente (CVM 404).
 **Novos testes Sprint B:** test_bcb_fetcher_v2.py (129), test_fred_fetcher.py (55), test_ibge_fetcher_v2.py (40).
 **Cobertura:** models, analyzers (10), fetchers (BCB 129, FRED 55, IBGE 40), CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
 
@@ -126,8 +126,8 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
   → ADICIONE novas configs aqui (AIConfig, etc.)
   → OptimizationConfig vai em config/optimization.py (novo arquivo)
 - `constants.py`: Constants class com colunas de planilha, field maps,
-  BCB_SERIES_CODES (31 séries SGS), IBGE_TABLE_IDS (16 tabelas SIDRA),
-  FRED_SERIES (30 séries, chaves PT: nome/unidade/frequencia), INDEX_CODES (6 índices B3),
+  BCB_SERIES_CODES (57 séries SGS), IBGE_TABLE_IDS (17 tabelas SIDRA),
+  FRED_SERIES (38 séries, chaves PT: nome/unidade/frequencia), INDEX_CODES (6 índices B3),
   padrões de ticker, horários de mercado, feriados B3.
   → ADICIONE novas constantes aqui.
 
@@ -167,8 +167,8 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 ### Data (src/carteira_auto/data/)
 - `fetchers/`: YahooFinanceFetcher, BCBFetcher (módulo bcb/ com 6 mixins),
   IBGEFetcher, FREDFetcher, CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
-  BCBFetcher inclui: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário (104+ métodos).
-  FREDFetcher com 23 convenience methods + get_series() genérico para 30 séries.
+  BCBFetcher inclui: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário (105 métodos).
+  FREDFetcher com 23 convenience methods + 4 base methods para 38 séries.
   TradingComDadosFetcher planejado para Sprint C (config pronta em settings.py).
   → EXPANDA os existentes conforme plano do sprint.
   → ADICIONE novos fetchers no mesmo padrão (Pattern 1).
@@ -226,7 +226,7 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
 | 2 Sprint 1 | Analyzers: currency, commodity, fiscal | CONCLUÍDA |
 | **Fetcher Max A** | **Fundação: deps, constants, FetchWithFallback, ReferenceLake (12 tab)** | **CONCLUÍDA** |
-| **Fetcher Max B** | **BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+11 methods), auditoria e testes** | **CONCLUÍDA** |
+| **Fetcher Max B** | **BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+23 convenience methods), auditoria e testes** | **CONCLUÍDA** |
 | **Fetcher Max C** | **Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher** | Pendente |
 | **Fetcher Max D** | **IngestNodes com fallback, testes integração, docs** | Pendente |
 | 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
@@ -250,7 +250,7 @@ antes de iniciar cada fase.
   de commitar.
 - **Códigos SGS fiscais validados**: Dívida bruta/PIB = 13762 (NÃO 13621, que
   retorna valor absoluto em R$). Juros nominais/PIB = 5727 (NÃO 4185, que não existe).
-- **Novas dependências (Fetcher Sprint)**: python-bcb>=0.6.0, sidrapy>=0.1.0,
+- **Novas dependências (Fetcher Sprint)**: python-bcb>=0.3.0, sidrapy>=0.1.0,
   tradingcomdados>=0.4.0 — todas gratuitas, sem API key.
 - **FetchWithFallback vs @fallback**: `fetch_with_fallback()` orquestra ENTRE fetchers
   diferentes (usado nos IngestNodes). `@fallback` opera DENTRO de um mesmo fetcher

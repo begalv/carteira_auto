@@ -82,8 +82,8 @@ Sprint dedicado a expandir os fetchers existentes para cobrir todas as séries d
 
 | Sub-fase | Escopo | Status |
 |----------|--------|--------|
-| Sprint A | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig | **CONCLUÍDA** |
-| Sprint B | BCBFetcher (módulo bcb/ com 6 mixins incl. MercadoImobiliário, 104+ métodos), IBGEFetcher (+analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+11 convenience methods, FRED_SERIES unificada PT), auditoria (bcb_fetcher.py legado deletado, 646 testes) | **CONCLUÍDA** |
+| Sprint A | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 57 séries, IBGE 17 tabelas, FRED 38 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig | **CONCLUÍDA** |
+| Sprint B | BCBFetcher (módulo bcb/ com 6 mixins incl. MercadoImobiliário, 105 métodos), IBGEFetcher (+analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+23 convenience methods, FRED_SERIES unificada PT), auditoria (bcb_fetcher.py legado deletado, 697 testes) | **CONCLUÍDA** |
 | Sprint C | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher (novo) | Pendente |
 | Sprint D | IngestNodes com fallback chains, testes de integração, docs finais | Pendente |
 
@@ -1532,7 +1532,7 @@ class ContentRouter:
 | 2 Sprint 0 | CONCLUÍDA | — | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | — | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
 | Fetcher Max A | CONCLUÍDA | #34 | Deps (python-bcb, sidrapy, tradingcomdados), constants expandidos, FetchWithFallback, ReferenceLake (12 tab), TradingComDadosConfig |
-| Fetcher Max B | CONCLUÍDA | — | BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+11 methods), auditoria e 646 testes |
+| Fetcher Max B | CONCLUÍDA | — | BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+23 convenience methods), auditoria e 697 testes |
 | Fetcher Max C | Pendente | — | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
 | Fetcher Max D | Pendente | — | IngestNodes com fallback, testes integração, docs |
 | 2 Sprint 2+ | Pendente | — | 6 analyzers restantes (fundamental, yield curve, global macro...) |
@@ -1548,8 +1548,8 @@ class ContentRouter:
 - Node.__init_subclass__() para isolar dependencies entre subclasses
 
 **Decisões tomadas no Fetcher Maximization Sprint A (PR #34):**
-- python-bcb>=0.6.0, sidrapy>=0.1.0, tradingcomdados>=0.4.0 como dependências
-- Constants expandidos: BCB_SERIES_CODES (31 séries), IBGE_TABLE_IDS (16 tabelas), FRED_SERIES (30 séries com metadados), INDEX_CODES (6 índices)
+- python-bcb>=0.3.0, sidrapy>=0.1.0, tradingcomdados>=0.4.0 como dependências
+- Constants expandidos: BCB_SERIES_CODES (57 séries), IBGE_TABLE_IDS (17 tabelas), FRED_SERIES (38 séries com metadados), INDEX_CODES (6 índices)
 - FetchWithFallback vs @fallback: mecanismos distintos (entre fetchers vs dentro de um fetcher)
 - ReferenceLake com 12 tabelas para dados estruturais não-temporais
 - TradingComDadosConfig em settings.py (fetcher será implementado no Sprint C)
