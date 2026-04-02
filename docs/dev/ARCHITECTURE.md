@@ -1,4 +1,4 @@
-# Arquitetura — carteira_auto v0.2.1+ (Fase A — Fetcher Maximization Sprint)
+# Arquitetura — carteira_auto v0.2.1 (Fases A-B — Fetcher Maximization Sprint)
 
 > Referência compacta para Claude Code. Atualizar ao final de cada fase.
 
@@ -26,7 +26,7 @@
 | yahoo_fetcher.py | YahooFinanceFetcher | yfinance | 30 req/min | 5min (preços), 24h (histórico) |
 | bcb/ (módulo, 6 mixins) | BCBFetcher | SGS + python-bcb + OData (Focus, PTAX, TaxaJuros, MercadoImobiliário) | 30 req/min | 1h |
 | ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy + CNAE + Países | 30 req/min | 2h |
-| fred_fetcher.py | FREDFetcher (23 convenience methods) | FRED API (30 séries, FRED_SERIES em constants.py) | 120 req/min | 24h |
+| fred_fetcher.py | FREDFetcher (23 convenience methods + 4 base) | FRED API (38 séries, FRED_SERIES em constants.py) | 120 req/min | 24h |
 | cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
 | tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API + CKAN | 30 req/min | 1h |
 | ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
@@ -75,7 +75,7 @@
 | Arquivo | Exporta | Papel |
 |---------|---------|-------|
 | settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, FREDConfig, TradingComDadosConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema — PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE |
-| constants.py | Constants (BCB_SERIES_CODES=31, IBGE_TABLE_IDS=16, FRED_SERIES=30, INDEX_CODES=6) | Colunas de planilha, field maps, séries BCB expandidas, tabelas IBGE expandidas, séries FRED com metadados, códigos de índices, feriados B3 |
+| constants.py | Constants (BCB_SERIES_CODES=57, IBGE_TABLE_IDS=17, FRED_SERIES=38, INDEX_CODES=6) | Colunas de planilha, field maps, séries BCB expandidas, tabelas IBGE expandidas, séries FRED com metadados, códigos de índices, feriados B3 |
 
 ### utils/ — Utilitários transversais
 | Arquivo | Exporta | Usar quando |
@@ -134,7 +134,7 @@
 | snapshot_path | Path | SaveSnapshotNode | — |
 | _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
 
-## Testes — cobertura atual (646 testes, 1 falha pré-existente CVM 404)
+## Testes — cobertura atual (697 testes, 1 falha pré-existente CVM 404)
 | Arquivo | Qtd | Escopo |
 |---------|-----|--------|
 | test_models.py | 54 | Result type (Ok/Err), validação Asset/Portfolio, todos os model types |

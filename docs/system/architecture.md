@@ -97,7 +97,7 @@ de fetcher vive aqui.
 | Modulo | Responsabilidade |
 |--------|-----------------|
 | `settings.py` | Dataclasses de configuracao: `PathsConfig`, `YahooFetcherConfig`, `BCBConfig`, `IBGEConfig`, `DDMConfig`, `FREDConfig`, `TradingComDadosConfig`, `PortfolioConfig`, `LoggingConfig`, `BaseFetcherConfig` |
-| `constants.py` | Constantes do dominio: colunas da planilha, field maps, BCB_SERIES_CODES (31), IBGE_TABLE_IDS (16), FRED_SERIES (30 com metadados), INDEX_CODES (6), padroes de ticker, horarios B3, feriados |
+| `constants.py` | Constantes do dominio: colunas da planilha, field maps, BCB_SERIES_CODES (57), IBGE_TABLE_IDS (17), FRED_SERIES (38 com metadados), INDEX_CODES (6), padroes de ticker, horarios B3, feriados |
 
 **Regra**: toda nova configuracao e adicionada como dataclass em `settings.py`.
 Toda nova constante de dominio vai em `constants.py`.
@@ -184,18 +184,18 @@ graph TB
     TCF --> RL
 ```
 
-**Fetchers** (8 implementados):
+**Fetchers** (7 implementados, 1 planejado):
 
 | Fetcher | Fonte | Motor interno | Dados |
 |---------|-------|---------------|-------|
 | `YahooFinanceFetcher` | Yahoo Finance | yfinance | Precos OHLCV, dividendos, fundamentalistas, analyst targets, upgrades, major holders, news |
-| `BCBFetcher` | BCB | python-bcb (6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário, Base) | 31 séries SGS, Focus expectations, PTAX, câmbio, taxas de crédito, 14 indicadores imobiliários |
-| `IBGEFetcher` | IBGE | sidrapy + HTTP | 16 tabelas SIDRA (incl. analfabetismo), CNAE, indicadores por país |
-| `FREDFetcher` | Federal Reserve | requests (FRED API) | 30 séries macro US com 23 convenience methods (yields, Fed Funds, CPI, commodities, câmbio) |
+| `BCBFetcher` | BCB | python-bcb (6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário, Base) | 57 séries SGS, Focus expectations, PTAX, câmbio, taxas de crédito, 14 indicadores imobiliários |
+| `IBGEFetcher` | IBGE | sidrapy + HTTP | 17 tabelas SIDRA (incl. analfabetismo), CNAE, indicadores por país |
+| `FREDFetcher` | Federal Reserve | requests (FRED API) | 38 séries macro US com 23 convenience methods (yields, Fed Funds, CPI, commodities, câmbio) |
 | `CVMFetcher` | CVM | HTTP | DFP/ITR, cadastro de fundos, FIIs, intermediários, carteiras CDA |
 | `TesouroDiretoFetcher` | Tesouro Nacional | CSV + CKAN | Títulos públicos, taxas, curva de juros, vendas, resgates, estoque |
 | `DDMFetcher` | Dados de Mercado | HTTP (API key) | Cotações, fundamentos, DRE, FIIs, macro, yield curves, risco |
-| `TradingComDadosFetcher` | TradingComDados | tradingcomdados (gratuito) | Composição de índices (IBOV, IFIX, etc.), listas de ativos (ações, FIIs, BDRs, ETFs) |
+| `TradingComDadosFetcher` | TradingComDados | tradingcomdados (gratuito) | Composição de índices (IBOV, IFIX, etc.), listas de ativos (ações, FIIs, BDRs, ETFs) — **planejado Sprint C** |
 
 **FetchWithFallback** — helper de fallback hierárquico (`core/nodes/fetch_helpers.py`):
 - Tenta fontes na ordem de prioridade (gratuito antes de pago)
@@ -610,7 +610,7 @@ carteira_auto/
 │   │   │   ├── yahoo_fetcher.py       # Yahoo Finance (precos, fundamentos, targets, holders)
 │   │   │   ├── bcb/                    # BCB (módulo com 6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário)
 │   │   │   ├── ibge_fetcher.py        # IBGE (sidrapy: SIDRA, CNAE, países)
-│   │   │   ├── fred_fetcher.py        # FRED (30 séries macro US)
+│   │   │   ├── fred_fetcher.py        # FRED (38 séries macro US)
 │   │   │   ├── cvm_fetcher.py         # CVM (fundos, FIIs, DFP/ITR, intermediários)
 │   │   │   ├── tesouro_fetcher.py     # Tesouro Direto (CSV + CKAN)
 │   │   │   ├── ddm_fetcher.py         # DDM (cotações, fundamentos, yield curves)
