@@ -68,7 +68,7 @@ jobs:
       - name: Run tests with coverage
         run: pytest -m "not slow and not integration" --cov=src/carteira_auto --cov-report=xml --tb=short -q
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: coverage.xml
           fail_ci_if_error: false
