@@ -846,10 +846,9 @@ class TestGenericos:
         self, fetcher: BCBFetcher
     ) -> None:
         """Quando série retorna DataFrame vazio, latest_values deve ser None."""
-        empty_df = pd.DataFrame(columns=["valor"])
-        empty_df.index.name = "Date"
+        empty_df = pd.DataFrame(columns=["data", "valor"])
 
-        with patch("bcb.sgs.get", return_value=empty_df):
+        with patch.object(fetcher, "_fetch_sgs_last", return_value=empty_df):
             result = fetcher.get_latest_values()
 
         for v in result.values():
