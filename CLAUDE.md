@@ -7,7 +7,7 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.1 — Fetcher Maximization Sprint, Fases A-B concluídas)
+## Estado atual do projeto (v0.2.1 — Épico 0: Estabilização em andamento)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
@@ -16,15 +16,17 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 | Hardening | CONCLUÍDA | Result type, validação estrita, error handling, 350 testes |
 | 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
-| **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 57 séries, IBGE 17 tabelas, FRED 38 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
-| **Fetcher Sprint B** | **CONCLUÍDA** | BCBFetcher (módulo bcb/ com 6 mixins, 105 métodos, incl. MercadoImobiliário), IBGEFetcher (+get_analfabetismo, fix D3N/D4N, @cache_result), FREDFetcher (+23 convenience methods, FRED_SERIES unificada em constants.py) |
-| **Fetcher Sprint C** | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
-| **Fetcher Sprint D** | Pendente | IngestNodes com fallback, testes integração, docs finais |
+| Fetcher Sprint A | CONCLUÍDA | Dependências, constants expandidos, FetchWithFallback, ReferenceLake (12 tabelas) |
+| Fetcher Sprint B | CONCLUÍDA | BCBFetcher (6 mixins, 105 métodos), IBGEFetcher, FREDFetcher (+23 methods) |
+| **Épico 0 Sprint 1 Bloco A** | **CONCLUÍDA** | Baseline limpo: fixtures, contagem testes unificada, TECH_DEBT_INVENTORY.md (65 itens rastreáveis) |
+| Épico 0 Sprint 1 Blocos B-D | Pendente | Segurança, infraestrutura documental, auditoria de testes |
+| Fetcher Sprint C | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
+| Fetcher Sprint D | Pendente | IngestNodes com fallback, testes integração, docs finais |
 | 2 Sprint 2+ | Pendente | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 697 passando (unit + integration). 1 falha pré-existente (CVM 404).
-**Novos testes Sprint B:** test_bcb_fetcher_v2.py (129), test_fred_fetcher.py (55), test_ibge_fetcher_v2.py (40).
-**Cobertura:** models, analyzers (10), fetchers (BCB 129, FRED 55, IBGE 40), CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
+**Testes:** 697 passando (632 unit + 65 integration). 0 falhas.
+**Cobertura:** models, analyzers (3 dedicados + 7 via test_analyzers.py), fetchers (BCB 129, FRED 55, IBGE 40), CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
+**Gaps de cobertura:** 18 módulos sem teste dedicado — ver `docs/dev/TECH_DEBT_INVENTORY.md` seção 10.
 
 ## Documentos de referência
 
@@ -61,7 +63,12 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
 - **Próximo sprint**: `docs/dev/NEXT_SPRINT.md`
   Prompt de continuação para novas sessões Claude Code. Contém o estado
-  atual dos Fetcher Sprints e decisões técnicas pendentes.
+  atual dos sprints e decisões técnicas pendentes.
+
+- **Inventário de dívida técnica**: `docs/dev/TECH_DEBT_INVENTORY.md`
+  65 itens rastreáveis por arquivo:linha. Categorias: resource management,
+  error handling, validação, data integrity, CI/CD, magic numbers,
+  código não utilizado, cobertura de testes. Consulte antes de refatorar.
 
 - **Código existente**: `src/carteira_auto/`
   O repositório tem código funcional (v0.2.1). Respeite e reaproveite tudo
@@ -225,10 +232,12 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | 1 | Fontes: FRED, CVM, Tesouro, DDM | CONCLUÍDA |
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
 | 2 Sprint 1 | Analyzers: currency, commodity, fiscal | CONCLUÍDA |
-| **Fetcher Max A** | **Fundação: deps, constants, FetchWithFallback, ReferenceLake (12 tab)** | **CONCLUÍDA** |
-| **Fetcher Max B** | **BCBFetcher (6 mixins + MercadoImobiliário), IBGEFetcher (+analfabetismo), FREDFetcher (+23 convenience methods), auditoria e testes** | **CONCLUÍDA** |
-| **Fetcher Max C** | **Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher** | Pendente |
-| **Fetcher Max D** | **IngestNodes com fallback, testes integração, docs** | Pendente |
+| Fetcher Max A | Fundação: deps, constants, FetchWithFallback, ReferenceLake | CONCLUÍDA |
+| Fetcher Max B | BCBFetcher (6 mixins), IBGEFetcher, FREDFetcher (+23 methods) | CONCLUÍDA |
+| **Épico 0 Sprint 1A** | **Baseline limpo, inventário de dívida técnica (65 itens)** | **CONCLUÍDA** |
+| **Épico 0 Sprint 1B-D** | **Segurança, docs, auditoria de testes** | EM ANDAMENTO |
+| Fetcher Max C | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher | Pendente |
+| Fetcher Max D | IngestNodes com fallback, testes integração, docs | Pendente |
 | 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
 | 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
 | 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |
@@ -243,8 +252,8 @@ antes de iniciar cada fase.
 
 - **Mock paths**: fetchers importados dentro de `run()` devem ser mockados em
   `carteira_auto.data.fetchers.NomeFetcher`, não no módulo do analyzer.
-- **CVM 404**: `test_get_dfp_dre_petrobras` falha com 404 — endpoint CVM removeu
-  o arquivo de 2023. Pré-existente, não bloqueia desenvolvimento.
+- **CVM 404**: `test_get_dfp_dre_petrobras` marcado `@pytest.mark.integration` —
+  excluído do `make test`. Endpoint CVM pode estar indisponível.
 - **ruff UP007**: usar `X | Y` em vez de `Optional[X]` para type annotations.
 - **Pre-commit hooks**: black + ruff rodam automaticamente. Sempre corrigir antes
   de commitar.
@@ -265,6 +274,13 @@ antes de iniciar cada fase.
   com chaves PT (`nome`, `unidade`, `frequencia`). Não duplicar no fetcher.
 - **Rodando testes no worktree**: usar `PYTHONPATH=src python3 -m pytest` para
   garantir que o worktree `src/` tenha prioridade sobre o pacote instalado.
+- **Teste flaky**: `test_fred_fetcher.py::test_sem_api_key_levanta_permission_error`
+  falha intermitentemente por leak de env vars entre testes. Causa raiz: conftest.py
+  sem fixture autouse para limpar environment. Ver TECH_DEBT_INVENTORY.md item 7.7.
+- **Dívida técnica documentada**: 65 itens em `docs/dev/TECH_DEBT_INVENTORY.md`,
+  todos rastreáveis por arquivo:linha. 5 Alta, 27 Média, 33 Baixa. Principais:
+  sessions não fechadas (tesouro/cvm fetchers), retornos inconsistentes entre
+  fetchers, mypy com continue-on-error no CI, 18 módulos sem teste dedicado.
 
 ## Workflow de CI/CD
 

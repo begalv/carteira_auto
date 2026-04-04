@@ -134,7 +134,7 @@
 | snapshot_path | Path | SaveSnapshotNode | — |
 | _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
 
-## Testes — cobertura atual (697 testes, 1 falha pré-existente CVM 404)
+## Testes — cobertura atual (697 testes, 0 falhas)
 | Arquivo | Qtd | Escopo |
 |---------|-----|--------|
 | test_models.py | 54 | Result type (Ok/Err), validação Asset/Portfolio, todos os model types |
@@ -147,9 +147,22 @@
 | test_decorators.py | 20 | Todos os decorators |
 | test_integrations.py | 8 | E2E pipeline, dry_run, presets |
 | test_lake.py | — | PriceLake, MacroLake, FundamentalsLake, NewsLake |
-| test_cvm_fetcher.py | — | CVMFetcher (1 falha pré-existente: CVM 404) |
+| test_cvm_fetcher.py | — | CVMFetcher (integration tests marcados @pytest.mark.integration) |
 | test_currency_analyzer.py | 9 | CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais) |
 | test_commodity_analyzer.py | 8 | CommodityAnalyzer (preços, ciclo, índice, falhas) |
 | test_fiscal_analyzer.py | 16 | FiscalAnalyzer (métricas, trajetória, variação 12m, falhas) |
 | test_fetch_helpers.py | 22 | FetchStrategy, FetchResult, fetch_with_fallback (fallback, transform, critical mode) |
 | test_reference_lake.py | 39 | ReferenceLake — todas as 12 tabelas (composições, Focus, targets, holders, fundos, ativos) |
+
+### Fixtures disponíveis
+| Arquivo | Conteúdo |
+|---------|----------|
+| tests/fixtures/sample_portfolio.xlsx | 5 ativos (PETR4, VALE3, ITUB4, WEGE3, BBDC4), aba Vendas, aba Resumo |
+| tests/fixtures/test_config.yaml | Config mínima (portfolio, logging, data_lake) |
+
+### Gaps de cobertura
+18 módulos sem teste dedicado (2.164 linhas). Ver `TECH_DEBT_INVENTORY.md` seção 10.
+
+### Dívida técnica
+65 itens catalogados em `TECH_DEBT_INVENTORY.md` — todos rastreáveis por arquivo:linha.
+1 teste flaky: `test_fred_fetcher.py::test_sem_api_key_levanta_permission_error` (leak de env vars).

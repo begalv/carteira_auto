@@ -24,7 +24,7 @@ cd carteira_auto
 make install-dev   # pip install -e ".[dev]" + pre-commit install
 
 # Verifique
-make check         # deve passar: lint + format + 548 testes
+make check         # deve passar: lint + format + 697 testes
 ```
 
 ---
