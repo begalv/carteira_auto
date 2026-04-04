@@ -1567,7 +1567,7 @@ class ContentRouter:
 - test_fetch_helpers.py (22) — FetchWithFallback, FetchStrategy, FetchResult
 - test_reference_lake.py (39) — ReferenceLake (12 tabelas, CRUD, auditoria)
 - test_lake.py, test_cvm_fetcher.py, test_fred_fetcher.py, test_ddm_fetcher.py, test_tesouro_fetcher.py, test_ingest_nodes.py, test_rate_helpers.py (pré-existentes)
-- **2 falhas pré-existentes:** CVM 404 (endpoint removido), Excel fixture
+- **0 falhas:** CVM 404 isolado com @pytest.mark.integration, fixtures corrigidas
 
 ---
 

@@ -160,7 +160,7 @@ carteira_auto/
 │   └── cli/              # Comandos CLI
 ├── dashboards/           # Streamlit app + paginas
 ├── notebooks/            # Notebooks de analise interativa
-├── tests/                # Unit + integration tests (407 testes)
+├── tests/                # Unit + integration tests (697 testes)
 ├── data/                 # Dados locais (gitignored)
 │   ├── lake/             # SQLite DataLake
 │   ├── raw/              # Planilha da carteira

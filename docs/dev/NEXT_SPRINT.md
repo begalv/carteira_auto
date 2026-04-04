@@ -1,4 +1,4 @@
-# Próximo Sprint — Continuação dos Fetchers
+# Próximo Sprint — Épico 0: Estabilização (Sprint 1, Blocos B-D)
 
 > Prompt de instrução para uma nova sessão do Claude Code retomar o
 > desenvolvimento do sistema `carteira_auto`. Copie o conteúdo deste
@@ -10,21 +10,22 @@
 
 ```
 Leia o CLAUDE.md na raiz do projeto e os seguintes documentos:
-- docs/system/plano_implementacao_carteira_auto.md (seção "Fetcher Maximization Sprint")
+- docs/dev/TECH_DEBT_INVENTORY.md (inventário de dívida técnica — 65 itens)
 - docs/dev/ARCHITECTURE.md (mapa completo do código)
-- docs/dev/PATTERNS.md (templates de fetchers e analyzers)
 - docs/dev/DEVOPS.md (fluxo de CI/CD e como commitar/criar PRs)
 
 Estado atual:
-- Fetcher Sprint A: CONCLUÍDA (deps, constants, FetchWithFallback, ReferenceLake)
-- Fetcher Sprint B: CONCLUÍDA (BCBFetcher 6 mixins incl. MercadoImobiliário, IBGEFetcher +analfabetismo +fix D3N/D4N, FREDFetcher +11 methods + FRED_SERIES unificada)
-- Fetcher Sprint C: Pendente (Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher)
-- Fetcher Sprint D: Pendente (IngestNodes com fallback, testes integração, docs)
-- CI/CD: GitHub Actions configurado (lint, format, test). Makefile disponível.
-- Testes: 697 passando (unit), 1 falha pré-existente (CVM 404). mypy com continue-on-error.
+- Épico 0 Sprint 1 Bloco A: CONCLUÍDA (baseline limpo, TECH_DEBT_INVENTORY.md)
+- Épico 0 Sprint 1 Blocos B-D: PENDENTES (segurança, docs, auditoria de testes)
+- Fetcher Sprints A-B: CONCLUÍDAS
+- Fetcher Sprints C-D: PENDENTES (aguardando conclusão do Épico 0)
+- Testes: 697 passando (632 unit + 65 integration), 0 falhas.
+  1 teste flaky: test_fred_fetcher.py::test_sem_api_key_levanta_permission_error
 - pandas pinado em <3.0 por incompatibilidade com testes.
 
-Retome o desenvolvimento a partir do Fetcher Sprint C.
+Retome o desenvolvimento a partir do Épico 0 Sprint 1 Bloco B (Segurança).
+Consulte o SPRINT_LOG.md (seção "Sprint 1 Planning") para os itens SEC-001 a SEC-004.
+
 Siga o protocolo de sprints do CLAUDE.md:
 1. Audite o estado atual do código
 2. Proponha o sprint com entregáveis concretos
@@ -39,34 +40,42 @@ Comunique-se em português brasileiro.
 
 ## Contexto para o humano
 
-### O que já foi feito nos Fetcher Sprints
+### O que foi feito no Épico 0 Sprint 1 Bloco A
 
-**Sprint A (CONCLUÍDA):**
-- Dependências: python-bcb, sidrapy, tradingcomdados
-- Constants expandidos: BCB 57 séries SGS, IBGE 17 tabelas SIDRA, FRED 38 séries, 6 índices B3
-- `fetch_with_fallback()` helper para fallback entre fetchers
-- ReferenceLake com 12 tabelas de referência
+**Objetivo:** Baseline limpo — zerar falhas, catalogar dívida técnica.
 
-**Sprint B (CONCLUÍDA):**
-- B.1: BCBFetcher expandido (python-bcb SGS, Expectativas Focus, PTAX, TaxaJuros)
-- B.2: IBGEFetcher expandido (sidrapy, CNAE, Países)
-- B.3: FREDFetcher expandido (23 convenience methods, FRED_SERIES unificada em constants.py)
-- B.4: Auditoria e fechamento — bcb_fetcher.py deletado (módulo bcb/ é definitivo),
-  BCBMercadoImobiliarioMixin (14 métodos imobiliários), fix D3N/D4N IBGE,
-  get_analfabetismo(), @cache_result em get_sidra_table/get_cnae_search,
-  129 testes BCB + 55 testes FRED (total: 697)
+**Entregáveis:**
+- Fixtures de teste criadas (`sample_portfolio.xlsx`, `test_config.yaml`)
+- Contagem de testes unificada em 6 docs (697 = 632 unit + 65 integration)
+- `docs/dev/TECH_DEBT_INVENTORY.md` com 65 itens rastreáveis por arquivo:linha
+- Auditoria de decorators (12 decorators: 9 em uso, 3 sem uso com decisão documentada)
+- 1 teste flaky identificado (leak de env vars entre testes)
 
-**Sprint C (PENDENTE):**
-- Yahoo: histórico de dividendos, splits, financials
-- DDM: expansão de screening
-- Tesouro: taxas indicativas via CKAN
-- CVM: fundos, demonstrações
-- TradingComDadosFetcher: novo fetcher
+**Decisões registradas:**
+- BUG-001 (CVM 404): teste já isolado com @pytest.mark.integration, documentado
+- BUG-002 (Excel fixture): premissa original incorreta (nenhum teste falhava),
+  fixtures criadas para uso futuro
+- DEBT-001: zero TODOs/FIXMEs no código, mas 65 itens reais de dívida técnica
+  encontrados por auditoria manual
+- 3 decorators sem uso mantidos (uso planejado em fases futuras)
 
-**Sprint D (PENDENTE):**
-- IngestNodes com fallback hierárquico
-- Testes de integração completos
-- Documentação final dos fetchers
+### Próximos blocos do Sprint 1
+
+**Bloco B — Segurança e Higiene** (`sprint-1/security-audit`):
+- SEC-001: Validar .env.example completo
+- SEC-002: Validar .gitignore
+- SEC-003: Auditar git history + remediação
+- SEC-004: Validar pre-commit detect-private-key
+
+**Bloco C — Infraestrutura Documental** (`sprint-1/doc-infrastructure`):
+- DOC-003: Commitar BACKLOG.md e DOCUMENT_MAP.md
+- DOC-002: SPRINT_LOG.md retroativo
+- APIDOC-001: Criar pasta docs/api_reference/
+- APIDOC-009: Redirect api_reference.md antigo
+
+**Bloco D — Auditoria de Testes** (`sprint-1/test-audit`):
+- TAUD-001: Inventário de testes por módulo
+- TAUD-004: Auditar marcadores @pytest.mark.integration
 
 ### Decisões técnicas importantes
 
@@ -75,3 +84,4 @@ Comunique-se em português brasileiro.
 - `economic.py` mantém `Optional[date]` (UP007/UP045 ignorados) por conflito Pydantic.
 - pandas pinado `<3.0` — pandas 3.x quebra mocks do test_fiscal_analyzer.
 - Testes de integração marcados com `@pytest.mark.integration` (excluídos do CI de PR).
+- mypy com `continue-on-error: true` no CI (item 7.1 do TECH_DEBT_INVENTORY).

@@ -1,0 +1,14 @@
+# Configuração de teste para carteira_auto
+# Usado como fixture para testes que precisam de config externa
+
+portfolio:
+  source_path: "tests/fixtures/sample_portfolio.xlsx"
+  risk_free_daily: 0.000407
+  min_trade_value: 100.0
+
+logging:
+  level: "DEBUG"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+data_lake:
+  base_path: "/tmp/carteira_auto_test_lake"
