@@ -1,4 +1,4 @@
-# Arquitetura — carteira_auto v0.2.1+ (Fase A — Fetcher Maximization Sprint)
+# Arquitetura — carteira_auto v0.2.1 (Fases A-B — Fetcher Maximization Sprint)
 
 > Referência compacta para Claude Code. Atualizar ao final de cada fase.
 
@@ -24,9 +24,9 @@
 | Arquivo | Classe | API | Rate limit | Cache TTL |
 |---------|--------|-----|------------|-----------|
 | yahoo_fetcher.py | YahooFinanceFetcher | yfinance | 30 req/min | 5min (preços), 24h (histórico) |
-| bcb_fetcher.py | BCBFetcher | SGS API + python-bcb | 30 req/min | 1h |
-| ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy | 30 req/min | 2h |
-| fred_fetcher.py | FREDFetcher | FRED API | 120 req/min | 24h |
+| bcb/ (módulo, 6 mixins) | BCBFetcher | SGS + python-bcb + OData (Focus, PTAX, TaxaJuros, MercadoImobiliário) | 30 req/min | 1h |
+| ibge_fetcher.py | IBGEFetcher | SIDRA API + sidrapy + CNAE + Países | 30 req/min | 2h |
+| fred_fetcher.py | FREDFetcher (23 convenience methods + 4 base) | FRED API (38 séries, FRED_SERIES em constants.py) | 120 req/min | 24h |
 | cvm_fetcher.py | CVMFetcher | CVM Dados Abertos | 30 req/min | 24h |
 | tesouro_fetcher.py | TesouroDiretoFetcher | Tesouro API + CKAN | 30 req/min | 1h |
 | ddm_fetcher.py | DDMFetcher | DDM stock screening | N/A | 24h |
@@ -75,7 +75,7 @@
 | Arquivo | Exporta | Papel |
 |---------|---------|-------|
 | settings.py | Settings (dataclass), PathsConfig, YahooFetcherConfig, BCBConfig, IBGEConfig, DDMConfig, FREDConfig, TradingComDadosConfig, PortfolioConfig, LoggingConfig | Toda configuração do sistema — PortfolioConfig inclui RISK_FREE_DAILY e MIN_TRADE_VALUE |
-| constants.py | Constants (BCB_SERIES_CODES=31, IBGE_TABLE_IDS=16, FRED_SERIES=30, INDEX_CODES=6) | Colunas de planilha, field maps, séries BCB expandidas, tabelas IBGE expandidas, séries FRED com metadados, códigos de índices, feriados B3 |
+| constants.py | Constants (BCB_SERIES_CODES=57, IBGE_TABLE_IDS=17, FRED_SERIES=38, INDEX_CODES=6) | Colunas de planilha, field maps, séries BCB expandidas, tabelas IBGE expandidas, séries FRED com metadados, códigos de índices, feriados B3 |
 
 ### utils/ — Utilitários transversais
 | Arquivo | Exporta | Usar quando |
@@ -134,20 +134,35 @@
 | snapshot_path | Path | SaveSnapshotNode | — |
 | _errors | dict[str, str] | DAGEngine (fail_fast=False) | PipelineContext.errors / has_errors |
 
-## Testes — cobertura atual
+## Testes — cobertura atual (697 testes, 0 falhas)
 | Arquivo | Qtd | Escopo |
 |---------|-----|--------|
 | test_models.py | 54 | Result type (Ok/Err), validação Asset/Portfolio, todos os model types |
 | test_analyzers.py | 19 | DAGEngine error handling, todos os 7 analyzers |
 | test_fetchers.py | 17 | Yahoo normalize, prices, historical |
+| test_bcb_fetcher_v2.py | 129 | BCBFetcher: SGS (29 métodos), Focus (14), PTAX, TaxaJuros (3), MercadoImobiliário (18), agregadores |
+| test_ibge_fetcher_v2.py | 40 | IBGEFetcher: SIDRA (13 tabelas), CNAE (4 níveis), Países, normalização |
+| test_fred_fetcher.py | 55 | FREDFetcher: get_series, get_series_info, 23 convenience methods, constantes |
 | test_cli.py | 15 | Parser, commands, main |
 | test_decorators.py | 20 | Todos os decorators |
 | test_integrations.py | 8 | E2E pipeline, dry_run, presets |
 | test_lake.py | — | PriceLake, MacroLake, FundamentalsLake, NewsLake |
-| test_cvm_fetcher.py | — | CVMFetcher |
-| test_fred_fetcher.py | — | FREDFetcher |
+| test_cvm_fetcher.py | — | CVMFetcher (integration tests marcados @pytest.mark.integration) |
 | test_currency_analyzer.py | 9 | CurrencyAnalyzer (PTAX, DXY, carry spread, falhas parciais) |
 | test_commodity_analyzer.py | 8 | CommodityAnalyzer (preços, ciclo, índice, falhas) |
 | test_fiscal_analyzer.py | 16 | FiscalAnalyzer (métricas, trajetória, variação 12m, falhas) |
 | test_fetch_helpers.py | 22 | FetchStrategy, FetchResult, fetch_with_fallback (fallback, transform, critical mode) |
 | test_reference_lake.py | 39 | ReferenceLake — todas as 12 tabelas (composições, Focus, targets, holders, fundos, ativos) |
+
+### Fixtures disponíveis
+| Arquivo | Conteúdo |
+|---------|----------|
+| tests/fixtures/sample_portfolio.xlsx | 5 ativos (PETR4, VALE3, ITUB4, WEGE3, BBDC4), aba Vendas, aba Resumo |
+| tests/fixtures/test_config.yaml | Config mínima (portfolio, logging, data_lake) |
+
+### Gaps de cobertura
+18 módulos sem teste dedicado (2.164 linhas). Ver `TECH_DEBT_INVENTORY.md` seção 10.
+
+### Dívida técnica
+65 itens catalogados em `TECH_DEBT_INVENTORY.md` — todos rastreáveis por arquivo:linha.
+1 teste flaky: `test_fred_fetcher.py::test_sem_api_key_levanta_permission_error` (leak de env vars).

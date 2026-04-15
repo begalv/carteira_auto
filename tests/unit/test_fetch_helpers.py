@@ -7,6 +7,7 @@ tratamento de erros e dados vazios.
 import logging
 
 import pandas as pd
+
 from carteira_auto.core.nodes.fetch_helpers import (
     FetchResult,
     FetchStrategy,

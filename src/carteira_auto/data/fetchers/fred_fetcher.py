@@ -49,6 +49,7 @@ import pandas as pd
 import requests
 
 from carteira_auto.config import settings
+from carteira_auto.config.constants import constants
 from carteira_auto.utils import get_logger
 from carteira_auto.utils.decorators import (
     cache_result,
@@ -58,42 +59,6 @@ from carteira_auto.utils.decorators import (
 )
 
 logger = get_logger(__name__)
-
-# Séries FRED de maior relevância para análise macro de carteira BR
-FRED_SERIES: dict[str, dict] = {
-    # ---- Juros e Inflação ----
-    "DFF": {"nome": "Fed Funds Rate", "unidade": "%", "frequencia": "daily"},
-    "CPIAUCSL": {"nome": "CPI EUA", "unidade": "index", "frequencia": "monthly"},
-    "PCEPILFE": {"nome": "Core PCE", "unidade": "%", "frequencia": "monthly"},
-    "DFII10": {"nome": "TIPS 10Y Real Yield", "unidade": "%", "frequencia": "daily"},
-    # ---- Curva Treasuries ----
-    "DGS3MO": {"nome": "Treasury 3M", "unidade": "%", "frequencia": "daily"},
-    "DGS2": {"nome": "Treasury 2Y", "unidade": "%", "frequencia": "daily"},
-    "DGS10": {"nome": "Treasury 10Y", "unidade": "%", "frequencia": "daily"},
-    "DGS30": {"nome": "Treasury 30Y", "unidade": "%", "frequencia": "daily"},
-    "T10Y2Y": {"nome": "Spread 10Y-2Y", "unidade": "%", "frequencia": "daily"},
-    # ---- Atividade Econômica ----
-    "GDP": {"nome": "PIB EUA Nominal", "unidade": "USD bi", "frequencia": "quarterly"},
-    "GDPC1": {"nome": "PIB EUA Real", "unidade": "USD bi", "frequencia": "quarterly"},
-    "UNRATE": {"nome": "Desemprego EUA", "unidade": "%", "frequencia": "monthly"},
-    "INDPRO": {
-        "nome": "Produção Industrial EUA",
-        "unidade": "index",
-        "frequencia": "monthly",
-    },
-    # ---- Mercados / Risco ----
-    "VIXCLS": {"nome": "VIX", "unidade": "index", "frequencia": "daily"},
-    "BAMLH0A0HYM2": {
-        "nome": "High Yield Spread",
-        "unidade": "bps",
-        "frequencia": "daily",
-    },
-    "T10YIE": {"nome": "Breakeven Inflação 10Y", "unidade": "%", "frequencia": "daily"},
-    # ---- Câmbio ----
-    "DEXBZUS": {"nome": "BRL/USD", "unidade": "R$/USD", "frequencia": "daily"},
-    "DEXUSEU": {"nome": "EUR/USD", "unidade": "EUR/USD", "frequencia": "daily"},
-    "DEXCHUS": {"nome": "CNY/USD", "unidade": "CNY/USD", "frequencia": "daily"},
-}
 
 # Subconjunto mínimo para análise macro (bundle padrão)
 FRED_MACRO_BUNDLE = [
@@ -360,14 +325,67 @@ class FREDFetcher:
         """Breakeven inflação 10Y (T10YIE) — expectativa de inflação implícita."""
         return self.get_series("T10YIE")
 
+    # ---- Curva Treasuries (complementares) ----
+
+    def get_treasury_3m(self) -> pd.DataFrame:
+        """Treasury yield 3 meses (DGS3MO) — ponta curta da curva."""
+        return self.get_series("DGS3MO")
+
+    def get_treasury_30y(self) -> pd.DataFrame:
+        """Treasury yield 30 anos (DGS30) — ponta longa da curva."""
+        return self.get_series("DGS30")
+
+    def get_tips_real_yield(self) -> pd.DataFrame:
+        """TIPS 10Y real yield (DFII10) — juros real dos EUA."""
+        return self.get_series("DFII10")
+
+    # ---- Atividade econômica (complementares) ----
+
+    def get_industrial_production(self) -> pd.DataFrame:
+        """Produção industrial EUA (INDPRO) — proxy de atividade manufatureira."""
+        return self.get_series("INDPRO")
+
+    def get_nonfarm_payrolls(self) -> pd.DataFrame:
+        """Nonfarm Payrolls (PAYEMS) — criação líquida de empregos."""
+        return self.get_series("PAYEMS")
+
+    def get_consumer_sentiment(self) -> pd.DataFrame:
+        """Sentimento do consumidor Michigan (UMCSENT) — confiança do consumidor."""
+        return self.get_series("UMCSENT")
+
+    # ---- Câmbio (complementares) ----
+
+    def get_eur_usd(self) -> pd.DataFrame:
+        """Taxa de câmbio EUR/USD (DEXUSEU) — par mais negociado do mundo."""
+        return self.get_series("DEXUSEU")
+
+    def get_cny_usd(self) -> pd.DataFrame:
+        """Taxa de câmbio CNY/USD (DEXCHUS) — câmbio China."""
+        return self.get_series("DEXCHUS")
+
+    def get_dollar_index(self) -> pd.DataFrame:
+        """Índice do dólar ponderado por comércio (DTWEXBGS) — força global do USD."""
+        return self.get_series("DTWEXBGS")
+
+    # ---- Commodities ----
+
+    def get_wti_oil(self) -> pd.DataFrame:
+        """Petróleo WTI (DCOILWTICO) — referência global, impacta Petrobras."""
+        return self.get_series("DCOILWTICO")
+
+    def get_gold_price(self) -> pd.DataFrame:
+        """Ouro London Fix (GOLDAMGBD228NLBM) — ativo de refúgio."""
+        return self.get_series("GOLDAMGBD228NLBM")
+
     @staticmethod
-    def list_series() -> dict[str, dict]:
+    def list_series() -> dict[str, dict[str, str]]:
         """Lista todas as séries FRED disponíveis neste fetcher.
 
         Returns:
             Dict {series_id: {nome, unidade, frequencia}} de séries suportadas.
+            Fonte canônica: Constants.FRED_SERIES em config/constants.py.
         """
-        return dict(FRED_SERIES)
+        return dict(constants.FRED_SERIES)
 
     # ============================================================================
     # INTERNOS

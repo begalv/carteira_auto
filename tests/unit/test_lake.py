@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 import pytest
+
 from carteira_auto.data.lake.base import DataLake
 from carteira_auto.data.lake.fundamentals_lake import FundamentalsLake
 from carteira_auto.data.lake.macro_lake import MacroLake

@@ -7,9 +7,9 @@ cadastro de fundos, composição de carteiras, intermediários e
 registro de ativos.
 """
 
-
 import pandas as pd
 import pytest
+
 from carteira_auto.data.lake.reference_lake import ReferenceLake
 
 

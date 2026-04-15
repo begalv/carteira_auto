@@ -8,6 +8,7 @@ chamadas reais à API e requerem DADOS_MERCADO_API_KEY no .env.
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from carteira_auto.data.fetchers.ddm_fetcher import DDMFetcher
 
 # =============================================================================

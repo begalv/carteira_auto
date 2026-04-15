@@ -18,19 +18,19 @@ graph TD
         subgraph core_nodes["nodes/"]
             nodes["Load, Fetch, Export, Alert, Storage"]
             ingest_nodes["IngestPricesNode, IngestMacroNode,<br/>IngestFundamentalsNode"]
+            fetch_helpers["fetch_helpers.py<br/>FetchWithFallback"]
         end
     end
 
     subgraph data["data/"]
         subgraph fetchers["fetchers/"]
             yahoo["yahoo_fetcher.py<br/>YahooFinanceFetcher"]
-            bcb["bcb_fetcher.py<br/>BCBFetcher (python-bcb)"]
+            bcb["bcb/ (módulo)<br/>BCBFetcher (6 mixins: SGS, Focus,<br/>PTAX, TaxaJuros, MercadoImobiliário)"]
             ibge["ibge_fetcher.py<br/>IBGEFetcher (sidrapy)"]
             fred["fred_fetcher.py<br/>FREDFetcher"]
             cvm["cvm_fetcher.py<br/>CVMFetcher"]
             tesouro["tesouro_fetcher.py<br/>TesouroDiretoFetcher"]
             ddm["ddm_fetcher.py<br/>DDMFetcher"]
-            tradingcomdados["tradingcomdados_fetcher.py<br/>TradingComDadosFetcher"]
         end
         subgraph lake_group["lake/"]
             lake["base.py<br/>DataLake (fachada)"]
@@ -40,7 +40,6 @@ graph TD
             news_lake["news_lake.py<br/>NewsLake"]
             ref_lake["reference_lake.py<br/>ReferenceLake (12 tabelas)"]
         end
-        fetch_helpers["nodes/fetch_helpers.py<br/>FetchWithFallback"]
         loaders["loaders/<br/>ExcelLoader, PortfolioLoader"]
         exporters["exporters/<br/>ExcelExporter, PriceExporter"]
         storage["storage/<br/>SnapshotStore"]
@@ -55,6 +54,8 @@ graph TD
         currency_a["currency_analyzer.py<br/>→ ctx[currency_metrics]"]
         commodity_a["commodity_analyzer.py<br/>→ ctx[commodity_metrics]"]
         fiscal_a["fiscal_analyzer.py<br/>→ ctx[fiscal_metrics]"]
+        market_sector_a["market_sector_analyzer.py<br/>→ ctx[market_sectors]"]
+        economic_sector_a["economic_sector_analyzer.py<br/>→ ctx[economic_sectors]"]
     end
 
     subgraph alerts["alerts/"]
@@ -70,7 +71,6 @@ graph TD
     settings --> fred
     settings --> cvm
     settings --> tesouro
-    settings --> tradingcomdados
     settings --> loaders
     constants --> yahoo
     constants --> bcb
@@ -85,7 +85,6 @@ graph TD
     decorators --> fred
     decorators --> cvm
     decorators --> tesouro
-    decorators --> tradingcomdados
     decorators --> portfolio_a
     decorators --> risk_a
     decorators --> macro_a
@@ -116,8 +115,6 @@ graph TD
     cvm --> ingest_nodes
     tesouro --> ingest_nodes
     ddm --> ingest_nodes
-    tradingcomdados --> ingest_nodes
-
     %% IngestNodes → Lake
     ingest_nodes --> lake
 
@@ -150,4 +147,6 @@ graph TD
     currency_a --> registry
     commodity_a --> registry
     fiscal_a --> registry
+    market_sector_a --> registry
+    economic_sector_a --> registry
     alert_engine --> registry

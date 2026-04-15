@@ -7,7 +7,6 @@ e scores de sentimento para análises de NLP e geopolítica.
 import sqlite3
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -147,11 +146,11 @@ class NewsLake:
 
     def get_news(
         self,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        category: Optional[str] = None,
-        source: Optional[str] = None,
-        ticker: Optional[str] = None,
+        start: date | None = None,
+        end: date | None = None,
+        category: str | None = None,
+        source: str | None = None,
+        ticker: str | None = None,
         limit: int = 100,
     ) -> pd.DataFrame:
         """Consulta notícias do lake.
@@ -194,9 +193,9 @@ class NewsLake:
 
     def get_sentiment_series(
         self,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        category: Optional[str] = None,
+        start: date | None = None,
+        end: date | None = None,
+        category: str | None = None,
     ) -> pd.DataFrame:
         """Retorna série temporal de sentimento agregado diário.
 
@@ -255,7 +254,7 @@ class NewsLake:
         with self._get_connection() as conn:
             return pd.read_sql_query(query, conn, params=[limit])
 
-    def count_records(self, source: Optional[str] = None) -> int:
+    def count_records(self, source: str | None = None) -> int:
         """Conta artigos no lake."""
         query = "SELECT COUNT(*) FROM news"
         params: list = []

@@ -373,6 +373,27 @@ class IBGEFetcher:
             period=f"last {years}",
         )
 
+    @log_execution
+    @cache_result(ttl_seconds=86400)
+    def get_analfabetismo(self, years: int = 10) -> pd.DataFrame:
+        """Taxa de analfabetismo 15+ anos — PNAD Contínua anual | Tabela 7113.
+
+        Percentual da população de 15 anos ou mais que não sabe ler e escrever.
+        Indicador social relevante para análise de desenvolvimento econômico.
+
+        Args:
+            years: Número de anos a buscar.
+
+        Returns:
+            DataFrame com colunas ['periodo', 'valor', 'variavel'].
+            valor = taxa de analfabetismo em % (ex: 5.6).
+        """
+        return self._fetch_sidra_table(
+            table_code=str(self._tables["analfabetismo"]),
+            variable="10267",  # Taxa de analfabetismo
+            period=f"last {years}",
+        )
+
     # =========================================================================
     # SEÇÃO 4: ATIVIDADE ECONÔMICA SETORIAL (SIDRA)
     # =========================================================================
@@ -468,6 +489,7 @@ class IBGEFetcher:
     # =========================================================================
 
     @log_execution
+    @cache_result(ttl_seconds=3600)
     def get_sidra_table(
         self,
         table_code: str | int,
@@ -618,6 +640,7 @@ class IBGEFetcher:
         return pd.DataFrame(rows)
 
     @log_execution
+    @cache_result(ttl_seconds=86400)
     def get_cnae_search(self, term: str) -> pd.DataFrame:
         """Busca subclasses CNAE por termo na descrição (filtro client-side).
 
@@ -992,10 +1015,13 @@ class IBGEFetcher:
             result["variavel"] = df["D2N"]
 
         # Classificações adicionais (grupos IPCA, setores, etc.)
-        for col in df.columns:
-            if col.startswith("D3") or col.startswith("D4"):
-                if col.endswith("N"):
-                    result["grupo"] = df[col]
+        # D3N = classificação nível 3, D4N = nível 4 (hierárquicos)
+        if "D3N" in df.columns:
+            result["grupo"] = df["D3N"]
+        if "D4N" in df.columns:
+            # Se D3N já existe, D4N vai para coluna separada (subgrupo)
+            col_name = "subgrupo" if "grupo" in result.columns else "grupo"
+            result[col_name] = df["D4N"]
 
         # Unidade
         if "MN" in df.columns:

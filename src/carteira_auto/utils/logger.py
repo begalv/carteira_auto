@@ -3,7 +3,6 @@
 import logging
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -111,7 +110,7 @@ def _create_console_handler() -> logging.Handler:
 
 
 def _create_file_handler(
-    log_file: Path, level: int = logging.INFO, filter_class: Optional[type] = None
+    log_file: Path, level: int = logging.INFO, filter_class: type | None = None
 ) -> logging.Handler:
     """Cria handler de arquivo com rotação."""
     file_handler = RotatingFileHandler(
@@ -137,7 +136,7 @@ def _create_file_handler(
     return file_handler
 
 
-def get_logger(name: Optional[str] = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> logging.Logger:
     """Factory function para obter logger configurado.
 
     Args:

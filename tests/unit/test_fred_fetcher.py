@@ -12,11 +12,15 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
+from carteira_auto.config.constants import constants
 from carteira_auto.data.fetchers.fred_fetcher import (
     FRED_MACRO_BUNDLE,
-    FRED_SERIES,
     FREDFetcher,
 )
+
+# FRED_SERIES agora vive em constants.py (fonte canônica)
+FRED_SERIES = constants.FRED_SERIES
 
 # =============================================================================
 # Fixtures
@@ -329,6 +333,31 @@ class TestConvenienceMethods:
 
         mock_gs.assert_called_once_with("GDP")
 
+    @pytest.mark.parametrize(
+        "method,expected_series",
+        [
+            ("get_treasury_3m", "DGS3MO"),
+            ("get_treasury_30y", "DGS30"),
+            ("get_tips_real_yield", "DFII10"),
+            ("get_industrial_production", "INDPRO"),
+            ("get_nonfarm_payrolls", "PAYEMS"),
+            ("get_consumer_sentiment", "UMCSENT"),
+            ("get_eur_usd", "DEXUSEU"),
+            ("get_cny_usd", "DEXCHUS"),
+            ("get_dollar_index", "DTWEXBGS"),
+            ("get_wti_oil", "DCOILWTICO"),
+            ("get_gold_price", "GOLDAMGBD228NLBM"),
+        ],
+    )
+    def test_novos_convenience_methods(self, fetcher, method, expected_series):
+        """Novos métodos de conveniência chamam a série FRED correta."""
+        with patch.object(
+            fetcher, "get_series", return_value=pd.DataFrame()
+        ) as mock_gs:
+            getattr(fetcher, method)()
+
+        mock_gs.assert_called_once_with(expected_series)
+
     def test_list_series_retorna_dict(self):
         """list_series retorna dicionário com séries disponíveis."""
         series = FREDFetcher.list_series()
@@ -337,6 +366,74 @@ class TestConvenienceMethods:
         assert "DFF" in series
         assert "DGS10" in series
         assert "VIXCLS" in series
+
+    def test_list_series_usa_constants(self):
+        """list_series retorna séries de Constants.FRED_SERIES (fonte canônica)."""
+        series = FREDFetcher.list_series()
+        assert "nome" in series["DFF"]
+        assert "unidade" in series["DFF"]
+        assert "frequencia" in series["DFF"]
+
+
+# =============================================================================
+# TestGetSeriesInfo
+# =============================================================================
+
+
+class TestGetSeriesInfo:
+    """Testes para get_series_info() — metadados de série via /fred/series."""
+
+    def test_retorna_metadados_da_serie(self, fetcher):
+        """get_series_info retorna dict com metadados da série FRED."""
+        mock_data = {
+            "seriess": [
+                {
+                    "id": "DFF",
+                    "title": "Federal Funds Effective Rate",
+                    "units": "Percent",
+                    "frequency": "Daily",
+                    "last_updated": "2025-01-15 16:01:04-06",
+                }
+            ]
+        }
+        with patch(
+            "carteira_auto.data.fetchers.fred_fetcher.requests.get",
+            return_value=_make_mock_response(mock_data),
+        ):
+            info = fetcher.get_series_info("DFF")
+
+        assert info["id"] == "DFF"
+        assert info["title"] == "Federal Funds Effective Rate"
+        assert info["units"] == "Percent"
+
+    def test_serie_inexistente_retorna_dict_vazio(self, fetcher):
+        """get_series_info com série vazia retorna dict vazio."""
+        mock_data = {"seriess": []}
+        with patch(
+            "carteira_auto.data.fetchers.fred_fetcher.requests.get",
+            return_value=_make_mock_response(mock_data),
+        ):
+            info = fetcher.get_series_info("INEXISTENTE")
+
+        assert info == {}
+
+    def test_sem_api_key_levanta_permission_error(self):
+        """get_series_info sem API key levanta PermissionError."""
+        f = FREDFetcher()
+        f._api_key = None
+        with pytest.raises(PermissionError, match="FRED API key"):
+            f.get_series_info("DFF")
+
+    def test_usa_endpoint_correto(self, fetcher):
+        """get_series_info chama /fred/series (não /fred/series/observations)."""
+        mock_data = {"seriess": [{"id": "DFF"}]}
+        with patch(
+            "carteira_auto.data.fetchers.fred_fetcher.requests.get",
+            return_value=_make_mock_response(mock_data),
+        ) as mock_get:
+            fetcher.get_series_info("DFF")
+
+        assert mock_get.called
 
 
 # =============================================================================

@@ -3,8 +3,11 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from carteira_auto.core.engine import DAGEngine, Node
 from carteira_auto.core.models import Asset, Portfolio
+
+pytestmark = pytest.mark.integration
 
 # ============================================================================
 # FIXTURES

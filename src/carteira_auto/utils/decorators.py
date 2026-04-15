@@ -1,8 +1,8 @@
 import functools
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from decimal import Decimal
-from typing import Callable
 
 # ============================================================================
 # PERFORMANCE
@@ -138,7 +138,7 @@ def validate_tickers(func: Callable) -> Callable:
         from carteira_auto.utils.helpers import validate_ticker
 
         # Detecta se é método de instância (primeiro arg não é str/list)
-        if args and not isinstance(args[0], (str, list)):
+        if args and not isinstance(args[0], str | list):
             ticker_input = (
                 args[1]
                 if len(args) > 1
@@ -175,12 +175,12 @@ def validate_positive_value(func: Callable) -> Callable:
     def wrapper(*args, **kwargs):
         # Verifica args
         for arg in args:
-            if isinstance(arg, (int, float, Decimal)) and arg < 0:
+            if isinstance(arg, int | float | Decimal) and arg < 0:
                 raise ValueError(f"Valor negativo não permitido: {arg}")
 
         # Verifica kwargs
         for key, value in kwargs.items():
-            if isinstance(value, (int, float, Decimal)) and value < 0:
+            if isinstance(value, int | float | Decimal) and value < 0:
                 raise ValueError(f"Valor negativo não permitido para {key}: {value}")
 
         return func(*args, **kwargs)

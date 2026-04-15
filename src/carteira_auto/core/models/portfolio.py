@@ -1,6 +1,5 @@
 """Modelos de dados da carteira de investimentos."""
 
-
 from pydantic import BaseModel, field_validator
 
 
@@ -202,11 +201,10 @@ class Asset(BaseModel):
 class SoldAsset(BaseModel):
     """Ativo vendido — mapeia uma linha da aba 'Vendas'.
 
-    Campos obrigatórios: categoria, ticker e nome.
+    Campos obrigatórios: ticker e nome.
     Preços e cotas devem ser >= 0.
     """
 
-    categoria: str
     ticker: str
     nome: str
     classe: str | None = None
@@ -214,12 +212,14 @@ class SoldAsset(BaseModel):
     valor_venda: float | None = None
     preco_posicao: float | None = None
     valorizacao: float | None = None
+    valorizacao_pct: float | None = None
     proventos_recebidos: float | None = None
     diferenca: float | None = None
-    rentabilidade_individual: float | None = None
+    rentabilidade: float | None = None
     preco_na_venda: float | None = None
     preco_medio_compra: float | None = None
     n_cotas_vendidas: float | None = None
+    posicao_ativa: bool | None = None
     mes: str | None = None
 
     @field_validator("ticker")

@@ -8,6 +8,7 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from carteira_auto.utils.decorators import (
     cache_result,
     fallback,

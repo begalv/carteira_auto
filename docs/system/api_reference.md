@@ -184,7 +184,6 @@ Ativo vendido — mapeia uma linha da aba "Vendas".
 
 | Campo | Tipo | Descricao | Validacao |
 |---|---|---|---|
-| `categoria` | `str` | Categoria da venda | Obrigatorio |
 | `ticker` | `str` | Codigo do ativo | Nao vazio |
 | `nome` | `str` | Nome do ativo | Obrigatorio |
 | `classe` | `str \| None` | Classe | — |
@@ -192,12 +191,14 @@ Ativo vendido — mapeia uma linha da aba "Vendas".
 | `valor_venda` | `float \| None` | Valor total da venda R$ | — |
 | `preco_posicao` | `float \| None` | Preco de aquisicao R$ | >= 0 |
 | `valorizacao` | `float \| None` | Valorizacao R$ | — |
+| `valorizacao_pct` | `float \| None` | Valorizacao percentual | — |
 | `proventos_recebidos` | `float \| None` | Proventos recebidos R$ | — |
 | `diferenca` | `float \| None` | Diferenca R$ | — |
-| `rentabilidade_individual` | `float \| None` | Rentabilidade do ativo | — |
+| `rentabilidade` | `float \| None` | Rentabilidade do ativo | — |
 | `preco_na_venda` | `float \| None` | Preco no momento da venda R$ | >= 0 |
 | `preco_medio_compra` | `float \| None` | Preco medio de compra R$ | >= 0 |
 | `n_cotas_vendidas` | `float \| None` | Cotas vendidas | >= 0 |
+| `posicao_ativa` | `bool \| None` | Se o ativo ainda esta em carteira | — |
 | `mes` | `str \| None` | Mes da venda | — |
 
 ### Portfolio
@@ -301,6 +302,67 @@ Contexto macroeconomico consolidado — indicadores BCB e IBGE.
 | `quantity` | `float \| None` | Quantidade de cotas |
 | `value` | `float \| None` | Valor da operacao R$ |
 | `reason` | `str \| None` | Motivo |
+
+### CurrencyMetrics
+
+Metricas cambiais — calculadas pelo CurrencyAnalyzer.
+
+| Campo | Tipo | Descricao | Fonte |
+|---|---|---|---|
+| `usd_brl` | `float \| None` | Dolar PTAX compra corrente — R$/USD | BCB SGS 10813 |
+| `usd_brl_ptax_venda` | `float \| None` | Dolar PTAX venda corrente — R$/USD | BCB SGS 1 |
+| `usd_brl_change_1m` | `float \| None` | Variacao % USD/BRL 1 mes | — |
+| `usd_brl_change_3m` | `float \| None` | Variacao % USD/BRL 3 meses | — |
+| `usd_brl_change_12m` | `float \| None` | Variacao % USD/BRL 12 meses | — |
+| `dxy` | `float \| None` | Dollar Index corrente | Yahoo DX-Y.NYB |
+| `dxy_change_1m` | `float \| None` | Variacao % DXY 1 mes | — |
+| `selic_rate` | `float \| None` | Selic meta — % a.a. | BCB SGS 432 |
+| `fed_funds_rate` | `float \| None` | Fed Funds Rate — % a.a. | FRED DFF |
+| `carry_spread` | `float \| None` | Spread Selic - Fed Funds em pp | — |
+| `taxa_cambio_real_efetiva` | `float \| None` | Indice taxa cambio real efetiva (IPCA) | BCB SGS 11752 |
+| `summary` | `str \| None` | Sumario textual | — |
+
+### CommodityMetrics
+
+Metricas de commodities — calculadas pelo CommodityAnalyzer.
+
+| Campo | Tipo | Descricao | Fonte |
+|---|---|---|---|
+| `oil_wti` | `float \| None` | Petroleo WTI — USD/bbl | Yahoo CL=F |
+| `oil_brent` | `float \| None` | Petroleo Brent — USD/bbl | Yahoo BZ=F |
+| `oil_change_1m` | `float \| None` | Variacao % Brent 1m | — |
+| `oil_change_3m` | `float \| None` | Variacao % Brent 3m | — |
+| `oil_change_12m` | `float \| None` | Variacao % Brent 12m | — |
+| `gold` | `float \| None` | Ouro — USD/oz | Yahoo GC=F |
+| `gold_change_1m` | `float \| None` | Variacao % ouro 1m | — |
+| `gold_change_3m` | `float \| None` | Variacao % ouro 3m | — |
+| `gold_change_12m` | `float \| None` | Variacao % ouro 12m | — |
+| `silver` | `float \| None` | Prata — USD/oz | Yahoo SI=F |
+| `silver_change_1m` | `float \| None` | Variacao % prata 1m | — |
+| `soybean` | `float \| None` | Soja — USD/bushel | Yahoo ZS=F |
+| `soybean_change_1m` | `float \| None` | Variacao % soja 1m | — |
+| `soybean_change_3m` | `float \| None` | Variacao % soja 3m | — |
+| `corn` | `float \| None` | Milho — USD/bushel | Yahoo ZC=F |
+| `wheat` | `float \| None` | Trigo — USD/bushel | Yahoo ZW=F |
+| `commodity_index_change_3m` | `float \| None` | Variacao media ponderada 3m (proxy ciclo) | — |
+| `cycle_signal` | `str \| None` | Sinal do ciclo: expansion/peak/contraction/trough | — |
+| `summary` | `str \| None` | Sumario textual | — |
+
+### FiscalMetrics
+
+Metricas fiscais — calculadas pelo FiscalAnalyzer.
+
+| Campo | Tipo | Descricao | Fonte |
+|---|---|---|---|
+| `divida_bruta_pib` | `float \| None` | Divida Bruta / PIB — % | BCB SGS 13762 |
+| `divida_liquida_pib` | `float \| None` | Divida Liquida / PIB — % | BCB SGS 4503 |
+| `resultado_primario_pib` | `float \| None` | Resultado Primario 12m / PIB — % | BCB SGS 5793 |
+| `resultado_nominal` | `float \| None` | Resultado Nominal 12m — R$ milhoes | BCB SGS 4649 |
+| `juros_nominais_pib` | `float \| None` | Juros Nominais 12m / PIB — % | BCB SGS 5727 |
+| `divida_bruta_pib_change_12m` | `float \| None` | Variacao divida bruta/PIB 12m — pp | — |
+| `resultado_primario_pib_change_12m` | `float \| None` | Variacao resultado primario/PIB 12m — pp | — |
+| `fiscal_trajectory` | `str \| None` | Trajetoria: improving/stable/warning/deteriorating/critical/severe | — |
+| `summary` | `str \| None` | Sumario textual | — |
 
 ### Modelos Economicos
 
@@ -494,81 +556,317 @@ df = fetcher.get_historical_price_data(["PETR4.SA"], period="1y")
 
 ### BCBFetcher
 
-Dados do Banco Central do Brasil via API SGS.
+Dados do Banco Central do Brasil. Modulo `bcb/` com 6 mixins: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliario, Base. 105 metodos publicos.
 
 ```python
+from carteira_auto.data.fetchers.bcb import BCBFetcher
 bcb = BCBFetcher()
 ```
 
+Retorno padrao SGS: DataFrame com colunas `['data', 'valor']`.
+
+#### BCBSGSMixin — Series Temporais SGS (57 series, 60 metodos)
+
+**Juros e rendimento:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_selic(period_days=1825)` | `pd.DataFrame` | Taxa Selic meta — % a.a. \| SGS 432 |
+| `get_cdi(period_days=1825)` | `pd.DataFrame` | CDI — % a.d. \| SGS 12 |
+| `get_cdi_annual(period_days=1825)` | `pd.DataFrame` | CDI anualizado — % a.a. |
+| `get_tr(period_days=1825)` | `pd.DataFrame` | Taxa Referencial — % a.m. \| SGS 226 |
+| `get_poupanca(period_days=1825)` | `pd.DataFrame` | Rendimento poupanca — % a.m. \| SGS 25 |
+
+**Inflacao:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_ipca(period_days=1825)` | `pd.DataFrame` | IPCA — % mensal \| SGS 433 |
+| `get_igpm(period_days=1825)` | `pd.DataFrame` | IGP-M — % mensal \| SGS 189 |
+| `get_inpc(period_days=1825)` | `pd.DataFrame` | INPC — % mensal \| SGS 188 |
+| `get_ipca15(period_days=1825)` | `pd.DataFrame` | IPCA-15 previa — % mensal |
+| `get_igpdi(period_days=1825)` | `pd.DataFrame` | IGP-DI — % mensal |
+| `get_core_ipca_ex0(period_days=1825)` | `pd.DataFrame` | Nucleo IPCA (ex-alimentos e energia) |
+| `get_ipca_expectation_12m(period_days=1825)` | `pd.DataFrame` | Expectativa IPCA 12m |
+| `get_real_interest_rate(period_days=1825)` | `pd.DataFrame` | Juros real (Selic - IPCA) |
+
+**Cambio:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_ptax(period_days=30)` | `pd.DataFrame` | PTAX compra USD/BRL \| SGS 10813 |
+| `get_ptax_venda(period_days=30)` | `pd.DataFrame` | PTAX venda USD/BRL \| SGS 1 |
+| `get_real_effective_exchange(period_days=1825)` | `pd.DataFrame` | Taxa cambio real efetiva |
+
+**Fiscal:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_gross_debt_gdp(period_days=3650)` | `pd.DataFrame` | Divida bruta/PIB — % \| SGS 13762 |
+| `get_net_debt_gdp(period_days=3650)` | `pd.DataFrame` | Divida liquida/PIB — % \| SGS 4503 |
+| `get_primary_result_gdp(period_days=3650)` | `pd.DataFrame` | Resultado primario/PIB — % \| SGS 5793 |
+| `get_nominal_result(period_days=3650)` | `pd.DataFrame` | Resultado nominal 12m — R$ MM |
+| `get_nominal_interest_gdp(period_days=3650)` | `pd.DataFrame` | Juros nominais/PIB — % \| SGS 5727 |
+
+**Atividade economica:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_ibcbr(period_days=1825)` | `pd.DataFrame` | IBC-Br (proxy do PIB mensal) |
+| `get_business_confidence(period_days=1825)` | `pd.DataFrame` | Indice de confianca empresarial |
+| `get_capacity_utilization(period_days=1825)` | `pd.DataFrame` | Utilizacao da capacidade instalada |
+| `get_embi(period_days=1825)` | `pd.DataFrame` | EMBI+ Brasil (risco pais) |
+| `get_ibovespa_bcb(period_days=1825)` | `pd.DataFrame` | Ibovespa via BCB |
+| `get_ouro_bmf(period_days=1825)` | `pd.DataFrame` | Ouro BM&F |
+
+**Credito e monetario:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_credit_gdp(period_days=3650)` | `pd.DataFrame` | Credito/PIB — % |
+| `get_default_rate(period_days=1825)` | `pd.DataFrame` | Inadimplencia PF |
+| `get_default_rate_corporate(period_days=1825)` | `pd.DataFrame` | Inadimplencia PJ |
+| `get_default_rate_total(period_days=1825)` | `pd.DataFrame` | Inadimplencia total |
+| `get_default_rate_pf_15_90(period_days=1825)` | `pd.DataFrame` | Inadimplencia PF 15-90 dias |
+| `get_default_rate_pf_90_plus(period_days=1825)` | `pd.DataFrame` | Inadimplencia PF >90 dias |
+| `get_default_rate_credit_card(period_days=1825)` | `pd.DataFrame` | Inadimplencia cartao |
+| `get_m1(period_days=1825)` | `pd.DataFrame` | Agregado M1 |
+| `get_m2(period_days=1825)` | `pd.DataFrame` | Agregado M2 |
+| `get_m4(period_days=1825)` | `pd.DataFrame` | Agregado M4 |
+| `get_monetary_base(period_days=1825)` | `pd.DataFrame` | Base monetaria |
+| `get_reserve_requirements(period_days=1825)` | `pd.DataFrame` | Depositos compulsorios |
+
+**Setor externo:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_trade_balance(period_days=1825)` | `pd.DataFrame` | Balanca comercial |
+| `get_international_reserves(period_days=1825)` | `pd.DataFrame` | Reservas internacionais |
+| `get_current_account(period_days=1825)` | `pd.DataFrame` | Transacoes correntes |
+| `get_fdi_net(period_days=1825)` | `pd.DataFrame` | IED liquido |
+| `get_external_debt(period_days=3650)` | `pd.DataFrame` | Divida externa |
+| `get_fx_flow(period_days=1825)` | `pd.DataFrame` | Fluxo cambial mensal |
+| `get_terms_of_trade(period_days=3650)` | `pd.DataFrame` | Termos de troca |
+
+**Trabalho e renda:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_real_wage_bill(period_days=1825)` | `pd.DataFrame` | Massa salarial real |
+| `get_real_average_income(period_days=1825)` | `pd.DataFrame` | Renda media real |
+| `get_unemployment_rate(period_days=1825)` | `pd.DataFrame` | Taxa de desemprego |
+| `get_minimum_wage(period_days=3650)` | `pd.DataFrame` | Salario minimo |
+| `get_formal_employment_balance(period_days=1825)` | `pd.DataFrame` | Saldo CAGED |
+| `get_hours_worked(period_days=1825)` | `pd.DataFrame` | Horas trabalhadas PNAD |
+
+**Expropriacao financeira:**
+
+| Metodo | Retorno | Descricao |
+|---|---|---|
+| `get_banking_spread_pf(period_days=1825)` | `pd.DataFrame` | Spread bancario PF |
+| `get_credit_cost_pf(period_days=1825)` | `pd.DataFrame` | Custo do credito PF |
+| `get_household_debt_ratio(period_days=1825)` | `pd.DataFrame` | Endividamento das familias |
+| `get_household_debt_service(period_days=1825)` | `pd.DataFrame` | Comprometimento de renda |
+| `get_consumer_confidence(period_days=1825)` | `pd.DataFrame` | Confianca do consumidor |
+
+**Generico:**
+
 | Metodo | Parametros | Retorno | Descricao |
 |---|---|---|---|
-| `get_selic` | `period_days: int = 1825` | `pd.DataFrame` | Taxa Selic meta — % a.a. \| COPOM (~8x/ano) \| SGS 432 |
-| `get_cdi` | `period_days: int = 1825` | `pd.DataFrame` | Taxa CDI — % a.d. \| Diario \| SGS 12 |
-| `get_ipca` | `period_days: int = 1825` | `pd.DataFrame` | IPCA variacao mensal — % \| Mensal \| SGS 433 |
-| `get_igpm` | `period_days: int = 1825` | `pd.DataFrame` | IGP-M variacao mensal — % \| Mensal \| SGS 189 |
-| `get_inpc` | `period_days: int = 1825` | `pd.DataFrame` | INPC variacao mensal — % \| Mensal \| SGS 188 |
-| `get_poupanca` | `period_days: int = 1825` | `pd.DataFrame` | Rendimento poupanca — % a.m. \| Mensal \| SGS 25 |
-| `get_tr` | `period_days: int = 1825` | `pd.DataFrame` | Taxa Referencial — % a.m. \| Mensal \| SGS 226 |
-| `get_ptax` | `period_days: int = 30` | `pd.DataFrame` | Dolar PTAX compra — R$/USD \| Dias uteis \| SGS 10813 |
-| `get_ptax_venda` | `period_days: int = 30` | `pd.DataFrame` | Dolar PTAX venda — R$/USD \| Dias uteis \| SGS 1 |
-| `get_indicator` | `series_code: int, start_date, end_date` | `pd.DataFrame` | Qualquer serie SGS por codigo. |
-| `get_all_indicators` | — | `dict[str, pd.DataFrame]` | Todos os indicadores configurados. |
-| `get_latest_values` | — | `dict[str, float \| None]` | Ultimo valor de cada indicador. |
+| `get_indicator` | `series_code: int, start_date, end_date` | `pd.DataFrame` | Qualquer serie SGS por codigo |
+| `get_all_indicators` | — | `dict[str, pd.DataFrame]` | Todos os indicadores configurados |
+| `get_latest_values` | — | `dict[str, float \| None]` | Ultimo valor de cada indicador |
 
-Retorno padrao: DataFrame com colunas `['data', 'valor']`.
+#### BCBFocusMixin — Expectativas Focus (21 metodos)
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_focus_selic` | `period_months=24` | `pd.DataFrame` | Expectativas anuais Selic |
+| `get_focus_ipca` | `period_months=24` | `pd.DataFrame` | Expectativas anuais IPCA |
+| `get_focus_pib` | `period_months=24` | `pd.DataFrame` | Expectativas anuais PIB |
+| `get_focus_cambio` | `period_months=24` | `pd.DataFrame` | Expectativas anuais cambio |
+| `get_focus_igpm` | `period_months=24` | `pd.DataFrame` | Expectativas anuais IGP-M |
+| `get_focus_all` | `period_months=24` | `dict[str, pd.DataFrame]` | Todas expectativas anuais |
+| `get_focus_top5` | `indicator, period_months=24` | `pd.DataFrame` | Top 5 analistas (anual) |
+| `get_focus_top5_all` | `period_months=24` | `dict[str, pd.DataFrame]` | Top 5 todos indicadores |
+| `get_focus_monthly` | `indicator, period_months=24` | `pd.DataFrame` | Expectativas mensais |
+| `get_focus_monthly_all` | `period_months=24` | `dict[str, pd.DataFrame]` | Expectativas mensais todos |
+| `get_focus_top5_monthly` | `indicator, period_months=24` | `pd.DataFrame` | Top 5 analistas (mensal) |
+| `get_focus_quarterly` | `indicator, period_months=24` | `pd.DataFrame` | Expectativas trimestrais |
+| `get_focus_quarterly_all` | `period_months=24` | `dict[str, pd.DataFrame]` | Expectativas trimestrais todos |
+| `get_focus_top5_quarterly` | `indicator, period_months=24` | `pd.DataFrame` | Top 5 analistas (trimestral) |
+| `get_focus_selic_copom` | `period_months=24` | `pd.DataFrame` | Selic por reuniao COPOM |
+| `get_focus_top5_selic` | `period_months=24` | `pd.DataFrame` | Top 5 analistas Selic |
+| `get_focus_ipca12m` | `period_months=24` | `pd.DataFrame` | IPCA rolling 12m |
+| `get_focus_ipca24m` | `period_months=24` | `pd.DataFrame` | IPCA rolling 24m |
+| `get_focus_top5_ipca12m` | `period_months=24` | `pd.DataFrame` | Top 5 IPCA 12m |
+| `get_focus_top5_ipca24m` | `period_months=24` | `pd.DataFrame` | Top 5 IPCA 24m |
+| `get_focus_reference_dates` | — | `pd.DataFrame` | Datas de referencia disponiveis |
+
+#### BCBPTAXMixin — Cotacoes PTAX OData (3 metodos)
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_ptax_currency` | `currency_code, start_date, end_date, period_days=30` | `pd.DataFrame` | PTAX por moeda (AUD, CAD, CHF, DKK, EUR, GBP, JPY, NOK, SEK, USD) |
+| `get_ptax_all_currencies` | `reference_date` | `pd.DataFrame` | PTAX todas as moedas numa data |
+| `get_available_currencies` | — | `pd.DataFrame` | Moedas disponiveis |
+
+#### BCBTaxaJurosMixin — Taxas de Credito (6 metodos)
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_lending_rates` | `modality, period_months=12` | `pd.DataFrame` | Taxas de credito por modalidade e banco |
+| `get_all_lending_rates` | `period_months=12` | `dict[str, pd.DataFrame]` | Todas as taxas agrupadas por modalidade |
+| `get_lending_rate_modalities` | — | `pd.DataFrame` | Modalidades de credito disponiveis |
+| `get_lending_rates_daily` | `modality, segment, period_months=3` | `pd.DataFrame` | Taxas diarias (media 5 dias) |
+| `get_lending_rates_unified` | `modality, segment, period_months=3` | `pd.DataFrame` | Taxas unificadas (alternativa ao diario) |
+| `get_lending_rate_dates` | — | `pd.DataFrame` | Datas disponiveis |
+
+#### BCBMercadoImobiliarioMixin — Indicadores Imobiliarios (15 metodos)
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_ivg` | `period_months=60` | `pd.DataFrame` | Indice de Valores de Garantia (IVG) |
+| `get_mvg` | `period_months=60` | `pd.DataFrame` | Valor Medio de Garantia (MVG) |
+| `get_credito_imobiliario_sfh` | `period_months=60` | `pd.DataFrame` | Estoque credito SFH |
+| `get_credito_imobiliario_fgts` | `period_months=60` | `pd.DataFrame` | Estoque credito FGTS |
+| `get_credito_imobiliario_livre` | `period_months=60` | `pd.DataFrame` | Estoque credito livre |
+| `get_inadimplencia_imobiliaria_sfh` | `period_months=60` | `pd.DataFrame` | Inadimplencia SFH |
+| `get_inadimplencia_imobiliaria_livre` | `period_months=60` | `pd.DataFrame` | Inadimplencia livre |
+| `get_taxa_credito_imobiliario_sfh` | `period_months=60` | `pd.DataFrame` | Taxa SFH |
+| `get_taxa_credito_imobiliario_livre` | `period_months=60` | `pd.DataFrame` | Taxa livre |
+| `get_contratacao_imobiliaria_sfh` | `period_months=60` | `pd.DataFrame` | Contratacoes SFH |
+| `get_contratacao_imobiliaria_livre` | `period_months=60` | `pd.DataFrame` | Contratacoes livre |
+| `get_imoveis_apartamento` | `period_months=60` | `pd.DataFrame` | Estoque imoveis apartamento |
+| `get_imoveis_casa` | `period_months=60` | `pd.DataFrame` | Estoque imoveis casa |
+| `get_imoveis_valor_medio` | `period_months=60` | `pd.DataFrame` | Valor medio do imovel |
+| `get_mercado_imobiliario_all` | `period_months=60` | `dict[str, pd.DataFrame]` | Todos os 14 indicadores |
 
 ```python
 bcb = BCBFetcher()
 selic = bcb.get_selic(period_days=30)
-ultimo_valor = selic["valor"].iloc[-1]
+focus = bcb.get_focus_all()
+ptax_eur = bcb.get_ptax_currency("EUR")
+taxas = bcb.get_lending_rates("consignado")
+ivg = bcb.get_ivg()
 ```
 
 ### IBGEFetcher
 
-Dados do IBGE via API SIDRA.
+Dados do IBGE via SIDRA API, CNAE e indicadores por pais. 17 tabelas SIDRA + CNAE + paises.
+
+**Inflacao:**
 
 | Metodo | Parametros | Retorno | Descricao |
 |---|---|---|---|
-| `get_ipca` | `months: int = 12` | `pd.DataFrame` | IPCA variacao mensal — % \| Mensal \| Tabela 1737. Colunas: `periodo, valor, variavel`. |
-| `get_ipca_detailed` | `months: int = 12` | `pd.DataFrame` | IPCA por grupos — % \| Mensal \| Tabela 1737. Colunas: `periodo, valor, variavel, grupo`. |
-| `get_pib` | `quarters: int = 8` | `pd.DataFrame` | PIB taxa de variacao — % \| Trimestral \| Tabela 5932. |
-| `get_unemployment` | `quarters: int = 8` | `pd.DataFrame` | PNAD taxa de desocupacao — % \| Trimestral \| Tabela 6381. |
+| `get_ipca` | `months=12` | `pd.DataFrame` | IPCA variacao mensal — % \| Tabela 1737 |
+| `get_ipca_detailed` | `months=12` | `pd.DataFrame` | IPCA por grupos — % \| Tabela 1737 |
+| `get_ipca_new` | `months=12` | `pd.DataFrame` | IPCA serie 2020+ — variacao, acumulada, peso \| Tabela 7060 |
+| `get_ipca_subitems` | `months=6` | `pd.DataFrame` | IPCA por subitens — % \| Tabela 1419 |
+| `get_ipca15` | `months=12` | `pd.DataFrame` | IPCA-15 previa — % \| Tabela 7062 |
+| `get_ipca_groups` | `months=12` | `pd.DataFrame` | IPCA variacao + peso por grupos \| Tabela 7060 |
+
+**PIB:**
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_pib` | `quarters=8` | `pd.DataFrame` | PIB variacao % trimestral \| Tabela 5932 |
+| `get_pib_dessaz` | `quarters=20` | `pd.DataFrame` | PIB dessazonalizado — indice trimestral |
+| `get_pib_nominal` | `years=5` | `pd.DataFrame` | PIB nominal R$ bilhoes |
+
+**Emprego e renda:**
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_unemployment` | `quarters=8` | `pd.DataFrame` | Desocupacao PNAD — % \| Tabela 6381 |
+| `get_underemployment` | `quarters=8` | `pd.DataFrame` | Subutilizacao — % \| Tabela 6382 |
+| `get_average_income` | `quarters=12` | `pd.DataFrame` | Rendimento medio — R$ \| Tabela 6387 |
+| `get_population` | `quarters=8` | `pd.DataFrame` | Populacao — milhoes |
+| `get_gini` | `years=10` | `pd.DataFrame` | Indice de Gini — anual |
+| `get_analfabetismo` | `years=10` | `pd.DataFrame` | Analfabetismo 15+ — % \| Tabela 7113 |
+
+**Atividade setorial:**
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_industrial_production` | `months=12` | `pd.DataFrame` | PIM-PF — producao industrial — % \| Tabela 8888 |
+| `get_retail_sales` | `months=12` | `pd.DataFrame` | PMC — comercio varejista — % \| Tabela 8881 |
+| `get_services` | `months=12` | `pd.DataFrame` | PMS — servicos — % \| Tabela 8688 |
+| `get_construction_cost` | `months=12` | `pd.DataFrame` | SINAPI — custo construcao \| Tabela 2296 |
+
+**CNAE (classificacao setorial):**
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_cnae_sections` | — | `pd.DataFrame` | Secoes CNAE (~10) |
+| `get_cnae_divisions` | — | `pd.DataFrame` | Divisoes CNAE (~90) |
+| `get_cnae_classes` | — | `pd.DataFrame` | Classes CNAE (~645) |
+| `get_cnae_subclasses` | `class_code=None` | `pd.DataFrame` | Subclasses CNAE (~2.093) |
+| `get_cnae_search` | `term: str` | `pd.DataFrame` | Busca CNAE por termo |
+
+**Paises:**
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `get_country_list` | — | `pd.DataFrame` | Lista de paises com metadados |
+| `get_country_info` | `country_code: str` | `dict` | Info detalhada de um pais |
 
 ```python
 ibge = IBGEFetcher()
 pib = ibge.get_pib(quarters=4)
+gini = ibge.get_gini(years=5)
+cnae = ibge.get_cnae_search("software")
 ```
 
 ### FREDFetcher
 
-Dados economicos do Federal Reserve (FRED). Requer `FRED_API_KEY` no `.env`.
+Dados economicos do Federal Reserve (FRED). 38 series configuradas em `Constants.FRED_SERIES`. Requer `FRED_API_KEY` no `.env`.
+
+**Base (4 metodos):**
 
 | Metodo | Parametros | Retorno | Descricao |
 |---|---|---|---|
-| `get_series` | `series_id: str, start_date, end_date` | `pd.DataFrame` | Serie temporal. Colunas: `date, value, series_id`. |
-| `get_series_info` | `series_id: str` | `dict` | Metadados (nome, unidade, frequencia). |
-| `get_multiple_series` | `series_ids: list[str], start_date, end_date` | `dict[str, pd.DataFrame]` | Multiplas series. |
+| `get_series` | `series_id, start_date, end_date` | `pd.DataFrame` | Serie temporal. Colunas: `date, value, series_id`. |
+| `get_series_info` | `series_id` | `dict` | Metadados (nome, unidade, frequencia). |
+| `get_multiple_series` | `series_ids, start_date, end_date` | `dict[str, pd.DataFrame]` | Multiplas series em paralelo. |
 | `get_macro_bundle` | `start_date, end_date` | `dict[str, pd.DataFrame]` | Bundle padrao: DFF, DGS10, T10Y2Y, VIXCLS, CPIAUCSL, DEXBZUS. |
-| `get_fed_funds_rate` | — | `pd.DataFrame` | Fed Funds Rate (DFF). |
-| `get_treasury_10y` | — | `pd.DataFrame` | Treasury 10Y (DGS10). |
-| `get_treasury_2y` | — | `pd.DataFrame` | Treasury 2Y (DGS2). |
-| `get_yield_curve_spread` | — | `pd.DataFrame` | Spread 10Y-2Y (T10Y2Y). |
-| `get_vix` | — | `pd.DataFrame` | VIX (VIXCLS). |
-| `get_us_cpi` | — | `pd.DataFrame` | CPI EUA (CPIAUCSL). |
-| `get_core_pce` | — | `pd.DataFrame` | Core PCE (PCEPILFE). |
-| `get_brl_usd` | — | `pd.DataFrame` | BRL/USD (DEXBZUS). |
-| `get_us_gdp` | `real: bool = True` | `pd.DataFrame` | PIB EUA (GDPC1 ou GDP). |
-| `get_us_unemployment` | — | `pd.DataFrame` | Desemprego EUA (UNRATE). |
-| `get_high_yield_spread` | — | `pd.DataFrame` | HY spread (BAMLH0A0HYM2). |
-| `get_breakeven_inflation` | — | `pd.DataFrame` | Breakeven 10Y (T10YIE). |
-| `list_series` | — | `dict[str, dict]` | Series disponiveis. Estatico. |
 
-Series disponiveis: DFF, CPIAUCSL, PCEPILFE, DFII10, DGS3MO, DGS2, DGS10, DGS30, T10Y2Y, GDP, GDPC1, UNRATE, INDPRO, VIXCLS, BAMLH0A0HYM2, T10YIE, DEXBZUS, DEXUSEU, DEXCHUS.
+**Convenience methods (23 metodos) + list_series:**
+
+| Metodo | Serie FRED | Descricao |
+|---|---|---|
+| `get_fed_funds_rate` | DFF | Fed Funds Rate efetiva — diaria |
+| `get_treasury_3m` | DGS3MO | Treasury 3 meses — ponta curta |
+| `get_treasury_2y` | DGS2 | Treasury 2 anos |
+| `get_treasury_10y` | DGS10 | Treasury 10 anos |
+| `get_treasury_30y` | DGS30 | Treasury 30 anos — ponta longa |
+| `get_yield_curve_spread` | T10Y2Y | Spread 10Y-2Y — inversao de curva |
+| `get_tips_real_yield` | DFII10 | TIPS 10Y — juros real EUA |
+| `get_vix` | VIXCLS | VIX — volatilidade esperada S&P 500 |
+| `get_us_cpi` | CPIAUCSL | CPI EUA — mensal, base 1982-84=100 |
+| `get_core_pce` | PCEPILFE | Core PCE — preferido do Fed |
+| `get_brl_usd` | DEXBZUS | BRL/USD — diaria |
+| `get_eur_usd` | DEXUSEU | EUR/USD — par mais negociado |
+| `get_cny_usd` | DEXCHUS | CNY/USD — cambio China |
+| `get_dollar_index` | DTWEXBGS | DXY ponderado por comercio |
+| `get_us_gdp` | GDPC1/GDP | PIB EUA (real ou nominal) |
+| `get_us_unemployment` | UNRATE | Desemprego EUA — mensal |
+| `get_industrial_production` | INDPRO | Producao industrial EUA |
+| `get_nonfarm_payrolls` | PAYEMS | Nonfarm Payrolls — criacao de empregos |
+| `get_consumer_sentiment` | UMCSENT | Sentimento do consumidor Michigan |
+| `get_high_yield_spread` | BAMLH0A0HYM2 | HY spread OAS — apetite a risco |
+| `get_breakeven_inflation` | T10YIE | Breakeven 10Y — expectativa inflacao |
+| `get_wti_oil` | DCOILWTICO | Petroleo WTI |
+| `get_gold_price` | GOLDAMGBD228NLBM | Ouro London Fix |
+| `list_series` | — | Series disponiveis (estatico) |
+
+Series configuradas (38): DFF, FEDFUNDS, DPRIME, DGS3MO, DGS1, DGS2, DGS5, DGS10, DGS20, DGS30, T10Y2Y, T5YIE, T10YIE, DFII5, DFII10, GDP, GDPC1, CPIAUCSL, CPILFESL, PCEPILFE, PCE, UNRATE, PAYEMS, ICSA, INDPRO, UMCSENT, HOUST, CSUSHPINSA, VIXCLS, BAMLH0A0HYM2, SP500, DCOILWTICO, GOLDAMGBD228NLBM, DEXBZUS, DEXUSEU, DEXJPUS, DEXCHUS, DTWEXBGS.
 
 ```python
 fred = FREDFetcher()
 bundle = fred.get_macro_bundle()
 vix = fred.get_vix()
+oil = fred.get_wti_oil()
 ```
 
 ### CVMFetcher
@@ -706,7 +1004,7 @@ Modulo: `carteira_auto.data.lake`
 
 ### DataLake
 
-Interface unificada que agrega PriceLake, MacroLake, FundamentalsLake e NewsLake. Cada sub-lake gerencia seu proprio arquivo SQLite.
+Interface unificada que agrega PriceLake, MacroLake, FundamentalsLake, NewsLake e ReferenceLake. Cada sub-lake gerencia seu proprio arquivo SQLite.
 
 ```python
 lake = DataLake(Path("data/lake"))
@@ -718,6 +1016,7 @@ lake = DataLake(Path("data/lake"))
 | `macro` | `MacroLake` | Sub-lake de indicadores macro |
 | `fundamentals` | `FundamentalsLake` | Sub-lake de fundamentos |
 | `news` | `NewsLake` | Sub-lake de noticias |
+| `reference` | `ReferenceLake` | Sub-lake de dados de referencia (12 tabelas) |
 
 #### Precos
 
@@ -774,6 +1073,38 @@ summary = lake.summary()
 | `MacroLake` | `macro.db` | Series de indicadores macro |
 | `FundamentalsLake` | `fundamentals.db` | Indicadores e demonstracoes financeiras |
 | `NewsLake` | `news.db` | Artigos e sentimento |
+| `ReferenceLake` | `reference.db` | 12 tabelas de dados estruturais nao-temporais |
+
+### ReferenceLake
+
+Dados de referencia estruturais. 12 tabelas com `source` e `updated_at`.
+
+| Metodo | Parametros | Retorno | Descricao |
+|---|---|---|---|
+| `store_index_composition` | `index_code, df, source, ref_date` | `int` | Composicao de indice |
+| `get_index_composition` | `index_code, ref_date` | `pd.DataFrame` | Consulta composicao |
+| `get_available_indexes` | — | `list[str]` | Indices disponiveis |
+| `store_focus_expectations` | `indicator, data, source` | `int` | Expectativas Focus |
+| `get_focus_expectations` | `indicator, limit=100` | `pd.DataFrame` | Consulta Focus |
+| `store_analyst_targets` | `ticker, targets, source` | `int` | Targets de analistas |
+| `get_analyst_targets` | `ticker` | `dict \| None` | Consulta targets |
+| `store_upgrades_downgrades` | `ticker, df, source` | `int` | Upgrades/downgrades |
+| `store_lending_rates` | `data, source` | `int` | Taxas de credito |
+| `store_cnae` | `classifications` | `int` | Classificacoes CNAE |
+| `store_ticker_cnpj` | `mapping, source` | `int` | Mapeamento ticker→CNPJ |
+| `get_ticker_cnpj` | `ticker` | `str \| None` | Consulta CNPJ por ticker |
+| `get_all_ticker_cnpj` | — | `dict[str, str]` | Mapeamento completo |
+| `store_major_holders` | `ticker, holders, source` | `int` | Participacao acionaria |
+| `get_major_holders` | `ticker` | `dict \| None` | Consulta holders |
+| `store_fund_registry` | `funds, source` | `int` | Cadastro de fundos |
+| `get_fund_registry` | `fund_type, situation` | `pd.DataFrame` | Consulta fundos |
+| `store_fund_portfolios` | `cnpj, df, source, ref_date` | `int` | Carteira de fundo (CDA) |
+| `get_fund_portfolio` | `cnpj, ref_date` | `pd.DataFrame` | Consulta carteira |
+| `store_intermediaries` | `intermediaries, source` | `int` | Intermediarios |
+| `store_asset_registry` | `assets, asset_type, source` | `int` | Registro de ativos |
+| `get_asset_registry` | `asset_type` | `pd.DataFrame` | Consulta registro |
+| `count_records` | — | `dict[str, int]` | Contagem por tabela |
+| `export_to_parquet` | `output_path` | `Path` | Exporta para Parquet |
 
 ---
 
@@ -870,6 +1201,33 @@ node = LoadPortfolioNode(source_path=Path("planilha.xlsx"))
 node = ExportPortfolioPricesNode(output_path=Path("saida.xlsx"))
 ```
 
+### Fetch Helpers
+
+Modulo: `carteira_auto.core.nodes.fetch_helpers`
+
+Helper de fallback hierarquico entre fetchers diferentes. Usado pelos IngestNodes.
+
+| Classe/Funcao | Descricao |
+|---|---|
+| `FetchStrategy(name, callable, transform=None)` | Dataclass: identifica uma fonte (nome + funcao + transformacao opcional) |
+| `FetchResult(data, source, attempts, errors)` | Dataclass: resultado do fallback. Properties: `success`, `used_fallback` |
+| `fetch_with_fallback(strategies, fetch_logger, critical, label)` | Executa fetchers em ordem ate obter dados validos. Loga warning em fallback, error se todas falharem. |
+
+```python
+from carteira_auto.core.nodes.fetch_helpers import FetchStrategy, fetch_with_fallback
+
+result = fetch_with_fallback(
+    strategies=[
+        FetchStrategy(name="bcb", callable=lambda: bcb.get_selic()),
+        FetchStrategy(name="ddm", callable=lambda: ddm.get_macro_series("selic")),
+    ],
+    label="selic",
+    critical=True,
+)
+if result.success:
+    lake.store_macro("selic", result.data, source=result.source)
+```
+
 ### Ingest Nodes
 
 | Node | name | dependencies | Le do ctx | Escreve no ctx |
@@ -878,6 +1236,8 @@ node = ExportPortfolioPricesNode(output_path=Path("saida.xlsx"))
 | `IngestMacroNode` | `ingest_macro` | `[]` | — | `ingest_macro_count: int`, `data_lake: DataLake` |
 | `IngestFundamentalsNode` | `ingest_fundamentals` | `[]` | `portfolio` (opcional) | `ingest_fundamentals_count: int`, `data_lake: DataLake` |
 | `IngestNewsNode` | `ingest_news` | `[]` | — | `ingest_news_count: int`, `data_lake: DataLake` |
+| `IngestCVMNode` | `ingest_cvm` | `[]` | `portfolio` (opcional) | `ingest_cvm_count: int`, `data_lake: DataLake` |
+| `IngestTesouroDiretoNode` | `ingest_tesouro_direto` | `[]` | — | `ingest_tesouro_direto_count: int`, `data_lake: DataLake` |
 
 `IngestPricesNode` aceita `mode` no construtor: `"daily"` (5 dias) ou `"full"` (backfill historico).
 
@@ -994,6 +1354,45 @@ Analisa setores da economia real via IBGE.
 | `dependencies` | `[]` |
 | **Le do ctx** | — |
 | **Escreve no ctx** | `economic_sectors: list[EconomicSectorIndicator]` |
+
+### CurrencyAnalyzer
+
+Analisa cenario cambial: USD/BRL, DXY, carry trade Selic-Fed, taxa cambio real efetiva.
+
+| Atributo | Valor |
+|---|---|
+| `name` | `"analyze_currency"` |
+| `dependencies` | `[]` |
+| **Le do ctx** | — (busca diretamente via BCBFetcher, FREDFetcher, YahooFinanceFetcher) |
+| **Escreve no ctx** | `currency_metrics: CurrencyMetrics` |
+
+Calcula: PTAX compra/venda, variacao USD/BRL (1m, 3m, 12m), DXY e variacao, Selic, Fed Funds Rate, carry spread, taxa cambio real efetiva.
+
+### CommodityAnalyzer
+
+Analisa precos e ciclo de commodities: petroleo, ouro, prata, soja, milho, trigo.
+
+| Atributo | Valor |
+|---|---|
+| `name` | `"analyze_commodities"` |
+| `dependencies` | `[]` |
+| **Le do ctx** | — (busca diretamente via YahooFinanceFetcher) |
+| **Escreve no ctx** | `commodity_metrics: CommodityMetrics` |
+
+Calcula: precos correntes (WTI, Brent, ouro, prata, soja, milho, trigo), variacoes (1m, 3m, 12m), indice composto, sinal de ciclo (expansion/peak/contraction/trough).
+
+### FiscalAnalyzer
+
+Analisa situacao fiscal brasileira: divida/PIB, resultado primario, trajetoria.
+
+| Atributo | Valor |
+|---|---|
+| `name` | `"analyze_fiscal"` |
+| `dependencies` | `[]` |
+| **Le do ctx** | — (busca diretamente via BCBFetcher) |
+| **Escreve no ctx** | `fiscal_metrics: FiscalMetrics` |
+
+Calcula: divida bruta/PIB, divida liquida/PIB, resultado primario/PIB, resultado nominal, juros nominais/PIB, variacao 12m, trajetoria fiscal (improving a severe).
 
 ---
 
@@ -1250,4 +1649,9 @@ Tabela consolidada de todas as chaves lidas e escritas no contexto.
 | `ingest_macro_count` | `int` | `IngestMacroNode` | — |
 | `ingest_fundamentals_count` | `int` | `IngestFundamentalsNode` | — |
 | `ingest_news_count` | `int` | `IngestNewsNode` | — |
+| `currency_metrics` | `CurrencyMetrics` | `CurrencyAnalyzer` | — |
+| `commodity_metrics` | `CommodityMetrics` | `CommodityAnalyzer` | — |
+| `fiscal_metrics` | `FiscalMetrics` | `FiscalAnalyzer` | — |
+| `ingest_cvm_count` | `int` | `IngestCVMNode` | — |
+| `ingest_tesouro_direto_count` | `int` | `IngestTesouroDiretoNode` | — |
 | `_errors` | `dict[str, str]` | `DAGEngine`, analyzers | `PipelineContext.has_errors` |

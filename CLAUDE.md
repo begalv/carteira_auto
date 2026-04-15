@@ -7,7 +7,7 @@ de carteira de investimentos para emancipação financeira de pessoa física no 
 Seu parceiro humano é um programador Python com foco em finanças, economia e
 geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
-## Estado atual do projeto (v0.2.1+ — Fetcher Maximization Sprint, Fase A concluída)
+## Estado atual do projeto (v0.2.1 — Épico 0: Estabilização em andamento)
 
 | Fase | Status | Entregáveis |
 |------|--------|-------------|
@@ -16,15 +16,17 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 | Hardening | CONCLUÍDA | Result type, validação estrita, error handling, 350 testes |
 | 2 Sprint 0 | CONCLUÍDA | Validação infraestrutura, correção códigos BCB SGS |
 | 2 Sprint 1 | CONCLUÍDA | CurrencyAnalyzer, CommodityAnalyzer, FiscalAnalyzer + 33 testes |
-| **Fetcher Sprint A** | **CONCLUÍDA** | Dependências (python-bcb, sidrapy, tradingcomdados), constants expandidos (BCB 31 séries, IBGE 16 tabelas, FRED 30 séries, 6 índices), FetchWithFallback helper, ReferenceLake (12 tabelas), TradingComDadosConfig |
-| **Fetcher Sprint B** | EM ANDAMENTO | Expansão BCBFetcher, IBGEFetcher, FREDFetcher |
-| **Fetcher Sprint C** | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
-| **Fetcher Sprint D** | Pendente | IngestNodes com fallback, testes integração, docs finais |
+| Fetcher Sprint A | CONCLUÍDA | Dependências, constants expandidos, FetchWithFallback, ReferenceLake (12 tabelas) |
+| Fetcher Sprint B | CONCLUÍDA | BCBFetcher (6 mixins, 105 métodos), IBGEFetcher, FREDFetcher (+23 methods) |
+| **Épico 0 Sprint 1 Bloco A** | **CONCLUÍDA** | Baseline limpo: fixtures, contagem testes unificada, TECH_DEBT_INVENTORY.md (65 itens rastreáveis) |
+| Épico 0 Sprint 1 Blocos B-D | Pendente | Segurança, infraestrutura documental, auditoria de testes |
+| Fetcher Sprint C | Pendente | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher |
+| Fetcher Sprint D | Pendente | IngestNodes com fallback, testes integração, docs finais |
 | 2 Sprint 2+ | Pendente | 6 analyzers restantes (fundamental, yield curve, global macro...) |
 
-**Testes:** 407+ passando (unit + integration). 2 falhas pré-existentes (CVM 404, Excel fixture).
-**Novos testes:** test_fetch_helpers.py (22), test_reference_lake.py (39).
-**Cobertura:** models, analyzers (10), fetchers, CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
+**Testes:** 697 passando (632 unit + 65 integration). 0 falhas.
+**Cobertura:** models, analyzers (3 dedicados + 7 via test_analyzers.py), fetchers (BCB 129, FRED 55, IBGE 40), CLI, decorators, E2E pipelines, fetch_helpers, reference_lake.
+**Gaps de cobertura:** 18 módulos sem teste dedicado — ver `docs/dev/TECH_DEBT_INVENTORY.md` seção 10.
 
 ## Documentos de referência
 
@@ -54,6 +56,19 @@ geopolítica. Vocês trabalharão juntos em sprints iterativos.
 
 - **Grafo de dependências**: `docs/dev/DEPENDENCY_GRAPH.mermaid`
   Quem importa quem. Consulte antes de adicionar imports para evitar ciclos.
+
+- **DevOps e CI/CD**: `docs/dev/DEVOPS.md`
+  Guia completo de como contribuir: branches, commits, PRs, Makefile,
+  GitHub Actions, Dependabot, troubleshooting. Leia ao iniciar um sprint.
+
+- **Próximo sprint**: `docs/dev/NEXT_SPRINT.md`
+  Prompt de continuação para novas sessões Claude Code. Contém o estado
+  atual dos sprints e decisões técnicas pendentes.
+
+- **Inventário de dívida técnica**: `docs/dev/TECH_DEBT_INVENTORY.md`
+  65 itens rastreáveis por arquivo:linha. Categorias: resource management,
+  error handling, validação, data integrity, CI/CD, magic numbers,
+  código não utilizado, cobertura de testes. Consulte antes de refatorar.
 
 - **Código existente**: `src/carteira_auto/`
   O repositório tem código funcional (v0.2.1). Respeite e reaproveite tudo
@@ -118,8 +133,8 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
   → ADICIONE novas configs aqui (AIConfig, etc.)
   → OptimizationConfig vai em config/optimization.py (novo arquivo)
 - `constants.py`: Constants class com colunas de planilha, field maps,
-  BCB_SERIES_CODES (31 séries SGS), IBGE_TABLE_IDS (16 tabelas SIDRA),
-  FRED_SERIES (30 séries com metadados), INDEX_CODES (6 índices B3),
+  BCB_SERIES_CODES (57 séries SGS), IBGE_TABLE_IDS (17 tabelas SIDRA),
+  FRED_SERIES (38 séries, chaves PT: nome/unidade/frequencia), INDEX_CODES (6 índices B3),
   padrões de ticker, horários de mercado, feriados B3.
   → ADICIONE novas constantes aqui.
 
@@ -157,10 +172,12 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
   → Veja Pattern 10 em PATTERNS.md.
 
 ### Data (src/carteira_auto/data/)
-- `fetchers/`: YahooFinanceFetcher, BCBFetcher, IBGEFetcher, FREDFetcher,
-  CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
+- `fetchers/`: YahooFinanceFetcher, BCBFetcher (módulo bcb/ com 6 mixins),
+  IBGEFetcher, FREDFetcher, CVMFetcher, TesouroDiretoFetcher, DDMFetcher (7 fetchers).
+  BCBFetcher inclui: SGS, Focus, PTAX, TaxaJuros, MercadoImobiliário (105 métodos).
+  FREDFetcher com 23 convenience methods + 4 base methods para 38 séries.
   TradingComDadosFetcher planejado para Sprint C (config pronta em settings.py).
-  → EXPANDA os existentes conforme plano do sprint (python-bcb, sidrapy, CKAN).
+  → EXPANDA os existentes conforme plano do sprint.
   → ADICIONE novos fetchers no mesmo padrão (Pattern 1).
 - `lake/`: DataLake (fachada), PriceLake, MacroLake, FundamentalsLake, NewsLake,
   ReferenceLake (12 tabelas: composições, Focus, targets, holders, fundos, ativos).
@@ -215,10 +232,12 @@ e) **Transição** — após aprovação, apresente o planejamento do próximo s
 | 1 | Fontes: FRED, CVM, Tesouro, DDM | CONCLUÍDA |
 | H | Hardening: Result type, validação, error handling, testes | CONCLUÍDA |
 | 2 Sprint 1 | Analyzers: currency, commodity, fiscal | CONCLUÍDA |
-| **Fetcher Max A** | **Fundação: deps, constants, FetchWithFallback, ReferenceLake (12 tab)** | **CONCLUÍDA** |
-| **Fetcher Max B** | **Expansão BCBFetcher (python-bcb), IBGEFetcher (sidrapy), FREDFetcher** | **EM ANDAMENTO** |
-| **Fetcher Max C** | **Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher** | Pendente |
-| **Fetcher Max D** | **IngestNodes com fallback, testes integração, docs** | Pendente |
+| Fetcher Max A | Fundação: deps, constants, FetchWithFallback, ReferenceLake | CONCLUÍDA |
+| Fetcher Max B | BCBFetcher (6 mixins), IBGEFetcher, FREDFetcher (+23 methods) | CONCLUÍDA |
+| **Épico 0 Sprint 1A** | **Baseline limpo, inventário de dívida técnica (65 itens)** | **CONCLUÍDA** |
+| **Épico 0 Sprint 1B-D** | **Segurança, docs, auditoria de testes** | EM ANDAMENTO |
+| Fetcher Max C | Expansão Yahoo, DDM, Tesouro, CVM + TradingComDadosFetcher | Pendente |
+| Fetcher Max D | IngestNodes com fallback, testes integração, docs | Pendente |
 | 2 Sprint 2+ | Analyzers restantes (fundamental, yield curve, global macro...) | Pendente |
 | 3 | Estratégias + Optimizer (PyPortfolioOpt) + Backtesting | Pendente |
 | 4 | ML: scoring fundamentalista, integração ML↔optimizer | Pendente |
@@ -233,14 +252,14 @@ antes de iniciar cada fase.
 
 - **Mock paths**: fetchers importados dentro de `run()` devem ser mockados em
   `carteira_auto.data.fetchers.NomeFetcher`, não no módulo do analyzer.
-- **CVM 404**: `test_get_dfp_dre_petrobras` falha com 404 — endpoint CVM removeu
-  o arquivo de 2023. Pré-existente, não bloqueia desenvolvimento.
+- **CVM 404**: `test_get_dfp_dre_petrobras` marcado `@pytest.mark.integration` —
+  excluído do `make test`. Endpoint CVM pode estar indisponível.
 - **ruff UP007**: usar `X | Y` em vez de `Optional[X]` para type annotations.
 - **Pre-commit hooks**: black + ruff rodam automaticamente. Sempre corrigir antes
   de commitar.
 - **Códigos SGS fiscais validados**: Dívida bruta/PIB = 13762 (NÃO 13621, que
   retorna valor absoluto em R$). Juros nominais/PIB = 5727 (NÃO 4185, que não existe).
-- **Novas dependências (Fetcher Sprint)**: python-bcb>=0.6.0, sidrapy>=0.1.0,
+- **Novas dependências (Fetcher Sprint)**: python-bcb>=0.3.0, sidrapy>=0.1.0,
   tradingcomdados>=0.4.0 — todas gratuitas, sem API key.
 - **FetchWithFallback vs @fallback**: `fetch_with_fallback()` orquestra ENTRE fetchers
   diferentes (usado nos IngestNodes). `@fallback` opera DENTRO de um mesmo fetcher
@@ -248,8 +267,77 @@ antes de iniciar cada fase.
 - **ReferenceLake (12 tabelas)**: dados de referência não-temporais. Todas as tabelas
   com `source` e `updated_at`. Auditoria de cobertura confirmou que TODOS os dados
   dos fetchers expandidos têm destino no DataLake.
+- **BCBFetcher é módulo** (Sprint B.4): `bcb_fetcher.py` foi deletado. O BCBFetcher
+  agora vive em `data/fetchers/bcb/` como módulo com 6 mixins. Importar sempre
+  via `from carteira_auto.data.fetchers.bcb import BCBFetcher`.
+- **FRED_SERIES fonte canônica**: `Constants.FRED_SERIES` em `config/constants.py`
+  com chaves PT (`nome`, `unidade`, `frequencia`). Não duplicar no fetcher.
 - **Rodando testes no worktree**: usar `PYTHONPATH=src python3 -m pytest` para
   garantir que o worktree `src/` tenha prioridade sobre o pacote instalado.
+- **Teste flaky**: `test_fred_fetcher.py::test_sem_api_key_levanta_permission_error`
+  falha intermitentemente por leak de env vars entre testes. Causa raiz: conftest.py
+  sem fixture autouse para limpar environment. Ver TECH_DEBT_INVENTORY.md item 7.7.
+- **Dívida técnica documentada**: 65 itens em `docs/dev/TECH_DEBT_INVENTORY.md`,
+  todos rastreáveis por arquivo:linha. 5 Alta, 27 Média, 33 Baixa. Principais:
+  sessions não fechadas (tesouro/cvm fetchers), retornos inconsistentes entre
+  fetchers, mypy com continue-on-error no CI, 18 módulos sem teste dedicado.
+
+## Workflow de CI/CD
+
+### Convenção de branches: `<tipo>/<escopo>-<descricao>`
+
+| Tipo | Uso | Exemplo |
+|------|-----|---------|
+| `feat/` | Features de sprint | `feat/sprintC1-yahoo-ddm-expansion` |
+| `fix/` | Bug fixes | `fix/cvm-404-endpoint` |
+| `refactor/` | Reestruturação | `refactor/lake-schema-v2` |
+| `test/` | Só testes | `test/analyzers-coverage` |
+| `docs/` | Só documentação | `docs/api-reference` |
+| `chore/` | CI, tooling, config | `chore/ci-setup` |
+| `claude/` | Auto-gerado pelo Claude Code | `claude/<nome-aleatorio>` |
+
+### Convenção de commits: `<tipo>(<escopo>): <descrição>`
+
+Escopos: `bcb`, `ibge`, `fred`, `yahoo`, `cvm`, `tesouro`, `ddm`, `lake`,
+`analyzers`, `models`, `config`, `cli`, `core`, `ci`, `deps`.
+Descrição em português. Max 72 caracteres.
+
+### Makefile (atalhos de desenvolvimento)
+
+```bash
+make test          # testes rápidos (unit, sem slow/integration)
+make test-all      # todos os testes
+make test-cov      # testes + cobertura HTML
+make lint          # ruff check
+make format        # auto-format (black + ruff fix)
+make check         # CI local completo (lint + format-check + test)
+make install-dev   # setup de desenvolvimento
+make clean         # limpa artefatos
+make clean-worktrees  # limpa worktrees órfãos
+```
+
+### GitHub Actions (CI automático)
+
+- **PR para main**: lint, format, typecheck, testes em Python 3.10/3.11/3.12
+- **Merge no main**: suite completa de testes + cobertura
+- **Tag v\***: release automático no GitHub
+- **Dependabot**: alertas semanais de vulnerabilidades em deps
+
+### Fluxo de sprint padronizado
+
+1. Criar branch: `git checkout -b feat/sprintX-descricao` (ou Claude cria worktree)
+2. Implementar incrementalmente com `make test` após cada módulo
+3. Antes do push: `make check` (equivale ao CI local)
+4. Push + criar PR → CI roda automaticamente
+5. Review → squash merge no main → branch auto-deletada
+6. Cleanup: `git checkout main && git pull && make clean-worktrees`
+
+### Configurações do GitHub (manuais)
+
+- Branch protection em `main`: require status checks (`lint`, `format`, `test`)
+- Auto-delete head branches: ativado
+- Squash merge como default
+- Require branches to be up to date antes de merge
 
 ## Como iniciar
 

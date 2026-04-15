@@ -8,7 +8,6 @@ e fonte, além de exportação para Parquet para pipelines de ML.
 import sqlite3
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -123,9 +122,9 @@ class PriceLake:
     def get_prices(
         self,
         tickers: list[str],
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        columns: Optional[list[str]] = None,
+        start: date | None = None,
+        end: date | None = None,
+        columns: list[str] | None = None,
     ) -> pd.DataFrame:
         """Consulta preços do lake.
 
@@ -208,7 +207,7 @@ class PriceLake:
             cursor = conn.execute("SELECT DISTINCT ticker FROM prices ORDER BY ticker")
             return [row[0] for row in cursor.fetchall()]
 
-    def get_date_range(self, ticker: str) -> tuple[Optional[date], Optional[date]]:
+    def get_date_range(self, ticker: str) -> tuple[date | None, date | None]:
         """Retorna o range de datas disponível para um ticker."""
         with self._get_connection() as conn:
             cursor = conn.execute(
@@ -220,7 +219,7 @@ class PriceLake:
                 return date.fromisoformat(row[0]), date.fromisoformat(row[1])
             return None, None
 
-    def count_records(self, ticker: Optional[str] = None) -> int:
+    def count_records(self, ticker: str | None = None) -> int:
         """Conta registros no lake, opcionalmente filtrado por ticker."""
         query = "SELECT COUNT(*) FROM prices"
         params: list = []
@@ -241,7 +240,7 @@ class PriceLake:
         return count
 
     def export_to_parquet(
-        self, output_path: Path, tickers: Optional[list[str]] = None
+        self, output_path: Path, tickers: list[str] | None = None
     ) -> Path:
         """Exporta dados do lake para Parquet (otimizado para ML).
 

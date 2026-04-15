@@ -1,7 +1,6 @@
 """Loaders para importação de planilhas Excel."""
 
 from pathlib import Path
-from typing import Optional
 
 import pandas as pd
 
@@ -33,7 +32,7 @@ class ExcelLoader:
 
     def __init__(self, file_path: Path):
         self.file_path = file_path
-        self._xl: Optional[pd.ExcelFile] = None
+        self._xl: pd.ExcelFile | None = None
 
     def open(self) -> "ExcelLoader":
         """Abre o arquivo Excel para leitura."""
@@ -67,7 +66,7 @@ class ExcelLoader:
         columns: list[str],
         field_map: dict[str, str],
         required: bool = True,
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         """Lê uma aba, filtra colunas conhecidas, renomeia e limpa.
 
         Args:
@@ -122,7 +121,7 @@ class PortfolioLoader(ExcelLoader):
         portfolio = loader.load_portfolio()
     """
 
-    def __init__(self, file_path: Optional[Path] = None):
+    def __init__(self, file_path: Path | None = None):
         path = file_path or settings.paths.PORTFOLIO_FILE
         super().__init__(path)
 
@@ -187,5 +186,14 @@ class PortfolioLoader(ExcelLoader):
         )
         if df is None:
             return []
+
+        text_fields = {"ticker", "nome", "classe", "setor", "mes"}
+        bool_fields = {"posicao_ativa"}
+
+        for col in df.columns:
+            if col in bool_fields:
+                df[col] = df[col].apply(lambda x: bool(x) if pd.notna(x) else None)
+            elif col not in text_fields:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
 
         return self._rows_to_models(df, SoldAsset)

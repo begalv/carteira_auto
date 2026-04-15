@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+
 from carteira_auto.core.engine import PipelineContext
 from carteira_auto.core.nodes.ingest_nodes import (
     IngestFundamentalsNode,
